@@ -29,7 +29,7 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
 
         Set<String> links = extractLinksJobs(emailReceived.email().body());
 
-        //CHAMAR UMA FERRAMENTA DE AUTOMAÇÃO DE NAVEGADOR EX: Selenium ou Playwright;
+        // CHAMAR UMA FERRAMENTA DE AUTOMAÇÃO DE NAVEGADOR EX: Selenium ou Playwright;
         // OBJETO ENTRAR NO LINK E EXTRAIR AS SESSÕES NECESSARIAS TITULO DA VAGA,SOBRE A VAGA, SOBRE EMPRESA;
 
         emailGateway.save(emailReceived);
