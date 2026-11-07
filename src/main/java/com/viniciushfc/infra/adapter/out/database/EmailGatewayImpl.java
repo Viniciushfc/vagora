@@ -1,4 +1,4 @@
-package com.viniciushfc.infra.database;
+package com.viniciushfc.infra.adapter.out.database;
 
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.gateway.EmailGateway;
@@ -32,5 +32,4 @@ public class EmailGatewayImpl implements EmailGateway {
     public boolean existsEmailByMessageId(String messageID) {
         return false;
     }
-    // implementa save, delete, findAll, findById, existsEmailByMessageId
 }
