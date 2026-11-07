@@ -9,16 +9,17 @@ import org.apache.camel.builder.RouteBuilder;
 @ApplicationScoped
 public class EmailPollingRoute extends RouteBuilder {
 
-    @Inject
-    ProcessEmailReceiverUseCase processEmailReceiverUseCase;
+    private final ProcessEmailReceiverUseCase processEmailReceiverUseCase;
 
-    @Inject
-    EmailMapper mapper;
+    private final EmailMapper mapper;
+
+    public EmailPollingRoute(ProcessEmailReceiverUseCase processEmailReceiverUseCase, EmailMapper mapper) {
+        this.processEmailReceiverUseCase = processEmailReceiverUseCase;
+        this.mapper = mapper;
+    }
 
     @Override
     public void configure() {
-
-        // Tratamento de erro: tenta 3 vezes e depois só loga
         onException(Exception.class)
                 .maximumRedeliveries(3)
                 .redeliveryDelay(2000)
