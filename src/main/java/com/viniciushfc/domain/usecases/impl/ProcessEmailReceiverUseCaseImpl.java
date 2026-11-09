@@ -2,6 +2,7 @@ package com.viniciushfc.domain.usecases.impl;
 
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.EmailReceived;
+import com.viniciushfc.domain.gateway.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.gateway.EmailGateway;
 import com.viniciushfc.domain.gateway.JobDetailsGateway;
 import com.viniciushfc.domain.usecases.contracts.ProcessEmailReceiverUseCase;
@@ -16,10 +17,12 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
 
     private final EmailGateway emailGateway;
     private final JobDetailsGateway jobDetailsGateway;
+    private final AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway;
 
-    public ProcessEmailReceiverUseCaseImpl(EmailGateway emailGateway, JobDetailsGateway jobDetailsGateway) {
+    public ProcessEmailReceiverUseCaseImpl(EmailGateway emailGateway, JobDetailsGateway jobDetailsGateway, AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway) {
         this.emailGateway = emailGateway;
         this.jobDetailsGateway = jobDetailsGateway;
+        this.analyzeJobsMatchCvGateway = analyzeJobsMatchCvGateway;
     }
 
     @Override
@@ -28,11 +31,13 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             return;
         }
 
-        Set<String> links = extractLinksJobs(emailReceived.email().body());
+        emailGateway.save(emailReceived);
 
+        Set<String> links = extractLinksJobs(emailReceived.email().body());
         List<JobDetail> jobDetailList = jobDetailsGateway.extractJobsDetails(links);
 
-        emailGateway.save(emailReceived);
+        analyzeJobsMatchCvGateway.executeAnalysis(jobDetailList, null);
+
     }
 
     private Set<String> extractLinksJobs(String body) {

@@ -1,0 +1,24 @@
+package com.viniciushfc.infra.adapter.out.llm.gateway;
+
+import com.viniciushfc.domain.gateway.AnalyzeJobsMatchCvGateway;
+import com.viniciushfc.domain.vo.CvMatchResult;
+import com.viniciushfc.domain.vo.JobDetail;
+import com.viniciushfc.infra.adapter.out.llm.gemini.GeminiService;
+import jakarta.enterprise.context.ApplicationScoped;
+
+import java.util.List;
+
+@ApplicationScoped
+public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway {
+
+    private final GeminiService geminiService;
+
+    public AnalyzeJobsMatchCvGatewayImpl(GeminiService geminiService) {
+        this.geminiService = geminiService;
+    }
+
+    @Override
+    public CvMatchResult executeAnalysis(List<JobDetail> jobDetails, Object cvUser) {
+        return geminiService.genareteContentText(jobDetails.toString());
+    }
+}
