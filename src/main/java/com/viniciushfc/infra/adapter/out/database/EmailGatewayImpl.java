@@ -5,16 +5,18 @@ import com.viniciushfc.domain.gateway.EmailGateway;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
+import java.util.UUID;
 
 @ApplicationScoped
 public class EmailGatewayImpl implements EmailGateway {
+
     @Override
     public void save(EmailReceived emailReceived) {
 
     }
 
     @Override
-    public void delete(EmailReceived emailReceived) {
+    public void delete(UUID uuidEmail) {
 
     }
 
@@ -24,7 +26,7 @@ public class EmailGatewayImpl implements EmailGateway {
     }
 
     @Override
-    public EmailReceived findById(String id) {
+    public EmailReceived findById(UUID id) {
         return null;
     }
 
