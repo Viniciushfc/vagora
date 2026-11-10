@@ -22,11 +22,12 @@ public class EmailMapper {
         var msg = exchange.getMessage();
 
         String messageId = msg.getHeader("Message-ID", String.class);
+        String to = msg.getHeader("To", String.class);
         String from = msg.getHeader("From", String.class);
         String subject = msg.getHeader("Subject", String.class);
         String body = msg.getBody(String.class);
 
-        Email email = new Email(from, null, subject, body, extrairAnexos(exchange));
+        Email email = new Email(from, to, subject, body, extrairAnexos(exchange));
         return EmailReceived.create(messageId, email);
     }
 
