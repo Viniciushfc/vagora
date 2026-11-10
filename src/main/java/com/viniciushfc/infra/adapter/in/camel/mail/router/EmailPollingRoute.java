@@ -3,7 +3,6 @@ package com.viniciushfc.infra.adapter.in.camel.mail.router;
 import com.viniciushfc.domain.usecases.contracts.ProcessEmailReceiverUseCase;
 import com.viniciushfc.infra.adapter.in.camel.mail.mapper.EmailMapper;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import org.apache.camel.builder.RouteBuilder;
 
 @ApplicationScoped
