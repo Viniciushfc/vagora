@@ -18,7 +18,13 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
     }
 
     @Override
-    public CvMatchResult executeAnalysis(List<JobDetail> jobDetails, Object cvUser) {
-        return geminiService.genareteContentText(jobDetails.toString());
+    public CvMatchResult executeAnalysis(List<JobDetail> jobDetails, String cvUser) {
+        StringBuilder stringBuilder = new StringBuilder()
+                .append("Detalhes das vagas \n")
+                .append(jobDetails.toString())
+                .append("\n")
+                .append(cvUser);
+
+        return geminiService.genareteContentText(stringBuilder.toString());
     }
 }
