@@ -22,13 +22,14 @@ public class EmailPollingRoute extends RouteBuilder {
         onException(Exception.class)
                 .maximumRedeliveries(3)
                 .redeliveryDelay(2000)
-                .handled(true)
+                .handled(false)          // falha não marca como lido: reprocessa no próximo polling
                 .log("Falha ao processar e-mail '${header.Subject}': ${exception.message}");
 
         from("imaps://{{mail.host}}:{{mail.port}}"
                 + "?username={{mail.username}}"
                 + "&password=RAW({{mail.password}})"
                 + "&folderName={{mail.folder}}"
+                + "&mimeDecodeHeaders=true" // decodifica =?UTF-8?Q?...?= do Subject
                 + "&unseen=true"            // só busca não lidos
                 + "&delete=false"           // não apaga do servidor
                 + "&peek=true"              // só marca como lido se processar com sucesso
