@@ -3,7 +3,7 @@ package com.viniciushfc.infra.adapter.out.llm.gateway;
 import com.viniciushfc.domain.gateway.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
-import com.viniciushfc.infra.adapter.out.llm.gemini.GeminiService;
+import com.viniciushfc.infra.adapter.out.llm.gemini.impl.GeminiServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
@@ -11,10 +11,10 @@ import java.util.List;
 @ApplicationScoped
 public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway {
 
-    private final GeminiService geminiService;
+    private final GeminiServiceImpl geminiServiceImpl;
 
-    public AnalyzeJobsMatchCvGatewayImpl(GeminiService geminiService) {
-        this.geminiService = geminiService;
+    public AnalyzeJobsMatchCvGatewayImpl(GeminiServiceImpl geminiServiceImpl) {
+        this.geminiServiceImpl = geminiServiceImpl;
     }
 
     @Override
@@ -25,6 +25,6 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
                 .append("\n")
                 .append(cvUser);
 
-        return geminiService.genareteContentText(stringBuilder.toString());
+        return geminiServiceImpl.genareteContentText(stringBuilder.toString());
     }
 }

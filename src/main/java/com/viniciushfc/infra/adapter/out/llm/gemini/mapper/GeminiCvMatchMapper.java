@@ -1,4 +1,4 @@
-package com.viniciushfc.infra.adapter.out.llm.gemini;
+package com.viniciushfc.infra.adapter.out.llm.gemini.mapper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
