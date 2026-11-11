@@ -3,13 +3,11 @@ package com.viniciushfc.domain.usecases.impl;
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.UserAccount;
-import com.viniciushfc.domain.gateway.AnalyzeJobsMatchCvGateway;
-import com.viniciushfc.domain.gateway.EmailGateway;
-import com.viniciushfc.domain.gateway.JobDetailsGateway;
-import com.viniciushfc.domain.gateway.UserAccountGateway;
+import com.viniciushfc.domain.gateway.*;
 import com.viniciushfc.domain.usecases.contracts.ProcessEmailReceiverUseCase;
 import com.viniciushfc.domain.vo.JobDetail;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,16 +19,18 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
     private final JobDetailsGateway jobDetailsGateway;
     private final AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway;
     private final UserAccountGateway userAccountGateway;
+    private final PdfGateway pdfGateway;
 
-    public ProcessEmailReceiverUseCaseImpl(EmailGateway emailGateway, JobDetailsGateway jobDetailsGateway, AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway, UserAccountGateway userAccountGateway) {
+    public ProcessEmailReceiverUseCaseImpl(EmailGateway emailGateway, JobDetailsGateway jobDetailsGateway, AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway, UserAccountGateway userAccountGateway, PdfGateway pdfGateway) {
         this.emailGateway = emailGateway;
         this.jobDetailsGateway = jobDetailsGateway;
         this.analyzeJobsMatchCvGateway = analyzeJobsMatchCvGateway;
         this.userAccountGateway = userAccountGateway;
+        this.pdfGateway = pdfGateway;
     }
 
     @Override
-    public void execute(EmailReceived emailReceived) {
+    public void execute(EmailReceived emailReceived) throws IOException {
         if (!emailReceived.isAlertJob() || emailGateway.existsEmailByMessageId(emailReceived.messageId())) {
             return;
         }
@@ -39,9 +39,10 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
 
         Set<String> links = extractLinksJobs(emailReceived.email().body());
         List<JobDetail> jobDetailList = jobDetailsGateway.extractJobsDetails(links);
-
         UserAccount userAccount = userAccountGateway.findByLinkedUsername(emailReceived.email().to());
-        analyzeJobsMatchCvGateway.executeAnalysis(jobDetailList, null);
+
+        String userCurriculumText = pdfGateway.extractTextPdf(userAccount.curriculum());
+        analyzeJobsMatchCvGateway.executeAnalysis(jobDetailList, userCurriculumText);
 
     }
 
