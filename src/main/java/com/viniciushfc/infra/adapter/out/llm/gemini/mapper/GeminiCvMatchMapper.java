@@ -1,10 +1,13 @@
 package com.viniciushfc.infra.adapter.out.llm.gemini.mapper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.types.GenerateContentResponse;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import jakarta.enterprise.context.ApplicationScoped;
+
+import java.util.List;
 
 @ApplicationScoped
 public class GeminiCvMatchMapper {
@@ -15,7 +18,7 @@ public class GeminiCvMatchMapper {
         this.objectMapper = objectMapper;
     }
 
-    public CvMatchResult toDomain(GenerateContentResponse response) {
+    public List<CvMatchResult> toDomain(GenerateContentResponse response) {
         String text = response.text();
 
         if (text == null || text.isBlank()) {
@@ -25,7 +28,8 @@ public class GeminiCvMatchMapper {
         String json = removeMarkdownFences(text);
 
         try {
-            return objectMapper.readValue(json, CvMatchResult.class);
+            return objectMapper.readValue(json, new TypeReference<>() {
+            });
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Gemini response is not valid " + json, e);
         }

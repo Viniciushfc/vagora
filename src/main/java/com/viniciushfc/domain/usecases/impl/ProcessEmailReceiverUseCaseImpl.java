@@ -5,6 +5,7 @@ import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.UserAccount;
 import com.viniciushfc.domain.gateway.*;
 import com.viniciushfc.domain.usecases.contracts.ProcessEmailReceiverUseCase;
+import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
 
 import java.io.IOException;
@@ -42,7 +43,7 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         UserAccount userAccount = userAccountGateway.findByLinkedUsername(emailReceived.email().to());
 
         String userCurriculumText = pdfGateway.extractTextPdf(userAccount.curriculum());
-        analyzeJobsMatchCvGateway.executeAnalysis(jobDetailList, userCurriculumText);
+        List<CvMatchResult> cvMatchResults = analyzeJobsMatchCvGateway.executeAnalysis(jobDetailList, userCurriculumText);
 
     }
 

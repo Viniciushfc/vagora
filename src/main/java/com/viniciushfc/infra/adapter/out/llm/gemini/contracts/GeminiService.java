@@ -2,7 +2,9 @@ package com.viniciushfc.infra.adapter.out.llm.gemini.contracts;
 
 import com.viniciushfc.domain.vo.CvMatchResult;
 
+import java.util.List;
+
 public interface GeminiService {
 
-    CvMatchResult genareteContentText(String prompt);
+    List<CvMatchResult> genareteContentText(String prompt);
 }

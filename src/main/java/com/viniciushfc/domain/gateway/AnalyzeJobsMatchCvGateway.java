@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface AnalyzeJobsMatchCvGateway {
 
-    CvMatchResult executeAnalysis(List<JobDetail> jobDetails, String cvUser);
+    List<CvMatchResult> executeAnalysis(List<JobDetail> jobDetails, String cvUser);
 }

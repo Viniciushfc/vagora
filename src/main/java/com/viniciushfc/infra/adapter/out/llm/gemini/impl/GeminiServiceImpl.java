@@ -9,6 +9,8 @@ import com.viniciushfc.infra.adapter.out.llm.gemini.mapper.GeminiCvMatchMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.util.List;
+
 
 @ApplicationScoped
 public class GeminiServiceImpl implements GeminiService {
@@ -34,7 +36,7 @@ public class GeminiServiceImpl implements GeminiService {
     }
 
     @Override
-    public CvMatchResult genareteContentText(String prompt) {
+    public List<CvMatchResult> genareteContentText(String prompt) {
         GenerateContentResponse response = client.models.generateContent(
                 "gemini-3.8-flash",
                 prompt,

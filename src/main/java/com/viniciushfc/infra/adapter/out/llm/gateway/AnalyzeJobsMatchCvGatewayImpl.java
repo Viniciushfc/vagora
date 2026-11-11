@@ -18,7 +18,7 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
     }
 
     @Override
-    public CvMatchResult executeAnalysis(List<JobDetail> jobDetails, String cvUser) {
+    public List<CvMatchResult> executeAnalysis(List<JobDetail> jobDetails, String cvUser) {
         StringBuilder stringBuilder = new StringBuilder()
                 .append("Detalhes das vagas \n")
                 .append(jobDetails.toString())
