@@ -11,4 +11,13 @@ public record UserAccount(UUID id,
                           String password,
                           Attachment curriculum,
                           List<LinkedAccount> linkedAccounts) {
+
+    public UserAccount(UUID id, String name, String username, String password, Attachment curriculum, List<LinkedAccount> linkedAccounts) {
+        this.id = id;
+        this.name = name;
+        this.username = username;
+        this.password = password;
+        this.curriculum = curriculum;
+        this.linkedAccounts = linkedAccounts;
+    }
 }

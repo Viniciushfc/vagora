@@ -2,7 +2,7 @@ package com.viniciushfc.infra.adapter.out.scraper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.viniciushfc.domain.gateway.JobDetailsGateway;
+import com.viniciushfc.domain.gateways.JobDetailsGateway;
 import com.viniciushfc.domain.vo.JobDetail;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;

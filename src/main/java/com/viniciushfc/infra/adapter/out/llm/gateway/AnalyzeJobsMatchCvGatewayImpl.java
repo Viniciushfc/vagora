@@ -1,6 +1,6 @@
 package com.viniciushfc.infra.adapter.out.llm.gateway;
 
-import com.viniciushfc.domain.gateway.AnalyzeJobsMatchCvGateway;
+import com.viniciushfc.domain.gateways.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.infra.adapter.out.llm.gemini.impl.GeminiServiceImpl;

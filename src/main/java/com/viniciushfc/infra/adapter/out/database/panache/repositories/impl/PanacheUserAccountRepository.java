@@ -1,17 +1,17 @@
-package com.viniciushfc.infra.adapter.out.database;
+package com.viniciushfc.infra.adapter.out.database.panache.repositories.impl;
 
 import com.viniciushfc.domain.entities.UserAccount;
-import com.viniciushfc.domain.gateway.UserAccountGateway;
+import com.viniciushfc.domain.repositories.UserAccountRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-public class UserAccountGatewayImpl implements UserAccountGateway {
-    @Override
-    public void save(UserAccount userAccount) {
+public class PanacheUserAccountRepository implements UserAccountRepository {
 
+    @Override
+    public UserAccount save(UserAccount userAccount) {
+        return null;
     }
 
     @Override
@@ -20,8 +20,8 @@ public class UserAccountGatewayImpl implements UserAccountGateway {
     }
 
     @Override
-    public List<UserAccount> findAll() {
-        return List.of();
+    public UserAccount update(UUID id, UserAccount userAccount) {
+        return null;
     }
 
     @Override

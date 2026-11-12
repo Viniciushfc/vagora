@@ -1,6 +1,6 @@
 package com.viniciushfc.infra.adapter.out.pdf.gateway;
 
-import com.viniciushfc.domain.gateway.PdfGateway;
+import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.infra.adapter.out.pdf.apache.pdfbox.contracts.PdfBoxTextStripper;
 import jakarta.enterprise.context.ApplicationScoped;

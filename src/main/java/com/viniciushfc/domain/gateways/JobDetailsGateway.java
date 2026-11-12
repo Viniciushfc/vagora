@@ -1,4 +1,4 @@
-package com.viniciushfc.domain.gateway;
+package com.viniciushfc.domain.gateways;
 
 import com.viniciushfc.domain.vo.JobDetail;
 

@@ -1,11 +1,11 @@
-package com.viniciushfc.domain.gateway;
+package com.viniciushfc.domain.repositories;
 
 import com.viniciushfc.domain.entities.EmailReceived;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface EmailGateway {
+public interface EmailReceivedRepository {
     void save(EmailReceived emailReceived);
 
     void delete(UUID uuidEmail);

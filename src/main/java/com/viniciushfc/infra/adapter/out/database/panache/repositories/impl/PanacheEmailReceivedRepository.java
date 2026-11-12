@@ -1,14 +1,14 @@
-package com.viniciushfc.infra.adapter.out.database;
+package com.viniciushfc.infra.adapter.out.database.panache.repositories.impl;
 
 import com.viniciushfc.domain.entities.EmailReceived;
-import com.viniciushfc.domain.gateway.EmailGateway;
+import com.viniciushfc.domain.repositories.EmailReceivedRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-public class EmailGatewayImpl implements EmailGateway {
+public class PanacheEmailReceivedRepository implements EmailReceivedRepository {
 
     @Override
     public void save(EmailReceived emailReceived) {
