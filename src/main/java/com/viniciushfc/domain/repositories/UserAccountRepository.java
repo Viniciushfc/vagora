@@ -1,7 +1,6 @@
 package com.viniciushfc.domain.repositories;
 
 import com.viniciushfc.domain.entities.UserAccount;
-import io.quarkus.hibernate.orm.panache.PanacheQuery;
 
 import java.util.UUID;
 

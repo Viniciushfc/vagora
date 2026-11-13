@@ -12,7 +12,6 @@ import java.util.UUID;
 public class PanacheUserAccountEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     private String name;
     private String username;
@@ -28,7 +27,7 @@ public class PanacheUserAccountEntity {
 
     @ElementCollection
     @CollectionTable(
-            name = "user_linked_account)",
+            name = "user_linked_account",
             joinColumns = @JoinColumn(name = "id_user_account", referencedColumnName = "id")
     )
     private List<PanacheLinkedAccountEmbeddable> linkedAccounts;

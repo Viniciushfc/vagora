@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-public class PanacheEmailReceivedRepository implements EmailReceivedRepository {
+public class PanacheEmailReceivedRepositoryImpl implements EmailReceivedRepository {
 
     @Override
     public void save(EmailReceived emailReceived) {

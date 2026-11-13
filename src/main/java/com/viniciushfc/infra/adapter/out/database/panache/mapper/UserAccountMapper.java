@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 
 import com.viniciushfc.domain.entities.UserAccount;
+import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheUserAccountEntity;
 
 import static com.viniciushfc.infra.adapter.out.database.panache.mapper.AttachmentMapper.toDomainAttachment;
@@ -30,6 +31,36 @@ public class UserAccountMapper {
                 toPanacheAttachmentEmbeddable(userAccount.curriculum()),
                 toPanacheLinkedAccountEmbeddable(userAccount.linkedAccounts())
         );
+    }
+
+
+    public static PanacheUserAccountEntity mergeForUpdate(PanacheUserAccountEntity entityPersist, UserAccount bo) {
+
+        if (Utils.isNull(entityPersist) || Utils.isNull(bo)) {
+            return entityPersist;
+        }
+
+        if (!Utils.isNull(bo.name())) {
+            entityPersist.setName(bo.name());
+        }
+
+        if (!Utils.isNull(bo.username())) {
+            entityPersist.setUsername(bo.username());
+        }
+
+        if (!Utils.isNull(bo.password())){
+            entityPersist.setPassword(bo.password());
+        }
+
+        if (!Utils.isNull(bo.curriculum())){
+            entityPersist.setCurriculum(null);
+        }
+
+        if (!Utils.isNull(bo.password())){
+            entityPersist.setLinkedAccounts(null);
+        }
+
+        return entityPersist;
     }
 
 }
