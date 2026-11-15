@@ -12,6 +12,10 @@ import static com.viniciushfc.infra.adapter.out.database.panache.mapper.LinkedAc
 public class UserAccountMapper {
 
     public static UserAccount toDomain(PanacheUserAccountEntity panacheUserAccountEntity) {
+        if (Utils.isNull(panacheUserAccountEntity)) {
+            return null;
+        }
+
         return new UserAccount(
                 panacheUserAccountEntity.getId(),
                 panacheUserAccountEntity.getName(),
@@ -53,11 +57,11 @@ public class UserAccountMapper {
         }
 
         if (!Utils.isNull(bo.curriculum())){
-            entityPersist.setCurriculum(null);
+            entityPersist.setCurriculum(toPanacheAttachmentEmbeddable(bo.curriculum()));
         }
 
-        if (!Utils.isNull(bo.password())){
-            entityPersist.setLinkedAccounts(null);
+        if (!Utils.isNull(bo.linkedAccounts())){
+            entityPersist.setLinkedAccounts(toPanacheLinkedAccountEmbeddable(bo.linkedAccounts()));
         }
 
         return entityPersist;

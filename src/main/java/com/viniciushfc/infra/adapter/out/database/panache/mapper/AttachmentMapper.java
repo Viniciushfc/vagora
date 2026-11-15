@@ -1,11 +1,16 @@
 package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 
+import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheAttachmentEmbeddable;
 
 public class AttachmentMapper {
 
     public static Attachment toDomainAttachment(PanacheAttachmentEmbeddable panacheAttachmentEmbeddable) {
+        if (Utils.isNull(panacheAttachmentEmbeddable)) {
+            return null;
+        }
+
         return new Attachment(
                 panacheAttachmentEmbeddable.name(),
                 panacheAttachmentEmbeddable.contentType(),
@@ -14,6 +19,10 @@ public class AttachmentMapper {
     }
 
     public static PanacheAttachmentEmbeddable toPanacheAttachmentEmbeddable(Attachment attachment) {
+        if (Utils.isNull(attachment)) {
+            return null;
+        }
+
         return new PanacheAttachmentEmbeddable(
                 attachment.name(),
                 attachment.contentType(),

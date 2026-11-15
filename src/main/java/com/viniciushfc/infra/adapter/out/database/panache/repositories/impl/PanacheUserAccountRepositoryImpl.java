@@ -9,7 +9,9 @@ import com.viniciushfc.infra.adapter.out.database.panache.repositories.contracts
 import io.quarkus.panache.common.Parameters;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
+import java.util.Map;
 import java.util.UUID;
 
 import static io.quarkus.hibernate.orm.panache.PanacheEntityBase.find;
@@ -21,6 +23,7 @@ public class PanacheUserAccountRepositoryImpl implements UserAccountRepository {
     PanacheUserAccountRepository panacheUserAccountRepository;
 
     @Override
+    @Transactional
     public UserAccount save(UserAccount userAccount) {
         var entity = UserAccountMapper.toPanacheUserAccount(userAccount);
         panacheUserAccountRepository.persist(entity);
@@ -28,11 +31,13 @@ public class PanacheUserAccountRepositoryImpl implements UserAccountRepository {
     }
 
     @Override
+    @Transactional
     public void delete(UUID idUser) {
         panacheUserAccountRepository.deleteById(idUser);
     }
 
     @Override
+    @Transactional
     public UserAccount update(UUID id, UserAccount userAccount) {
         var entityPersisted = panacheUserAccountRepository.findById(id);
 
@@ -47,17 +52,20 @@ public class PanacheUserAccountRepositoryImpl implements UserAccountRepository {
     }
 
     @Override
+    @Transactional
     public UserAccount findById(UUID id) {
         return UserAccountMapper.toDomain(panacheUserAccountRepository.findById(id));
     }
 
     @Override
+    @Transactional
     public UserAccount findByLinkedUsername(String username) {
         return UserAccountMapper.toDomain(
                 panacheUserAccountRepository
                         .find("select u from PanacheUserAccountEntity u " +
                                         "join u.linkedAccounts l " +
                                         "where l.username = :username",
-                Parameters.with("username", username)).firstResult());
+                                Map.of("username", username))
+                        .firstResult());
     }
 }
