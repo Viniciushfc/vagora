@@ -1,13 +1,12 @@
 package com.viniciushfc.infra.adapter.out.llm.gemini.mapper;
 
+import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.types.GenerateContentResponse;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import jakarta.enterprise.context.ApplicationScoped;
-
-import java.util.List;
 
 @ApplicationScoped
 public class GeminiCvMatchMapper {
@@ -18,20 +17,24 @@ public class GeminiCvMatchMapper {
         this.objectMapper = objectMapper;
     }
 
-    public List<CvMatchResult> toDomain(GenerateContentResponse response) {
+    public CvMatchResult toDomain(GenerateContentResponse response) {
         String text = response.text();
 
         if (text == null || text.isBlank()) {
-            throw new IllegalStateException("Gemini response is empty.");
+            throw new ExternalServiceException("Gemini retornou uma resposta vazia.");
         }
 
         String json = removeMarkdownFences(text);
 
         try {
-            return objectMapper.readValue(json, new TypeReference<>() {
-            });
+            JsonNode node = objectMapper.readTree(json);
+            // o prompt pede um objeto; se o modelo devolver uma lista com ele, aceita o primeiro
+            if (node.isArray() && !node.isEmpty()) {
+                node = node.get(0);
+            }
+            return objectMapper.treeToValue(node, CvMatchResult.class);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Gemini response is not valid " + json, e);
+            throw new ExternalServiceException("Gemini retornou um JSON inválido: " + json, e);
         }
     }
 

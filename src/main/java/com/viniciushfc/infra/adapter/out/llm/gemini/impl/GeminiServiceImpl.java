@@ -4,28 +4,17 @@ import com.google.genai.Client;
 import com.google.genai.types.*;
 import com.viniciushfc.domain.prompts.PromptsContextsLLM;
 import com.viniciushfc.domain.vo.CvMatchResult;
-import com.viniciushfc.infra.adapter.out.llm.gemini.contracts.GeminiService;
 import com.viniciushfc.infra.adapter.out.llm.gemini.mapper.GeminiCvMatchMapper;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import java.util.List;
-
 
 @ApplicationScoped
-public class GeminiServiceImpl implements GeminiService {
-
-    private final Client client;
+public class GeminiServiceImpl {
 
     private final GenerateContentConfig config;
 
     private final GeminiCvMatchMapper cvMatchMapper;
 
-    public GeminiServiceImpl(@ConfigProperty(name = "llm.gemini.api") String apiKey, GeminiCvMatchMapper cvMatchMapper) {
-        this.client = Client
-                .builder()
-                .apiKey(apiKey)
-                .build();
+    public GeminiServiceImpl(GeminiCvMatchMapper cvMatchMapper) {
         this.config = GenerateContentConfig.builder()
                 .temperature(0.2f)
                 .responseMimeType("application/json")
@@ -35,13 +24,15 @@ public class GeminiServiceImpl implements GeminiService {
         this.cvMatchMapper = cvMatchMapper;
     }
 
-    @Override
-    public List<CvMatchResult> genareteContentText(String prompt) {
-        GenerateContentResponse response = client.models.generateContent(
-                "gemini-3.8-flash",
-                prompt,
-                config);
+    public CvMatchResult analyze(String prompt, String apiKey) {
+        // cada perfil usa a própria chave
+        try (Client client = Client.builder().apiKey(apiKey).build()) {
+            GenerateContentResponse response = client.models.generateContent(
+                    "gemini-3.8-flash",
+                    prompt,
+                    config);
 
-        return cvMatchMapper.toDomain(response);
+            return cvMatchMapper.toDomain(response);
+        }
     }
 }
