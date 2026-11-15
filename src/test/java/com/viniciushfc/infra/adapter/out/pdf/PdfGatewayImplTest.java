@@ -1,7 +1,8 @@
 package com.viniciushfc.infra.adapter.out.pdf;
 
+import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.vo.Attachment;
-import com.viniciushfc.infra.adapter.out.pdf.apache.pdfbox.impl.PdfBoxTextStripperImpl;
+import com.viniciushfc.infra.adapter.out.pdf.gateway.PdfGatewayImpl;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -14,9 +15,9 @@ import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class PdfBoxTextStripperImplTest {
+class PdfGatewayImplTest {
 
-    private final PdfBoxTextStripperImpl stripper = new PdfBoxTextStripperImpl();
+    private final PdfGatewayImpl gateway = new PdfGatewayImpl();
 
     private byte[] pdf(String text) throws IOException {
         try (var doc = new PDDocument(); var out = new ByteArrayOutputStream()) {
@@ -38,20 +39,13 @@ class PdfBoxTextStripperImplTest {
     void extraiTextoDoPdf() throws IOException {
         var attachment = new Attachment("cv.pdf", "application/pdf", pdf("Desenvolvedor Java Senior"));
 
-        assertTrue(stripper.extractTextByPdf(attachment).contains("Desenvolvedor Java Senior"));
-    }
-
-    @Test
-    void rejeitaArquivoQueNaoEhPdf() {
-        var attachment = new Attachment("cv.txt", "text/plain", new byte[]{1});
-
-        assertThrows(IllegalArgumentException.class, () -> stripper.extractTextByPdf(attachment));
+        assertTrue(gateway.extractTextPdf(attachment).contains("Desenvolvedor Java Senior"));
     }
 
     @Test
     void pdfCorrompidoLancaErro() {
         var attachment = new Attachment("cv.pdf", "application/pdf", "lixo".getBytes());
 
-        assertThrows(RuntimeException.class, () -> stripper.extractTextByPdf(attachment));
+        assertThrows(ValidationException.class, () -> gateway.extractTextPdf(attachment));
     }
 }

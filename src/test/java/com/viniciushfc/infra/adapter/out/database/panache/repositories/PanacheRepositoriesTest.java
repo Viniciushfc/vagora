@@ -3,17 +3,20 @@ package com.viniciushfc.infra.adapter.out.database.panache.repositories;
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.entities.LinkedAccount;
-import com.viniciushfc.domain.entities.UserAccount;
+import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.enums.impl.ExternalProvider;
 import com.viniciushfc.domain.repositories.EmailReceivedRepository;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
-import com.viniciushfc.domain.repositories.UserAccountRepository;
+import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.Email;
+import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.infra.adapter.out.database.panache.repositories.contracts.PanacheEmailReceivedRepository;
+import com.viniciushfc.infra.adapter.out.database.panache.repositories.contracts.PanacheProfileRepository;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -26,13 +29,16 @@ import static org.junit.jupiter.api.Assertions.*;
 class PanacheRepositoriesTest {
 
     @Inject
-    UserAccountRepository userAccountRepository;
+    ProfileRepository profileRepository;
 
     @Inject
     EmailReceivedRepository emailReceivedRepository;
 
     @Inject
     PanacheEmailReceivedRepository panacheEmailReceivedRepository;
+
+    @Inject
+    PanacheProfileRepository panacheProfileRepository;
 
     @Inject
     JobMatchRepository jobMatchRepository;
@@ -43,34 +49,48 @@ class PanacheRepositoriesTest {
         return prefix + "-" + UUID.randomUUID() + "@gmail.com";
     }
 
-    @Test
-    void userAccountSalvaBuscaAtualizaERemove() {
-        var linkedUsername = unique("linked");
-        var user = UserAccount.create("Fulano", unique("user"), "123", cv);
-        user.linkedAccounts().add(LinkedAccount.create(linkedUsername, "x", ExternalProvider.LINKEDIN));
-
-        userAccountRepository.save(user);
-
-        var found = userAccountRepository.findById(user.id());
-        assertEquals("Fulano", found.name());
-        assertArrayEquals(cv.content(), found.curriculum().content());
-        assertEquals(1, found.linkedAccounts().size());
-
-        assertEquals(user.id(), userAccountRepository.findByLinkedUsername(linkedUsername).id());
-        assertNull(userAccountRepository.findByLinkedUsername(unique("ninguem")));
-
-        var updated = userAccountRepository.update(user.id(), new UserAccount(null, "Novo", null, null, null, null));
-        assertEquals("Novo", updated.name());
-        assertEquals(user.username(), updated.username());
-        assertEquals("Novo", userAccountRepository.findById(user.id()).name());
-
-        userAccountRepository.delete(user.id());
-        assertNull(userAccountRepository.findById(user.id()));
+    @BeforeEach
+    void semPerfil() {
+        QuarkusTransaction.requiringNew().run(() -> panacheProfileRepository.listAll().forEach(panacheProfileRepository::delete));
     }
 
     @Test
-    void userAccountUpdateDeInexistenteRetornaNulo() {
-        assertNull(userAccountRepository.update(UUID.randomUUID(), new UserAccount(null, "x", null, null, null, null)));
+    void profileSalvaBuscaAtualizaERemove() {
+        assertNull(profileRepository.find());
+        var profile = Profile.create("Fulano", "chave", cv);
+        profile.linkedAccounts().add(LinkedAccount.create(unique("linked"), "x", ExternalProvider.EMAIL, "LinkedIn"));
+
+        profileRepository.save(profile);
+
+        var found = profileRepository.find();
+        assertEquals(profile.id(), found.id());
+        assertEquals("Fulano", found.name());
+        assertArrayEquals(cv.content(), found.curriculum().content());
+        assertEquals(1, found.linkedAccounts().size());
+        assertEquals("LinkedIn", found.linkedAccounts().getFirst().folder());
+        assertEquals(ExternalProvider.EMAIL, found.linkedAccounts().getFirst().externalProvider());
+        assertEquals("chave", found.geminiApiKey());
+        assertEquals(profile.id(), profileRepository.require().id());
+
+        var updated = profileRepository.update(profile.id(), new Profile(null, "Novo", null, null, null, null, null));
+        assertEquals("Novo", updated.name());
+        assertEquals("chave", updated.geminiApiKey());
+        assertEquals("Novo", profileRepository.find().name());
+
+        var conta = LinkedAccount.create("novo@linkedin", "y", ExternalProvider.LINKEDIN, null);
+        var comNovaConta = profileRepository.updateLinkedAccounts(profile.id(), List.of(conta));
+        assertEquals(List.of(conta), comNovaConta.linkedAccounts());
+        assertEquals("Novo", comNovaConta.name(), "só as contas mudam");
+        assertNull(profileRepository.updateLinkedAccounts(UUID.randomUUID(), List.of()));
+
+        profileRepository.delete(profile.id());
+        assertNull(profileRepository.find());
+        assertThrows(NotFoundException.class, profileRepository::require);
+    }
+
+    @Test
+    void profileUpdateDeInexistenteRetornaNulo() {
+        assertNull(profileRepository.update(UUID.randomUUID(), new Profile(null, "x", null, null, null, null, null)));
     }
 
     @Test
@@ -80,14 +100,11 @@ class PanacheRepositoriesTest {
 
         emailReceivedRepository.save(email);
         assertFalse(isSuccessProcessed(email.id()));
-        assertTrue(emailReceivedRepository.existsEmailByMessageId(email.messageId()));
-        assertFalse(emailReceivedRepository.existsEmailByMessageId(UUID.randomUUID().toString()));
         assertNull(emailReceivedRepository.findByMessageId(UUID.randomUUID().toString()));
 
         var found = emailReceivedRepository.findByMessageId(email.messageId());
         assertEquals(email.id(), found.id());
-        assertEquals("corpo", found.email().body());
-        assertEquals(1, found.email().attachments().size());
+        assertNull(found.email(), "o conteúdo do email não é guardado");
 
         emailReceivedRepository.markSuccessProcessed(email.id());
         assertTrue(isSuccessProcessed(email.id()));
@@ -104,7 +121,7 @@ class PanacheRepositoriesTest {
     }
 
     @Test
-    void jobMatchSalvaBuscaPorUsuarioEVerificaExistencia() {
+    void jobMatchSalvaBuscaPorPerfilEVerificaExistencia() {
         var userId = UUID.randomUUID();
         var outroUserId = UUID.randomUUID();
         var match1 = new JobMatch(UUID.randomUUID(), userId, UUID.randomUUID(), "https://www.linkedin.com/jobs/view/1/",
@@ -116,14 +133,14 @@ class PanacheRepositoriesTest {
 
         jobMatchRepository.saveAll(List.of(match1, match2, deOutro));
 
-        var matches = jobMatchRepository.findByUserAccountId(userId);
+        var matches = jobMatchRepository.findByProfileId(userId);
         assertEquals(2, matches.size());
         var found = matches.stream().filter(m -> m.id().equals(match1.id())).findFirst().orElseThrow();
         assertEquals(List.of("a", "b"), found.motivos());
         assertEquals("cv ats", found.curriculoAts());
 
-        assertTrue(jobMatchRepository.existsByUserAccountIdAndJobLink(userId, "https://www.linkedin.com/jobs/view/1/"));
-        assertFalse(jobMatchRepository.existsByUserAccountIdAndJobLink(userId, "https://www.linkedin.com/jobs/view/3/"));
-        assertFalse(jobMatchRepository.existsByUserAccountIdAndJobLink(UUID.randomUUID(), "https://www.linkedin.com/jobs/view/1/"));
+        assertTrue(jobMatchRepository.existsByProfileIdAndJobLink(userId, "https://www.linkedin.com/jobs/view/1/"));
+        assertFalse(jobMatchRepository.existsByProfileIdAndJobLink(userId, "https://www.linkedin.com/jobs/view/3/"));
+        assertFalse(jobMatchRepository.existsByProfileIdAndJobLink(UUID.randomUUID(), "https://www.linkedin.com/jobs/view/1/"));
     }
 }

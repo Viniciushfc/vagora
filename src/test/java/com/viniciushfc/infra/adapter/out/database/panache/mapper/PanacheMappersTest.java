@@ -1,13 +1,11 @@
 package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 
-import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.entities.LinkedAccount;
-import com.viniciushfc.domain.entities.UserAccount;
+import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.enums.impl.ExternalProvider;
 import com.viniciushfc.domain.vo.Attachment;
-import com.viniciushfc.domain.vo.Email;
-import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheUserAccountEntity;
+import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheProfileEntity;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -20,82 +18,58 @@ class PanacheMappersTest {
 
     private final Attachment cv = new Attachment("cv.pdf", "application/pdf", new byte[]{1, 2});
 
-    private UserAccount user() {
-        return new UserAccount(UUID.randomUUID(), "Fulano", "fulano", "123", cv,
-                List.of(LinkedAccount.create("f@gmail.com", "x", ExternalProvider.LINKEDIN)));
+    private Profile user() {
+        return new Profile(UUID.randomUUID(), "Fulano", "chave", cv,
+                List.of(LinkedAccount.create("f@gmail.com", "x", ExternalProvider.EMAIL, "LinkedIn")), null, null);
     }
 
     @Test
-    void userAccountIdaEVolta() {
+    void profileIdaEVolta() {
         var user = user();
 
-        var back = UserAccountMapper.toDomain(UserAccountMapper.toPanacheUserAccount(user));
+        var back = ProfileMapper.toDomain(ProfileMapper.toPanacheProfile(user));
 
         assertEquals(user.id(), back.id());
         assertEquals(user.name(), back.name());
-        assertEquals(user.username(), back.username());
-        assertEquals(user.password(), back.password());
+        assertEquals("chave", back.geminiApiKey());
         assertEquals(cv.name(), back.curriculum().name());
         assertArrayEquals(cv.content(), back.curriculum().content());
         assertEquals(user.linkedAccounts(), back.linkedAccounts());
     }
 
     @Test
-    void userAccountToDomainNuloRetornaNulo() {
-        assertNull(UserAccountMapper.toDomain(null));
+    void profileToDomainNuloRetornaNulo() {
+        assertNull(ProfileMapper.toDomain(null));
     }
 
     @Test
-    void userAccountSemCurriculo() {
-        var user = new UserAccount(UUID.randomUUID(), "F", "f", "1", null, List.of());
+    void profileSemCurriculo() {
+        var user = new Profile(UUID.randomUUID(), "F", null, null, List.of(), null, null);
 
-        assertNull(UserAccountMapper.toDomain(UserAccountMapper.toPanacheUserAccount(user)).curriculum());
+        assertNull(ProfileMapper.toDomain(ProfileMapper.toPanacheProfile(user)).curriculum());
     }
 
     @Test
     void mergeForUpdateAlteraSomenteCamposInformados() {
-        PanacheUserAccountEntity entity = UserAccountMapper.toPanacheUserAccount(user());
+        PanacheProfileEntity entity = ProfileMapper.toPanacheProfile(user());
 
-        UserAccountMapper.mergeForUpdate(entity, new UserAccount(null, "Novo", null, null, null, null));
+        ProfileMapper.mergeForUpdate(entity, new Profile(null, "Novo", null, null, null, null, null));
 
         assertEquals("Novo", entity.getName());
-        assertEquals("fulano", entity.getUsername());
-        assertEquals("123", entity.getPassword());
+        assertEquals("chave", entity.getGeminiApiKey());
         assertEquals("cv.pdf", entity.getCurriculum().name());
         assertEquals(1, entity.getLinkedAccounts().size());
     }
 
     @Test
-    void mergeForUpdateSubstituiCurriculoEContas() {
-        PanacheUserAccountEntity entity = UserAccountMapper.toPanacheUserAccount(user());
+    void mergeForUpdateSubstituiCurriculoEChave() {
+        PanacheProfileEntity entity = ProfileMapper.toPanacheProfile(user());
         var novoCv = new Attachment("novo.pdf", "application/pdf", new byte[]{9});
-        var contas = List.of(
-                LinkedAccount.create("a@gmail.com", "x", ExternalProvider.LINKEDIN),
-                LinkedAccount.create("b@gmail.com", "y", ExternalProvider.LINKEDIN));
 
-        UserAccountMapper.mergeForUpdate(entity, new UserAccount(null, null, null, "nova", novoCv, contas));
+        ProfileMapper.mergeForUpdate(entity, new Profile(null, null, "nova-chave", novoCv, null, null, null));
 
-        assertEquals("nova", entity.getPassword());
+        assertEquals("nova-chave", entity.getGeminiApiKey());
         assertEquals("novo.pdf", entity.getCurriculum().name());
-        assertEquals(2, entity.getLinkedAccounts().size());
-    }
-
-    @Test
-    void emailReceivedIdaEVolta() {
-        var email = new Email("from@x.com", "to@x.com", "assunto", "<b>corpo</b>", List.of(cv));
-        var received = new EmailReceived(UUID.randomUUID(), "msg-1", email, true);
-
-        var back = EmailReceivedMapper.toDomain(EmailReceivedMapper.toPanacheEmailReceived(received));
-
-        assertEquals(received.id(), back.id());
-        assertEquals("msg-1", back.messageId());
-        assertTrue(back.successProcessed());
-        assertEquals("from@x.com", back.email().from());
-        assertEquals("to@x.com", back.email().to());
-        assertEquals("assunto", back.email().subject());
-        assertEquals("<b>corpo</b>", back.email().body());
-        assertEquals(1, back.email().attachments().size());
-        assertArrayEquals(cv.content(), back.email().attachments().getFirst().content());
     }
 
     @Test
