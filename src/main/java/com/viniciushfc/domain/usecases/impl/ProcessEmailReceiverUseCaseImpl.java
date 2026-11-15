@@ -25,6 +25,9 @@ import java.util.regex.Pattern;
 @UseCase
 public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseCase {
 
+    // formato do link salvo nas vagas analisadas (o mesmo que o scraper devolve)
+    static final String JOB_URL = "https://www.linkedin.com/jobs/view/%s/";
+
     private final EmailReceivedRepository emailReceivedRepository;
     private final JobDetailsGateway jobDetailsGateway;
     private final AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway;
@@ -40,14 +43,14 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
     }
 
     @Override
-    public void execute(Profile profile, EmailReceived received) {
+    public boolean execute(Profile profile, EmailReceived received) {
         if (!received.isAlertJob()) {
-            return;
+            return false;
         }
 
         EmailReceived existing = emailReceivedRepository.findByMessageId(received.messageId());
         if (existing != null && existing.successProcessed()) {
-            return;
+            return false;
         }
 
         LinkedAccount linkedinAccount = profile.findLinkedAccount(ExternalProvider.LINKEDIN);
@@ -65,16 +68,22 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             emailReceivedRepository.save(received);
         }
 
-        Set<String> links = extractLinksJobs(received.email().body());
-        List<JobDetail> jobDetails = jobDetailsGateway.extractJobsDetails(links, linkedinAccount, profile.isBrowserVisible());
+        // vaga já analisada não é aberta de novo: o ID vem no link do email
+        Set<String> links = new LinkedHashSet<>();
+        extractLinksJobs(received.email().body()).forEach((jobId, link) -> {
+            if (!jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), JOB_URL.formatted(jobId))) {
+                links.add(link);
+            }
+        });
+        if (links.isEmpty()) {
+            emailReceivedRepository.markSuccessProcessed(emailId);
+            return false;
+        }
 
-        List<JobDetail> jobDetailList = jobDetails.stream()
-                .filter(job -> !jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), job.link()))
-                .toList();
-
+        List<JobDetail> jobDetailList = jobDetailsGateway.extractJobsDetails(links, linkedinAccount, profile.isBrowserVisible());
         if (jobDetailList.isEmpty()) {
             emailReceivedRepository.markSuccessProcessed(emailId);
-            return;
+            return true;
         }
 
         String userCurriculumText = pdfGateway.extractTextPdf(profile.curriculum());
@@ -87,9 +96,11 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
 
         jobMatchRepository.saveAll(jobMatches);
         emailReceivedRepository.markSuccessProcessed(emailId);
+        return true;
     }
 
-    private Set<String> extractLinksJobs(String body) {
+    /** ID da vaga -> link do email, na ordem em que aparecem. */
+    private Map<String, String> extractLinksJobs(String body) {
         Map<String, String> linksById = new LinkedHashMap<>();
         Matcher matcher = Pattern.compile(
                 "https://www\\.linkedin\\.com/comm/jobs/view/(\\d+)/?(?:\\?[^\\s\"'<>]*)?").matcher(body);
@@ -97,6 +108,6 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             linksById.putIfAbsent(matcher.group(1), matcher.group().replace("&amp;", "&"));
         }
 
-        return new LinkedHashSet<>(linksById.values());
+        return linksById;
     }
 }

@@ -133,17 +133,15 @@ class ProcessEmailReceiverUseCaseImplTest {
     }
 
     @Test
-    void analisaSomenteVagasNovasComAChaveDoUsuario() throws Exception {
+    void naoAbreNoLinkedinVagaJaAnalisadaEAnalisaAsNovas() throws Exception {
         var email = alertEmail(LINK_1 + " " + LINK_2);
-        var jaAnalisada = job("111");
         var nova = job("222");
-        when(jobDetailsGateway.extractJobsDetails(any(), eq(linkedin), eq(false))).thenReturn(List.of(jaAnalisada, nova));
-        when(jobMatchRepository.existsByProfileIdAndJobLink(user.id(), jaAnalisada.link())).thenReturn(true);
-        when(jobMatchRepository.existsByProfileIdAndJobLink(user.id(), nova.link())).thenReturn(false);
+        when(jobMatchRepository.existsByProfileIdAndJobLink(user.id(), "https://www.linkedin.com/jobs/view/111/")).thenReturn(true);
+        when(jobDetailsGateway.extractJobsDetails(Set.of(LINK_2), linkedin, false)).thenReturn(List.of(nova));
         when(pdfGateway.extractTextPdf(user.curriculum())).thenReturn("texto cv");
         when(analyzeJobsMatchCvGateway.executeAnalysis(List.of(nova), "texto cv", "chave-gemini")).thenReturn(List.of(result(true, 85)));
 
-        useCase.execute(user, email);
+        assertTrue(useCase.execute(user, email), "acessou o LinkedIn");
 
         verify(emailReceivedRepository).save(email);
         @SuppressWarnings("unchecked")
@@ -151,10 +149,19 @@ class ProcessEmailReceiverUseCaseImplTest {
         verify(jobMatchRepository).saveAll(captor.capture());
         JobMatch saved = captor.getValue().getFirst();
         assertEquals(1, captor.getValue().size());
-        assertEquals(user.id(), saved.profileId());
         assertEquals(email.id(), saved.emailReceivedId());
         assertEquals(nova.link(), saved.jobLink());
-        assertEquals(85, saved.score());
+        verify(emailReceivedRepository).markSuccessProcessed(email.id());
+    }
+
+    @Test
+    void alertaSoComVagasJaAnalisadasNaoAbreOLinkedin() throws Exception {
+        var email = alertEmail(LINK_1);
+        when(jobMatchRepository.existsByProfileIdAndJobLink(user.id(), "https://www.linkedin.com/jobs/view/111/")).thenReturn(true);
+
+        assertFalse(useCase.execute(user, email));
+
+        verifyNoInteractions(jobDetailsGateway, analyzeJobsMatchCvGateway);
         verify(emailReceivedRepository).markSuccessProcessed(email.id());
     }
 

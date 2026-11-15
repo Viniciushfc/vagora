@@ -14,11 +14,15 @@ import jakarta.mail.search.AndTerm;
 import jakarta.mail.search.FlagTerm;
 import jakarta.mail.search.FromStringTerm;
 import jakarta.mail.search.HeaderTerm;
+import jakarta.mail.search.ComparisonTerm;
+import jakarta.mail.search.ReceivedDateTerm;
 import jakarta.mail.search.SearchTerm;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 
@@ -62,17 +66,22 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
     }
 
     @Override
-    public List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount) {
+    public List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, LocalDate since) {
         try (Store store = connect(emailAccount)) {
             Folder folder = store.getFolder(emailAccount.folder());
             folder.open(Folder.READ_ONLY);
             try {
-                SearchTerm unreadAlerts = new AndTerm(new FlagTerm(new Flags(Flags.Flag.SEEN), false), new FromStringTerm(JOB_ALERTS_SENDER));
+                Date sinceDate = Date.from(since.atStartOfDay(ZoneId.systemDefault()).toInstant());
+                SearchTerm unreadAlerts = new AndTerm(new SearchTerm[]{
+                        new FlagTerm(new Flags(Flags.Flag.SEEN), false),
+                        new FromStringTerm(JOB_ALERTS_SENDER),
+                        new ReceivedDateTerm(ComparisonTerm.GE, sinceDate)});
                 Message[] messages = folder.search(unreadAlerts);
 
+                // a pasta vem do mais antigo para o mais novo: as vagas recentes aparecem primeiro
                 List<EmailReceived> alerts = new ArrayList<>();
-                for (Message message : Arrays.copyOf(messages, Math.min(messages.length, MAX_ALERTS_PER_POLL))) {
-                    alerts.add(mapper.toDomain(message));
+                for (int i = messages.length - 1; i >= 0 && alerts.size() < MAX_ALERTS_PER_POLL; i--) {
+                    alerts.add(mapper.toDomain(messages[i]));
                 }
                 return alerts;
             } finally {

@@ -57,7 +57,7 @@
         <h2 id="how-title">Como funciona</h2>
         <ol class="flow">
             <li><strong>O LinkedIn envia um alerta</strong> de vagas para o seu email, como já acontece hoje.</li>
-            <li><strong>O Vagora lê um alerta por vez</strong>, com 15 a 25 minutos entre um e outro para o LinkedIn não estranhar, sem mexer nos seus outros emails.</li>
+            <li><strong>O Vagora lê os alertas da última semana</strong>, dos mais novos para os mais antigos, sem mexer nos seus outros emails. Entre um acesso ao LinkedIn e outro, espera de 15 a 25 minutos para não chamar atenção.</li>
             <li><strong>Cada vaga é aberta</strong> num navegador nesta máquina para ler a descrição completa. Vagas encerradas são puladas.</li>
             <li><strong>O Gemini compara</strong> a vaga com o seu currículo e dá uma nota de 0 a 100.</li>
             <li><strong>O resultado aparece aqui</strong>, com os motivos e um currículo adaptado quando a vaga combina.</li>
@@ -208,9 +208,9 @@
                 <img class="empty-art" src="brand/mark.svg" alt="">
                 <h2>Nenhuma vaga analisada ainda</h2>
                 <p>
-                    Quando um alerta de vaga do LinkedIn chegar no seu email, as vagas aparecem aqui. Para proteger
-                    sua conta, o Vagora analisa um alerta por vez, com 15 a 25 minutos entre um e outro, e abre as
-                    vagas com pausas. Se houver vários alertas acumulados, eles vão aparecendo ao longo do dia.
+                    Quando um alerta de vaga do LinkedIn chegar no seu email, as vagas aparecem aqui, das mais novas
+                    para as mais antigas. Para proteger sua conta, o Vagora espera de 15 a 25 minutos entre um acesso
+                    ao LinkedIn e outro, então vários alertas acumulados vão aparecendo ao longo do dia.
                 </p>
             </div>
             <div id="matches-filtered-empty" class="panel empty" hidden>
@@ -467,9 +467,9 @@
                 </li>
             </ul>
             <p class="risk-advice">
-                Para reduzir o risco, o Vagora analisa um alerta por vez, com 15 a 25 minutos entre um e outro, e
-                abre as vagas com pausas de 8 a 25 segundos e movimentos parecidos com os de uma pessoa. Se puder,
-                use uma conta secundária do LinkedIn só para isso.
+                Para reduzir o risco, o Vagora espera de 15 a 25 minutos entre um acesso ao LinkedIn e outro, não
+                reabre vagas já analisadas e abre as vagas com pausas de 8 a 25 segundos e movimentos parecidos com
+                os de uma pessoa. Se puder, use uma conta secundária do LinkedIn só para isso.
             </p>
             <label class="check">
                 <input type="checkbox" name="acceptRisks" required>

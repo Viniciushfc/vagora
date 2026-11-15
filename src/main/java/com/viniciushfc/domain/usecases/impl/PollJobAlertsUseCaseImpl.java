@@ -15,7 +15,9 @@ import com.viniciushfc.domain.vo.ProcessingStatus;
 
 import java.lang.System.Logger.Level;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -29,6 +31,8 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
 
     public static final Duration MIN_INTERVAL = Duration.ofMinutes(15);
     public static final Duration MAX_JITTER = Duration.ofMinutes(10);
+    // alertas mais antigos que isso não são buscados: as vagas costumam já ter fechado
+    public static final Period MAX_ALERT_AGE = Period.ofDays(7);
 
     private static final System.Logger LOG = System.getLogger(PollJobAlertsUseCaseImpl.class.getName());
 
@@ -64,7 +68,7 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
 
         List<EmailReceived> alerts;
         try {
-            alerts = mailboxGateway.fetchUnreadJobAlerts(emailAccount);
+            alerts = mailboxGateway.fetchUnreadJobAlerts(emailAccount, LocalDate.now().minus(MAX_ALERT_AGE));
         } catch (Exception e) {
             save(profile, status(profile).failed(e).checked());
             throw e;
@@ -75,22 +79,33 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
             return;
         }
 
-        // um alerta por ciclo; os demais esperam o próximo intervalo
-        EmailReceived alert = alerts.getFirst();
-        String subject = alert.email().subject();
-        save(profile, status(profile).analysing(subject, alerts.size() - 1));
-        try {
-            LOG.log(Level.INFO, "Processando alerta: {0}", subject);
-            processEmailReceiverUseCase.execute(profile, alert);
-            mailboxGateway.markAsRead(emailAccount, alert.messageId());
-            save(profile, status(profile).succeeded());
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Falha ao processar alerta '" + subject + "', será tentado de novo depois do intervalo", e);
-            save(profile, status(profile).failed(e));
-        } finally {
-            // o intervalo vale também depois de uma falha: evita insistir no LinkedIn
-            save(profile, status(profile).waitUntil(LocalDateTime.now().plus(nextInterval())).checked());
+        // alertas sem vaga nova se resolvem na hora; o intervalo só começa depois de acessar o LinkedIn
+        for (int i = 0; i < alerts.size(); i++) {
+            EmailReceived alert = alerts.get(i);
+            String subject = alert.email().subject();
+            save(profile, status(profile).analysing(subject, alerts.size() - i - 1));
+            try {
+                LOG.log(Level.INFO, "Processando alerta: {0}", subject);
+                boolean linkedinAccessed = processEmailReceiverUseCase.execute(profile, alert);
+                mailboxGateway.markAsRead(emailAccount, alert.messageId());
+                save(profile, status(profile).succeeded());
+                if (linkedinAccessed) {
+                    waitInterval(profile);
+                    return;
+                }
+            } catch (Exception e) {
+                // o intervalo vale também depois de uma falha: evita insistir no LinkedIn
+                LOG.log(Level.WARNING, "Falha ao processar alerta '" + subject + "', será tentado de novo depois do intervalo", e);
+                save(profile, status(profile).failed(e));
+                waitInterval(profile);
+                return;
+            }
         }
+        save(profile, status(profile).queued(0).checked());
+    }
+
+    private void waitInterval(Profile profile) {
+        save(profile, status(profile).waitUntil(LocalDateTime.now().plus(nextInterval())).checked());
     }
 
     public static Duration nextInterval() {

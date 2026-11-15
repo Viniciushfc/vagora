@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +27,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -74,10 +76,11 @@ class PollJobAlertsUseCaseImplTest {
     }
 
     @Test
-    void processaUmAlertaPorVezEAgendaOProximoComPeloMenos15Minutos() throws Exception {
+    void depoisDeAcessarOLinkedinEsperaPeloMenos15Minutos() throws Exception {
         var user = user(emailAccount);
         var primeiro = alert("1");
-        when(mailboxGateway.fetchUnreadJobAlerts(emailAccount)).thenReturn(List.of(primeiro, alert("2"), alert("3")));
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), any())).thenReturn(List.of(primeiro, alert("2"), alert("3")));
+        when(processEmailReceiverUseCase.execute(user, primeiro)).thenReturn(true);
 
         var antes = LocalDateTime.now();
         useCase.execute();
@@ -94,6 +97,33 @@ class PollJobAlertsUseCaseImplTest {
     }
 
     @Test
+    void alertasSemVagaNovaSeResolvemNoMesmoCicloSemIntervalo() throws Exception {
+        var user = user(emailAccount);
+        var semNovidade = alert("1");
+        var comVagaNova = alert("2");
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), any())).thenReturn(List.of(semNovidade, comVagaNova, alert("3")));
+        when(processEmailReceiverUseCase.execute(user, semNovidade)).thenReturn(false);
+        when(processEmailReceiverUseCase.execute(user, comVagaNova)).thenReturn(true);
+
+        useCase.execute();
+
+        verify(mailboxGateway).markAsRead(emailAccount, "1");
+        verify(mailboxGateway).markAsRead(emailAccount, "2");
+        verify(processEmailReceiverUseCase, times(2)).execute(any(), any());
+        assertTrue(statusRepository.find(user.id()).isWaiting(LocalDateTime.now()));
+    }
+
+    @Test
+    void buscaSoAlertasDosUltimos7Dias() {
+        user(emailAccount);
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), any())).thenReturn(List.of());
+
+        useCase.execute();
+
+        verify(mailboxGateway).fetchUnreadJobAlerts(emailAccount, LocalDate.now().minusDays(7));
+    }
+
+    @Test
     void duranteOIntervaloNemAbreOEmail() {
         var user = user(emailAccount);
         statusRepository.save(user.id(), statusRepository.find(user.id()).waitUntil(LocalDateTime.now().plusMinutes(10)));
@@ -107,7 +137,8 @@ class PollJobAlertsUseCaseImplTest {
     @Test
     void depoisDoIntervaloProcessaOProximo() throws Exception {
         var user = user(emailAccount);
-        when(mailboxGateway.fetchUnreadJobAlerts(emailAccount)).thenReturn(List.of(alert("1"), alert("2")), List.of(alert("2")));
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), any())).thenReturn(List.of(alert("1"), alert("2")), List.of(alert("2")));
+        when(processEmailReceiverUseCase.execute(eq(user), any())).thenReturn(true);
 
         useCase.execute();
         useCase.execute();   // ainda no intervalo
@@ -125,7 +156,7 @@ class PollJobAlertsUseCaseImplTest {
     void falhaTambemRespeitaOIntervaloEFicaRegistrada() throws Exception {
         var user = user(emailAccount);
         var falha = alert("falha");
-        when(mailboxGateway.fetchUnreadJobAlerts(emailAccount)).thenReturn(List.of(falha));
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), any())).thenReturn(List.of(falha));
         doThrow(new ExternalServiceException("O LinkedIn pediu uma verificação", ErrorCode.LINKEDIN_CHECKPOINT)).when(processEmailReceiverUseCase).execute(user, falha);
 
         useCase.execute();
@@ -141,7 +172,7 @@ class PollJobAlertsUseCaseImplTest {
     void erroInesperadoNaoVazaParaATela() throws Exception {
         var user = user(emailAccount);
         var alerta = alert("1");
-        when(mailboxGateway.fetchUnreadJobAlerts(emailAccount)).thenReturn(List.of(alerta));
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), any())).thenReturn(List.of(alerta));
         doThrow(new NullPointerException("Cannot invoke String.length() because x is null")).when(processEmailReceiverUseCase).execute(user, alerta);
 
         useCase.execute();
@@ -155,7 +186,7 @@ class PollJobAlertsUseCaseImplTest {
     void sucessoDepoisDeUmaFalhaLimpaOErro() {
         var user = user(emailAccount);
         statusRepository.save(user.id(), statusRepository.find(user.id()).failed(new RuntimeException("erro antigo")));
-        when(mailboxGateway.fetchUnreadJobAlerts(emailAccount)).thenReturn(List.of(alert("ok")));
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), any())).thenReturn(List.of(alert("ok")));
 
         useCase.execute();
 
@@ -165,7 +196,7 @@ class PollJobAlertsUseCaseImplTest {
     @Test
     void falhaAoLerOEmailFicaRegistrada() {
         var user = user(emailAccount);
-        when(mailboxGateway.fetchUnreadJobAlerts(emailAccount)).thenThrow(new ExternalServiceException("Falha ao acessar o email"));
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), any())).thenThrow(new ExternalServiceException("Falha ao acessar o email"));
 
         assertThrows(ExternalServiceException.class, () -> useCase.execute());
 
