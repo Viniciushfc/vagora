@@ -744,6 +744,9 @@ function renderScraper(activity) {
     if (activity.running) {
         view = { state: "busy", title: "Lendo vagas",
             detail: activity.jobIndex ? `Vaga ${activity.jobIndex} de ${activity.jobTotal}${status?.currentAlert ? ` do alerta "${status.currentAlert}"` : ""}.` : "Abrindo o navegador." };
+    } else if (activity.analyzing) {
+        view = { state: "busy", title: "Analisando com o Gemini",
+            detail: `Comparando a vaga ${activity.jobIndex} de ${activity.jobTotal} com o seu currículo.` };
     } else if (activity.failure) {
         view = { state: "error", title: "Parou com um problema", detail: next ? `Vai tentar de novo às ${next}.` : "Vai tentar de novo no próximo ciclo." };
     } else if (!state.profile.monitoringEnabled) {
@@ -757,7 +760,7 @@ function renderScraper(activity) {
     $("#scraper-detail").textContent = view.detail;
 
     const progress = $("#scraper-progress");
-    progress.hidden = !(activity.running && activity.jobTotal);
+    progress.hidden = !((activity.running || activity.analyzing) && activity.jobTotal);
     $("#scraper-progress-fill").style.width = activity.jobTotal ? `${Math.round(100 * activity.jobIndex / activity.jobTotal)}%` : "0";
 
     // painel de problema: falha do alerta ou vaga pulada (com a captura do que o navegador mostrou)
