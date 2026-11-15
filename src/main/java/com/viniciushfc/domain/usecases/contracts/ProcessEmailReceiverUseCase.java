@@ -1,9 +1,8 @@
 package com.viniciushfc.domain.usecases.contracts;
 
 import com.viniciushfc.domain.entities.EmailReceived;
-
-import java.io.IOException;
+import com.viniciushfc.domain.entities.Profile;
 
 public interface ProcessEmailReceiverUseCase {
-    void execute(EmailReceived emailReceived) throws IOException;
+    void execute(Profile profile, EmailReceived emailReceived);
 }
