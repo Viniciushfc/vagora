@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Vagora</title>
     <meta name="description" content="Vagora lê os alertas de vaga do LinkedIn no seu email e mostra quais combinam com o seu currículo.">
-    <meta name="theme-color" content="#EEF2F7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#F2F6FB" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#10172A" media="(prefers-color-scheme: dark)">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='19' width='26' height='5' rx='2.5' fill='%23172238'/%3E%3Crect x='3' y='19' width='16' height='5' rx='2.5' fill='%230E7A5C'/%3E%3Crect x='20.5' y='11' width='3' height='17' rx='1.5' fill='%23C2860A'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="brand/mark.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="app.js" defer></script>
 </head>
@@ -40,8 +40,8 @@
 <main id="setup" class="setup" hidden>
     <header class="setup-head">
         <a class="brand" href="#">
-            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="19" width="26" height="5" rx="2.5" class="bm-track"/><rect x="3" y="19" width="16" height="5" rx="2.5" class="bm-fill"/><rect x="20.5" y="11" width="3" height="17" rx="1.5" class="bm-cut"/></svg>
-            <span>Vagora</span>
+            <img class="brand-mark" src="brand/mark.svg" alt="">
+            <span>vagora</span>
         </a>
     </header>
 
@@ -123,13 +123,14 @@
 <div id="app" class="shell" hidden>
     <aside class="sidebar">
         <a class="brand" href="#vagas">
-            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="19" width="26" height="5" rx="2.5" class="bm-track"/><rect x="3" y="19" width="16" height="5" rx="2.5" class="bm-fill"/><rect x="20.5" y="11" width="3" height="17" rx="1.5" class="bm-cut"/></svg>
-            <span>Vagora</span>
+            <img class="brand-mark" src="brand/mark.svg" alt="">
+            <span>vagora</span>
         </a>
 
         <nav class="nav" aria-label="Seções">
             <a href="#vagas" data-tab="vagas"><svg class="icon"><use href="#i-jobs"/></svg><span>Vagas</span></a>
             <a href="#contas" data-tab="contas"><svg class="icon"><use href="#i-plug"/></svg><span>Contas</span></a>
+            <a href="#linkedin" data-tab="linkedin"><svg class="icon"><use href="#i-globe"/></svg><span>LinkedIn</span></a>
             <a href="#perfil" data-tab="perfil"><svg class="icon"><use href="#i-user"/></svg><span>Perfil</span></a>
         </nav>
 
@@ -204,7 +205,7 @@
             <ul id="matches" class="matches"></ul>
 
             <div id="matches-empty" class="panel empty" hidden>
-                <svg class="empty-art" viewBox="0 0 120 40" aria-hidden="true"><rect x="4" y="24" width="112" height="6" rx="3" class="ea-track"/><rect x="80" y="12" width="4" height="24" rx="2" class="ea-cut"/></svg>
+                <img class="empty-art" src="brand/mark.svg" alt="">
                 <h2>Nenhuma vaga analisada ainda</h2>
                 <p>
                     Quando um alerta de vaga do LinkedIn chegar no seu email, as vagas aparecem aqui. Para proteger
@@ -228,6 +229,43 @@
                 <article class="panel account" id="account-email"></article>
                 <article class="panel account" id="account-linkedin"></article>
             </div>
+        </section>
+
+        <!-- Leitor do LinkedIn -->
+        <section data-panel="linkedin" hidden>
+            <header class="page-head">
+                <h1 class="display">Leitor do LinkedIn</h1>
+                <p class="summary">Acompanhe o navegador que abre as vagas dos seus alertas e entenda quando algo dá errado.</p>
+            </header>
+
+            <div class="panel scraper-now" id="scraper-now" data-state="idle" aria-live="polite">
+                <div class="scraper-head">
+                    <span class="monitor-dot" aria-hidden="true"></span>
+                    <h2 id="scraper-title">Parado</h2>
+                </div>
+                <p class="hint" id="scraper-detail"></p>
+                <div class="scraper-progress" id="scraper-progress" hidden>
+                    <span id="scraper-progress-fill"></span>
+                </div>
+            </div>
+
+            <section class="panel scraper-failure" id="scraper-failure" aria-labelledby="failure-title" hidden>
+                <h2 class="panel-title" id="failure-title">O que deu errado</h2>
+                <p id="scraper-failure-text"></p>
+                <p class="hint" id="scraper-failure-help"></p>
+                <figure class="scraper-shot" id="scraper-shot" hidden>
+                    <a id="scraper-shot-link" target="_blank" rel="noopener">
+                        <img id="scraper-shot-img" alt="Tela do navegador do leitor no momento da falha">
+                    </a>
+                    <figcaption class="hint">O que o navegador estava mostrando quando parou. A imagem fica só neste computador.</figcaption>
+                </figure>
+            </section>
+
+            <section class="panel" aria-labelledby="timeline-title">
+                <h2 class="panel-title" id="timeline-title">O que o leitor fez</h2>
+                <ol class="timeline" id="scraper-events"></ol>
+                <p class="hint" id="scraper-empty">Nada por aqui ainda. Os passos aparecem quando o próximo alerta for analisado.</p>
+            </section>
         </section>
 
         <!-- Perfil -->

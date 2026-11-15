@@ -3,22 +3,28 @@
  * ============================================================ */
 
 :root {
-    --paper: #EEF2F7;
+    /* marca: azul royal -> azul céu -> verde-água */
+    --brand: #0D52B4;
+    --brand-sky: #1E9BE8;
+    --brand-aqua: #3BE0C9;
+    --brand-gradient: linear-gradient(135deg, var(--brand) 0%, var(--brand-sky) 100%);
+
+    --paper: #F2F6FB;
     --surface: #FFFFFF;
-    --surface-sunken: #E4EAF2;
-    --ink: #172238;
-    --graphite: #5A6478;
-    --line: #D5DCE6;
-    --line-strong: #B9C3D2;
-    --fit: #0E7A5C;
-    --fit-soft: #DCEFE8;
+    --surface-sunken: #E6EDF6;
+    --ink: #0E2246;
+    --graphite: #55617A;
+    --line: #D6DEEA;
+    --line-strong: #B8C5D8;
+    --fit: #0A8C7C;
+    --fit-soft: #D6F4EE;
     --miss: #9C3A55;
     --miss-soft: #F4E1E7;
     --cut: #C2860A;
     --cut-soft: #F6ECD6;
-    --focus: #2B5FD9;
+    --focus: #1E6FE0;
 
-    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --display: "Nunito", "Segoe UI", system-ui, sans-serif;
     --text: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
 
     /* escala 1.25 a partir de 16px */
@@ -40,15 +46,19 @@
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-        --paper: #0F1627;
-        --surface: #172036;
-        --surface-sunken: #121A2E;
-        --ink: #E6EBF4;
-        --graphite: #9AA5BA;
-        --line: #26324C;
-        --line-strong: #364566;
-        --fit: #4CC59E;
-        --fit-soft: #163A35;
+        --brand: #6FA8FF;
+        --brand-sky: #3DB5F5;
+        --brand-aqua: #4FE3CF;
+        --brand-gradient: linear-gradient(135deg, #2F6FD6 0%, #1E9BE8 100%);
+        --paper: #0D1526;
+        --surface: #152038;
+        --surface-sunken: #101A2E;
+        --ink: #E6EDF8;
+        --graphite: #9AA8C0;
+        --line: #24324F;
+        --line-strong: #344568;
+        --fit: #4FD8C2;
+        --fit-soft: #143B3A;
         --miss: #E7869F;
         --miss-soft: #3A2132;
         --cut: #E8B14A;
@@ -140,22 +150,20 @@ code {
 .brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.5rem;
+    color: var(--brand);
     font-family: var(--display);
     font-weight: 800;
-    font-size: var(--step-2);
-    letter-spacing: -0.025em;
+    font-size: 1.85rem;
+    letter-spacing: -0.03em;
+    line-height: 1;
     text-decoration: none;
 }
 
 .brand-mark {
-    width: 2rem;
-    height: 2rem;
+    width: 2.4rem;
+    height: 2.4rem;
 }
-
-.bm-track { fill: var(--ink); }
-.bm-fill { fill: var(--fit); }
-.bm-cut { fill: var(--cut); }
 
 /* ============================================================
  * Estrutura da aplicação
@@ -218,8 +226,12 @@ code {
     box-shadow: var(--lift);
 }
 
+.nav a[aria-current="page"] {
+    color: var(--brand);
+}
+
 .nav a[aria-current="page"] .icon {
-    color: var(--fit);
+    color: var(--brand-sky);
 }
 
 /* Monitor: o que o Vagora está fazendo agora */
@@ -368,12 +380,13 @@ code {
 }
 
 .button.primary {
-    background: var(--ink);
-    color: var(--paper);
+    background: var(--brand-gradient);
+    color: #fff;
+    box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--brand) 70%, transparent);
 }
 
 .button.primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--ink) 82%, var(--focus));
+    filter: brightness(1.08);
 }
 
 .button.quiet {
@@ -743,7 +756,7 @@ label {
     top: 0;
     bottom: 0;
     border-radius: 6px 6px 0 0;
-    background: color-mix(in srgb, var(--fit) 11%, transparent);
+    background: color-mix(in srgb, var(--brand-aqua) 16%, transparent);
 }
 
 .spread-cut {
@@ -777,7 +790,7 @@ label {
 }
 
 .spread-mark[data-fit="yes"] {
-    background: var(--fit);
+    background: linear-gradient(180deg, var(--brand-aqua), var(--fit));
 }
 
 .spread-mark:hover,
@@ -1052,12 +1065,10 @@ label {
 }
 
 .empty-art {
-    width: 7.5rem;
+    width: 3.5rem;
     margin-bottom: 0.9rem;
+    opacity: 0.9;
 }
-
-.ea-track { fill: var(--surface-sunken); }
-.ea-cut { fill: var(--cut); }
 
 /* ============================================================
  * Contas
@@ -1187,8 +1198,8 @@ label {
     width: 4rem;
     height: 4rem;
     border-radius: 50%;
-    background: var(--ink);
-    color: var(--paper);
+    background: var(--brand-gradient);
+    color: #fff;
     font-family: var(--display);
     font-weight: 800;
     font-size: var(--step-2);
@@ -1369,9 +1380,9 @@ label {
 }
 
 .step[data-state="current"]::before {
-    border-color: var(--ink);
-    background: var(--ink);
-    color: var(--paper);
+    border-color: var(--brand);
+    background: var(--brand-gradient);
+    color: #fff;
 }
 
 .step[data-state="done"]::before {
@@ -1491,7 +1502,7 @@ label {
         right: 0;
         bottom: 0;
         z-index: 40;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 0;
         padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
         border-top: 1px solid var(--line);
@@ -1595,4 +1606,110 @@ label {
     .toolbar .search {
         flex-basis: 100%;
     }
+}
+
+/* ============================================================
+ * Leitor do LinkedIn
+ * ============================================================ */
+
+.scraper-now {
+    margin-bottom: 1.25rem;
+}
+
+.scraper-head {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.scraper-head h2 {
+    font-size: var(--step-2);
+}
+
+.scraper-head .monitor-dot {
+    width: 0.85rem;
+    height: 0.85rem;
+    margin: 0;
+    background: var(--line-strong);
+}
+
+.scraper-now[data-state="ok"] .monitor-dot { background: var(--fit); }
+.scraper-now[data-state="busy"] .monitor-dot { background: var(--focus); }
+.scraper-now[data-state="error"] .monitor-dot { background: var(--cut); }
+.scraper-now[data-state="paused"] .monitor-dot { background: transparent; border: 2px solid var(--line-strong); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .scraper-now[data-state="busy"] .monitor-dot { animation: pulse 1.4s ease-in-out infinite; }
+}
+
+.scraper-now .hint {
+    margin-top: 0.35rem;
+    font-size: var(--step-0);
+}
+
+.scraper-progress {
+    height: 8px;
+    margin-top: 1rem;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    overflow: hidden;
+}
+
+.scraper-progress span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--focus);
+}
+
+.scraper-failure {
+    margin-bottom: 1.25rem;
+    border-left: 4px solid var(--cut);
+}
+
+.scraper-failure p {
+    margin-top: 0.5rem;
+    max-width: var(--measure);
+}
+
+.scraper-shot {
+    margin: 1rem 0 0;
+}
+
+.scraper-shot img {
+    display: block;
+    width: 100%;
+    max-width: 48rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-control);
+}
+
+.scraper-shot figcaption {
+    margin-top: 0.4rem;
+}
+
+.timeline {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+}
+
+.timeline li {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+    border-top: 1px solid var(--line);
+}
+
+.timeline time {
+    color: var(--graphite);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.1rem;
+}
+
+.timeline li.is-problem span {
+    color: color-mix(in srgb, var(--cut) 75%, var(--ink));
+    font-weight: 700;
 }

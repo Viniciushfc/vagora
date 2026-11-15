@@ -58,6 +58,7 @@ const api = {
     updateFolder: (folder) => request("PUT", "/profile/email/folder", { folder }),
     listMatches: () => request("GET", "/profile/job-matches"),
     status: () => request("GET", "/profile/status"),
+    scraper: () => request("GET", "/profile/scraper"),
 };
 
 /* ============================================================
@@ -291,10 +292,10 @@ function showApp() {
     route();
 }
 
-let matchesTimer;
+let pageTimer;
 function route() {
     if ($("#app").hidden) return;
-    const tab = ["vagas", "contas", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "vagas";
+    const tab = ["vagas", "contas", "linkedin", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "vagas";
 
     $$("[data-tab]").forEach((link) => {
         if (link.dataset.tab === tab) link.setAttribute("aria-current", "page");
@@ -302,13 +303,18 @@ function route() {
     });
     $$("[data-panel]").forEach((panel) => { panel.hidden = panel.dataset.panel !== tab; });
 
-    clearInterval(matchesTimer);
+    clearInterval(pageTimer);
     if (tab === "vagas") {
         loadMatches(true);
         // o servidor verifica o email a cada minuto; a lista acompanha
-        matchesTimer = setInterval(() => loadMatches(false), 60_000);
+        pageTimer = setInterval(() => loadMatches(false), 60_000);
     }
     if (tab === "contas") renderAccounts();
+    if (tab === "linkedin") {
+        loadScraper();
+        // enquanto a página está aberta, acompanha o leitor quase em tempo real
+        pageTimer = setInterval(loadScraper, 5_000);
+    }
     if (tab === "perfil") renderProfile();
     window.scrollTo({ top: 0 });
 }
@@ -403,7 +409,10 @@ const ERROR_ACTIONS = {
     LINKEDIN_CHECKPOINT: ["Mostrar o navegador", "#perfil"],
     LINKEDIN_LOGIN_FAILED: ["Abrir contas", "#contas"],
     LINKEDIN_NOT_CONNECTED: ["Abrir contas", "#contas"],
+    LINKEDIN_PAGE_UNREADABLE: ["Ver o leitor do LinkedIn", "#linkedin"],
+    SCRAPER_FAILED: ["Ver o leitor do LinkedIn", "#linkedin"],
     GEMINI_KEY_MISSING: ["Abrir perfil", "#perfil"],
+    GEMINI_KEY_REJECTED: ["Abrir perfil", "#perfil"],
 };
 
 function renderProcessingAlert() {
@@ -703,6 +712,75 @@ $("#refresh-matches").addEventListener("click", () => {
     loadMatches(false);
     loadStatus();
 });
+
+/* ============================================================
+ * Leitor do LinkedIn
+ * ============================================================ */
+
+// o que fazer em cada falha do leitor, pelo código do erro
+const SCRAPER_HELP = {
+    LINKEDIN_PAGE_UNREADABLE: "Olhe a captura abaixo. Se aparece uma tela de login ou de verificação, ligue \"Mostrar o navegador\" no Perfil para resolver na próxima análise. Se a página parece normal, foi lentidão e a próxima tentativa costuma passar.",
+    LINKEDIN_CHECKPOINT: "Ligue \"Mostrar o navegador\" no Perfil. Na próxima análise o navegador abre na tela e espera até 5 minutos você resolver a verificação.",
+    LINKEDIN_LOGIN_FAILED: "Confira o login e a senha da conta do LinkedIn em Contas. Se mudou a senha, desconecte e conecte de novo.",
+    SCRAPER_FAILED: "Os detalhes técnicos estão no terminal onde o Vagora está rodando. Se o erro se repetir, pare o Vagora e rode ./run.sh --clean.",
+};
+
+const clockFormat = new Intl.DateTimeFormat("pt-BR", { timeStyle: "medium" });
+
+async function loadScraper() {
+    try {
+        renderScraper(await api.scraper());
+    } catch (error) {
+        showError(error, $("#scraper-failure-text"));
+        $("#scraper-failure").hidden = false;
+    }
+}
+
+function renderScraper(activity) {
+    const box = $("#scraper-now");
+    const status = state.status;
+    const next = status?.nextAlertAt && new Date(status.nextAlertAt) > new Date() ? timeFormat.format(new Date(status.nextAlertAt)) : null;
+    let view;
+    if (activity.running) {
+        view = { state: "busy", title: "Lendo vagas",
+            detail: activity.jobIndex ? `Vaga ${activity.jobIndex} de ${activity.jobTotal}${status?.currentAlert ? ` do alerta "${status.currentAlert}"` : ""}.` : "Abrindo o navegador." };
+    } else if (activity.failure) {
+        view = { state: "error", title: "Parou com um problema", detail: next ? `Vai tentar de novo às ${next}.` : "Vai tentar de novo no próximo ciclo." };
+    } else if (!state.profile.monitoringEnabled) {
+        view = { state: "paused", title: "Monitoramento pausado", detail: "Nenhuma vaga é aberta até você retomar no Perfil." };
+    } else {
+        view = { state: activity.events.length ? "ok" : "idle", title: "Parado",
+            detail: next ? `Próximo alerta às ${next}${status.queuedAlerts ? ` · ${status.queuedAlerts} na fila` : ""}.` : "Esperando um alerta de vaga chegar no email." };
+    }
+    box.dataset.state = view.state;
+    $("#scraper-title").textContent = view.title;
+    $("#scraper-detail").textContent = view.detail;
+
+    const progress = $("#scraper-progress");
+    progress.hidden = !(activity.running && activity.jobTotal);
+    $("#scraper-progress-fill").style.width = activity.jobTotal ? `${Math.round(100 * activity.jobIndex / activity.jobTotal)}%` : "0";
+
+    const failure = $("#scraper-failure");
+    failure.hidden = !activity.failure;
+    if (activity.failure) {
+        $("#scraper-failure-text").textContent = activity.failure;
+        $("#scraper-failure-help").textContent = SCRAPER_HELP[status?.lastErrorCode] ?? "O alerta continua no email e será tentado de novo.";
+        $("#scraper-shot").hidden = !activity.failureScreenshot;
+        if (activity.failureScreenshot) {
+            // a URL muda a cada falha para o navegador não reaproveitar a imagem anterior
+            const src = `/profile/scraper/screenshot?at=${encodeURIComponent(activity.events[0]?.at ?? "")}`;
+            if ($("#scraper-shot-img").getAttribute("src") !== src) $("#scraper-shot-img").src = src;
+            $("#scraper-shot-link").href = src;
+        }
+    }
+
+    $("#scraper-empty").hidden = activity.events.length > 0;
+    $("#scraper-events").replaceChildren(...activity.events.map((event) => {
+        const li = el("li", event.problem ? "is-problem" : "");
+        li.append(el("time", "", clockFormat.format(new Date(event.at))), el("span", "", event.message));
+        return li;
+    }));
+}
 
 /* ============================================================
  * Contas
