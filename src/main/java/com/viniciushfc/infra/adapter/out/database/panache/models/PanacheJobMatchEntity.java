@@ -12,7 +12,8 @@ public class PanacheJobMatchEntity {
 
     @Id
     private UUID id;
-    private UUID userAccountId;
+    @Column(name = "userAccountId") // nome antigo mantido: bancos existentes já têm as vagas nessa coluna
+    private UUID profileId;
     private UUID emailReceivedId;
     private String jobLink;
     private String jobTitle;
@@ -34,9 +35,9 @@ public class PanacheJobMatchEntity {
 
     private LocalDateTime createdAt;
 
-    public PanacheJobMatchEntity(UUID id, UUID userAccountId, UUID emailReceivedId, String jobLink, String jobTitle, String companyName, boolean match, int score, List<String> motivos, String curriculoAts, LocalDateTime createdAt) {
+    public PanacheJobMatchEntity(UUID id, UUID profileId, UUID emailReceivedId, String jobLink, String jobTitle, String companyName, boolean match, int score, List<String> motivos, String curriculoAts, LocalDateTime createdAt) {
         this.id = id;
-        this.userAccountId = userAccountId;
+        this.profileId = profileId;
         this.emailReceivedId = emailReceivedId;
         this.jobLink = jobLink;
         this.jobTitle = jobTitle;
@@ -56,8 +57,8 @@ public class PanacheJobMatchEntity {
         return id;
     }
 
-    public UUID getUserAccountId() {
-        return userAccountId;
+    public UUID getProfileId() {
+        return profileId;
     }
 
     public UUID getEmailReceivedId() {

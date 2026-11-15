@@ -10,7 +10,7 @@ public class JobMatchMapper {
     public static JobMatch toDomain(PanacheJobMatchEntity entity) {
         return new JobMatch(
                 entity.getId(),
-                entity.getUserAccountId(),
+                entity.getProfileId(),
                 entity.getEmailReceivedId(),
                 entity.getJobLink(),
                 entity.getJobTitle(),
@@ -26,7 +26,7 @@ public class JobMatchMapper {
     public static PanacheJobMatchEntity toPanacheJobMatch(JobMatch jobMatch) {
         return new PanacheJobMatchEntity(
                 jobMatch.id(),
-                jobMatch.userAccountId(),
+                jobMatch.profileId(),
                 jobMatch.emailReceivedId(),
                 jobMatch.jobLink(),
                 jobMatch.jobTitle(),

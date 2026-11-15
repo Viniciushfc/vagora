@@ -26,8 +26,8 @@ public class PanacheJobMatchRepositoryImpl implements JobMatchRepository {
 
     @Override
     @Transactional
-    public List<JobMatch> findByUserAccountId(UUID userAccountId) {
-        return panacheJobMatchRepository.list("userAccountId", userAccountId)
+    public List<JobMatch> findByProfileId(UUID profileId) {
+        return panacheJobMatchRepository.list("profileId", profileId)
                 .stream()
                 .map(JobMatchMapper::toDomain)
                 .toList();
@@ -35,9 +35,9 @@ public class PanacheJobMatchRepositoryImpl implements JobMatchRepository {
 
     @Override
     @Transactional
-    public boolean existsByUserAccountIdAndJobLink(UUID userAccountId, String jobLink) {
+    public boolean existsByProfileIdAndJobLink(UUID profileId, String jobLink) {
         return panacheJobMatchRepository
-                .count("userAccountId = :userAccountId and jobLink = :jobLink",
-                        Map.of("userAccountId", userAccountId, "jobLink", jobLink)) > 0;
+                .count("profileId = :profileId and jobLink = :jobLink",
+                        Map.of("profileId", profileId, "jobLink", jobLink)) > 0;
     }
 }

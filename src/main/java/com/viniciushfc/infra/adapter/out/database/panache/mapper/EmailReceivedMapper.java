@@ -1,36 +1,16 @@
 package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 
 import com.viniciushfc.domain.entities.EmailReceived;
-import com.viniciushfc.domain.vo.Email;
-import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheEmalReceivedEntity;
+import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheEmailReceivedEntity;
 
 public class EmailReceivedMapper {
 
-    public static EmailReceived toDomain(PanacheEmalReceivedEntity entity) {
-        Email email = new Email(
-                entity.getFrom(),
-                entity.getTo(),
-                entity.getSubject(),
-                entity.getBody(),
-                entity.getAttachments().stream().map(AttachmentMapper::toDomainAttachment).toList()
-        );
-
-        return new EmailReceived(entity.getId(), entity.getMessageId(), email, entity.isSuccessProcessed());
+    /** O email lido do banco não tem conteúdo: só id, Message-ID e status. */
+    public static EmailReceived toDomain(PanacheEmailReceivedEntity entity) {
+        return new EmailReceived(entity.getId(), entity.getMessageId(), null, entity.isSuccessProcessed());
     }
 
-    public static PanacheEmalReceivedEntity toPanacheEmailReceived(EmailReceived emailReceived) {
-        Email email = emailReceived.email();
-
-        return new PanacheEmalReceivedEntity(
-                emailReceived.id(),
-                emailReceived.messageId(),
-                email.from(),
-                email.to(),
-                email.subject(),
-                email.body(),
-                email.attachments().stream().map(AttachmentMapper::toPanacheAttachmentEmbeddable).toList(),
-                emailReceived.successProcessed()
-        );
+    public static PanacheEmailReceivedEntity toPanacheEmailReceived(EmailReceived emailReceived) {
+        return new PanacheEmailReceivedEntity(emailReceived.id(), emailReceived.messageId(), emailReceived.successProcessed());
     }
-
 }

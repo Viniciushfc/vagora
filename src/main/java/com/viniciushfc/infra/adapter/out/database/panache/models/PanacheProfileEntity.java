@@ -9,19 +9,20 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "user_account")
-public class PanacheUserAccountEntity {
+public class PanacheProfileEntity {
 
     @Id
     private UUID id;
     private String name;
-    private String username;
-    private String password;
+    private String geminiApiKey;
+    private Boolean showBrowser;
+    private Boolean monitoringEnabled;
 
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "name", column = @Column(name = "nameAttachment")),
             @AttributeOverride(name = "contentType", column = @Column(name = "contentType")),
-            @AttributeOverride(name = "content", column = @Column(name = "content"))
+            @AttributeOverride(name = "content", column = @Column(name = "content", length = PanacheAttachmentEmbeddable.MAX_CONTENT_LENGTH))
     })
     private PanacheAttachmentEmbeddable curriculum;
 
@@ -32,25 +33,22 @@ public class PanacheUserAccountEntity {
     )
     private List<PanacheLinkedAccountEmbeddable> linkedAccounts;
 
-    public PanacheUserAccountEntity(UUID id, String name, String username, String password, PanacheAttachmentEmbeddable curriculum, List<PanacheLinkedAccountEmbeddable> linkedAccounts) {
+    public PanacheProfileEntity(UUID id, String name, String geminiApiKey, PanacheAttachmentEmbeddable curriculum, List<PanacheLinkedAccountEmbeddable> linkedAccounts, Boolean showBrowser, Boolean monitoringEnabled) {
         this.id = id;
         this.name = name;
-        this.username = username;
-        this.password = password;
+        this.geminiApiKey = geminiApiKey;
         this.curriculum = curriculum;
         this.linkedAccounts = linkedAccounts;
+        this.showBrowser = showBrowser;
+        this.monitoringEnabled = monitoringEnabled;
     }
 
-    public PanacheUserAccountEntity() {
+    public PanacheProfileEntity() {
 
     }
 
     public UUID getId() {
         return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
     }
 
     public String getName() {
@@ -61,20 +59,28 @@ public class PanacheUserAccountEntity {
         this.name = name;
     }
 
-    public String getUsername() {
-        return username;
+    public Boolean getMonitoringEnabled() {
+        return monitoringEnabled;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setMonitoringEnabled(Boolean monitoringEnabled) {
+        this.monitoringEnabled = monitoringEnabled;
     }
 
-    public String getPassword() {
-        return password;
+    public Boolean getShowBrowser() {
+        return showBrowser;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setShowBrowser(Boolean showBrowser) {
+        this.showBrowser = showBrowser;
+    }
+
+    public String getGeminiApiKey() {
+        return geminiApiKey;
+    }
+
+    public void setGeminiApiKey(String geminiApiKey) {
+        this.geminiApiKey = geminiApiKey;
     }
 
     public PanacheAttachmentEmbeddable getCurriculum() {
