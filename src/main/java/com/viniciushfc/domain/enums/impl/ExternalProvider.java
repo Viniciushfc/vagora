@@ -1,21 +1,13 @@
 package com.viniciushfc.domain.enums.impl;
 
+/** Site de uma conta conectada. O perfil tem no máximo uma conta por provider. */
+public enum ExternalProvider {
+    LINKEDIN("LinkedIn"),
+    EMAIL("Email");
 
-import com.viniciushfc.domain.enums.contracts.DataEnum;
-import com.viniciushfc.domain.enums.contracts.IEnum;
+    public final String label;
 
-public enum ExternalProvider implements IEnum<String, String> {
-    LINKEDIN("LINKEDIN", "Linkedin"),
-    ;
-
-    private final DataEnum<String, String> data;
-
-    ExternalProvider(String key, String value) {
-        this.data = new DataEnum<>(key, value);
-    }
-
-    @Override
-    public DataEnum<String, String> data() {
-        return data;
+    ExternalProvider(String label) {
+        this.label = label;
     }
 }

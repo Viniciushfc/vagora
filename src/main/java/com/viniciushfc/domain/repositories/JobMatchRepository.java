@@ -9,7 +9,7 @@ public interface JobMatchRepository {
 
     void saveAll(List<JobMatch> jobMatches);
 
-    List<JobMatch> findByUserAccountId(UUID userAccountId);
+    List<JobMatch> findByProfileId(UUID profileId);
 
-    boolean existsByUserAccountIdAndJobLink(UUID userAccountId, String jobLink);
+    boolean existsByProfileIdAndJobLink(UUID profileId, String jobLink);
 }

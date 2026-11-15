@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface AnalyzeJobsMatchCvGateway {
 
-    List<CvMatchResult> executeAnalysis(List<JobDetail> jobDetails, String cvUser);
+    /** Um resultado por vaga, na mesma ordem de {@code jobDetails}. */
+    List<CvMatchResult> executeAnalysis(List<JobDetail> jobDetails, String cvUser, String apiKey);
 }

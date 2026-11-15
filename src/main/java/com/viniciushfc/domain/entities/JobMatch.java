@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record JobMatch(UUID id,
-                       UUID userAccountId,
+                       UUID profileId,
                        UUID emailReceivedId,
                        String jobLink,
                        String jobTitle,
@@ -19,10 +19,10 @@ public record JobMatch(UUID id,
                        String curriculoAts,
                        LocalDateTime createdAt) {
 
-    public static JobMatch create(UUID userAccountId, UUID emailReceivedId, JobDetail jobDetail, CvMatchResult result) {
+    public static JobMatch create(UUID profileId, UUID emailReceivedId, JobDetail jobDetail, CvMatchResult result) {
         return new JobMatch(
                 UUID.randomUUID(),
-                userAccountId,
+                profileId,
                 emailReceivedId,
                 jobDetail.link(),
                 jobDetail.title(),
