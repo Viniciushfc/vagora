@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Vagora</title>
+    <meta name="description" content="Vagora lê os alertas de vaga do LinkedIn no seu email e mostra quais combinam com o seu currículo.">
+    <meta name="theme-color" content="#EEF2F7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#10172A" media="(prefers-color-scheme: dark)">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='19' width='26' height='5' rx='2.5' fill='%23172238'/%3E%3Crect x='3' y='19' width='16' height='5' rx='2.5' fill='%230E7A5C'/%3E%3Crect x='20.5' y='11' width='3' height='17' rx='1.5' fill='%23C2860A'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+
+<!-- Ícones (traço único, 24px) -->
+<svg class="sprite" aria-hidden="true">
+    <symbol id="i-jobs" viewBox="0 0 24 24"><path d="M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1"/><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 12h18"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+</svg>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- ============================================================
+     Configuração inicial: aparece quando ainda não existe perfil
+     ============================================================ -->
+<main id="setup" class="setup" hidden>
+    <header class="setup-head">
+        <a class="brand" href="#">
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="19" width="26" height="5" rx="2.5" class="bm-track"/><rect x="3" y="19" width="16" height="5" rx="2.5" class="bm-fill"/><rect x="20.5" y="11" width="3" height="17" rx="1.5" class="bm-cut"/></svg>
+            <span>Vagora</span>
+        </a>
+    </header>
+
+    <div class="setup-intro">
+        <h1 class="display">Vamos configurar o Vagora</h1>
+        <p class="lede">
+            Ele lê os alertas de vaga que o LinkedIn manda para o seu email e diz quais combinam com o seu
+            currículo, com o motivo de cada nota.
+        </p>
+    </div>
+
+    <section class="panel how" aria-labelledby="how-title">
+        <h2 id="how-title">Como funciona</h2>
+        <ol class="flow">
+            <li><strong>O LinkedIn envia um alerta</strong> de vagas para o seu email, como já acontece hoje.</li>
+            <li><strong>O Vagora lê um alerta por vez</strong>, com 15 a 25 minutos entre um e outro para o LinkedIn não estranhar, sem mexer nos seus outros emails.</li>
+            <li><strong>Cada vaga é aberta</strong> num navegador nesta máquina para ler a descrição completa. Vagas encerradas são puladas.</li>
+            <li><strong>O Gemini compara</strong> a vaga com o seu currículo e dá uma nota de 0 a 100.</li>
+            <li><strong>O resultado aparece aqui</strong>, com os motivos e um currículo adaptado quando a vaga combina.</li>
+        </ol>
+    </section>
+
+    <ol class="steps" aria-label="Passos da configuração">
+        <li class="step" data-step="profile">
+            <h2>Seu perfil e currículo</h2>
+            <p class="step-why">O currículo é o que o Gemini compara com cada vaga. Tudo fica salvo só neste computador.</p>
+            <form id="setup-profile-form" class="panel form" novalidate>
+                <div class="field">
+                    <label for="setup-name">Nome</label>
+                    <input id="setup-name" name="name" autocomplete="name" required>
+                </div>
+                <div class="field">
+                    <div class="label-row">
+                        <label for="setup-gemini">Chave da API do Gemini</label>
+                        <span class="tip">
+                            <button class="tip-trigger" type="button" aria-label="O que é a chave do Gemini">?</button>
+                            <span class="tip-bubble" role="tooltip">
+                                O Gemini é a IA do Google que lê a vaga e o seu currículo e dá a nota. A chave identifica
+                                você no Google e tem uma cota gratuita que costuma bastar para uso pessoal.
+                            </span>
+                        </span>
+                    </div>
+                    <input id="setup-gemini" name="geminiApiKey" type="password" autocomplete="off" required>
+                    <p class="hint">Gere em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+                </div>
+                <div class="field">
+                    <label for="setup-curriculum">Currículo em PDF</label>
+                    <input id="setup-curriculum" name="curriculum" type="file" accept="application/pdf" required>
+                    <p class="hint">Até 5 MB. Use um PDF com texto selecionável; currículo escaneado como imagem não é lido.</p>
+                </div>
+                <p class="form-error" role="alert" hidden></p>
+                <button class="button primary" type="submit">Criar perfil</button>
+            </form>
+        </li>
+
+        <li class="step" data-step="email">
+            <h2>Email onde chegam os alertas</h2>
+            <p class="step-why">É de onde o Vagora tira as vagas. Ele só lê os alertas do LinkedIn e só marca como lido o que já analisou.</p>
+            <p class="step-locked">Disponível depois de criar o perfil.</p>
+            <div class="step-body" hidden></div>
+        </li>
+
+        <li class="step" data-step="linkedin">
+            <h2>Conta do LinkedIn</h2>
+            <p class="step-why">O alerta traz só o título da vaga. Para ler a descrição completa, o Vagora abre cada vaga com a sua conta.</p>
+            <p class="step-locked">Disponível depois de conectar o email.</p>
+            <div class="step-body" hidden></div>
+        </li>
+    </ol>
+
+    <div class="setup-finish">
+        <button id="setup-finish" class="button primary large" type="button" hidden>Ver minhas vagas</button>
+    </div>
+</main>
+
+<!-- ============================================================
+     Aplicação
+     ============================================================ -->
+<div id="app" class="shell" hidden>
+    <aside class="sidebar">
+        <a class="brand" href="#vagas">
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="19" width="26" height="5" rx="2.5" class="bm-track"/><rect x="3" y="19" width="16" height="5" rx="2.5" class="bm-fill"/><rect x="20.5" y="11" width="3" height="17" rx="1.5" class="bm-cut"/></svg>
+            <span>Vagora</span>
+        </a>
+
+        <nav class="nav" aria-label="Seções">
+            <a href="#vagas" data-tab="vagas"><svg class="icon"><use href="#i-jobs"/></svg><span>Vagas</span></a>
+            <a href="#contas" data-tab="contas"><svg class="icon"><use href="#i-plug"/></svg><span>Contas</span></a>
+            <a href="#perfil" data-tab="perfil"><svg class="icon"><use href="#i-user"/></svg><span>Perfil</span></a>
+        </nav>
+
+        <div class="monitor" id="monitor" data-state="idle" aria-live="polite">
+            <span class="monitor-dot" aria-hidden="true"></span>
+            <div class="monitor-text">
+                <p class="monitor-title" id="monitor-title">Aguardando</p>
+                <p class="monitor-detail" id="monitor-detail"></p>
+            </div>
+            <button class="monitor-toggle" id="monitor-toggle" type="button" hidden></button>
+        </div>
+    </aside>
+
+    <main class="content">
+        <!-- Vagas -->
+        <section data-panel="vagas" hidden>
+            <header class="page-head">
+                <div class="label-row">
+                    <h1 class="display">Vagas analisadas</h1>
+                    <span class="tip">
+                        <button class="tip-trigger" type="button" aria-label="Como a nota é calculada">?</button>
+                        <span class="tip-bubble" role="tooltip">
+                            A nota vai de 0 a 100 e mede o quanto o seu currículo atende à vaga. A vaga é compatível
+                            quando chega a 70 e os requisitos obrigatórios são atendidos. A marca amarela é esse corte.
+                        </span>
+                    </span>
+                </div>
+                <p id="matches-summary" class="summary"></p>
+            </header>
+
+            <div id="processing-alert" class="notice warn" hidden></div>
+            <div id="setup-warning" class="notice warn" hidden></div>
+
+            <figure class="panel spread" id="spread" hidden>
+                <div class="spread-legend" aria-hidden="true">
+                    <span class="legend-below" id="legend-below"></span>
+                    <span class="legend-above" id="legend-above"></span>
+                </div>
+                <div class="spread-track">
+                    <span class="spread-zone" aria-hidden="true"></span>
+                    <span class="spread-cut" aria-hidden="true"></span>
+                    <div class="spread-marks" id="spread-marks"></div>
+                </div>
+                <div class="spread-scale" aria-hidden="true">
+                    <span>0</span><span class="spread-cut-label">corte 70</span><span>100</span>
+                </div>
+                <figcaption class="visually-hidden">Notas de todas as vagas numa régua de 0 a 100. Cada marca leva até a vaga.</figcaption>
+            </figure>
+
+            <div class="toolbar" id="toolbar" hidden>
+                <label class="search">
+                    <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+                    <span class="visually-hidden">Buscar por vaga ou empresa</span>
+                    <input id="search" type="search" placeholder="Buscar vaga ou empresa" autocomplete="off">
+                </label>
+                <div class="segmented" role="group" aria-label="Filtrar vagas">
+                    <button type="button" data-filter="all" aria-pressed="true">Todas</button>
+                    <button type="button" data-filter="match" aria-pressed="false">Compatíveis</button>
+                </div>
+                <label class="sort">
+                    <span class="visually-hidden">Ordenar</span>
+                    <select id="sort">
+                        <option value="score">Maior nota</option>
+                        <option value="recent">Mais recentes</option>
+                    </select>
+                </label>
+                <button id="refresh-matches" class="button quiet icon-only" type="button" aria-label="Atualizar lista">
+                    <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
+                </button>
+            </div>
+
+            <ul id="matches" class="matches"></ul>
+
+            <div id="matches-empty" class="panel empty" hidden>
+                <svg class="empty-art" viewBox="0 0 120 40" aria-hidden="true"><rect x="4" y="24" width="112" height="6" rx="3" class="ea-track"/><rect x="80" y="12" width="4" height="24" rx="2" class="ea-cut"/></svg>
+                <h2>Nenhuma vaga analisada ainda</h2>
+                <p>
+                    Quando um alerta de vaga do LinkedIn chegar no seu email, as vagas aparecem aqui. Para proteger
+                    sua conta, o Vagora analisa um alerta por vez, com 15 a 25 minutos entre um e outro, e abre as
+                    vagas com pausas. Se houver vários alertas acumulados, eles vão aparecendo ao longo do dia.
+                </p>
+            </div>
+            <div id="matches-filtered-empty" class="panel empty" hidden>
+                <h2 id="filtered-empty-title">Nenhuma vaga encontrada</h2>
+                <p id="filtered-empty-text"></p>
+            </div>
+        </section>
+
+        <!-- Contas -->
+        <section data-panel="contas" hidden>
+            <header class="page-head">
+                <h1 class="display">Contas</h1>
+                <p class="summary">De onde vêm os alertas e com qual conta as vagas são abertas.</p>
+            </header>
+            <div class="accounts">
+                <article class="panel account" id="account-email"></article>
+                <article class="panel account" id="account-linkedin"></article>
+            </div>
+        </section>
+
+        <!-- Perfil -->
+        <section data-panel="perfil" hidden>
+            <header class="page-head identity">
+                <div class="avatar" id="avatar" aria-hidden="true"></div>
+                <div>
+                    <h1 class="display" id="profile-title"></h1>
+                    <p class="summary" id="profile-handle"></p>
+                </div>
+            </header>
+
+            <div class="profile-grid">
+                <section class="panel readiness" aria-labelledby="readiness-title">
+                    <h2 id="readiness-title" class="readiness-title"></h2>
+                    <p class="readiness-lede" id="readiness-lede"></p>
+                    <ul class="checklist" id="checklist"></ul>
+                </section>
+
+                <div class="profile-side">
+                    <section class="panel" aria-labelledby="monitoring-title">
+                        <div class="toggle-row">
+                            <div>
+                                <h2 id="monitoring-title" class="panel-title">Verificar o email automaticamente</h2>
+                                <p class="hint" id="monitoring-hint">
+                                    Desligado, o Vagora não abre o email nem o LinkedIn. Os alertas ficam guardados no
+                                    email e são analisados quando você ligar de novo.
+                                </p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="monitoring" aria-describedby="monitoring-hint">
+                                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+                                <span class="visually-hidden">Verificar o email automaticamente</span>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="panel" aria-labelledby="browser-title">
+                        <div class="toggle-row">
+                            <div>
+                                <h2 id="browser-title" class="panel-title">Mostrar o navegador durante a análise</h2>
+                                <p class="hint" id="browser-hint">
+                                    Desligado, o navegador abre escondido e nada aparece na sua tela. Ligue quando o
+                                    LinkedIn pedir uma verificação de segurança, para resolver na janela que abrir.
+                                </p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="show-browser" aria-describedby="browser-hint">
+                                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+                                <span class="visually-hidden">Mostrar o navegador durante a análise</span>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="panel" aria-labelledby="edit-title">
+                        <h2 class="panel-title" id="edit-title">Editar dados</h2>
+                        <form id="profile-form" class="form" novalidate>
+                            <div class="field">
+                                <label for="profile-name">Nome</label>
+                                <input id="profile-name" name="name" autocomplete="name">
+                            </div>
+                            <div class="field">
+                                <label for="profile-gemini">Chave da API do Gemini</label>
+                                <input id="profile-gemini" name="geminiApiKey" type="password" autocomplete="off">
+                                <p class="hint" id="profile-gemini-hint"></p>
+                            </div>
+                            <div class="field">
+                                <label for="profile-curriculum">Trocar currículo</label>
+                                <input id="profile-curriculum" name="curriculum" type="file" accept="application/pdf">
+                                <p class="hint" id="profile-curriculum-hint"></p>
+                            </div>
+                            <p class="form-error" role="alert" hidden></p>
+                            <button class="button primary" type="submit">Salvar perfil</button>
+                        </form>
+                    </section>
+
+                    <section class="panel danger-zone" aria-labelledby="delete-title">
+                        <h2 class="panel-title" id="delete-title">Excluir perfil</h2>
+                        <p class="hint">Apaga o perfil, as contas conectadas e todas as vagas analisadas deste computador.</p>
+                        <button id="delete-profile" class="button danger" type="button">Excluir perfil</button>
+                    </section>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<dialog id="confirm-delete" class="dialog">
+    <form method="dialog">
+        <h2>Excluir este perfil?</h2>
+        <p>As vagas analisadas e as contas conectadas também são apagadas. Isso não pode ser desfeito.</p>
+        <div class="dialog-actions">
+            <button class="button quiet" value="cancel">Cancelar</button>
+            <button class="button danger" value="confirm">Excluir perfil</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- ============================================================
+     Templates
+     ============================================================ -->
+<template id="match-template">
+    <li class="match">
+        <div class="match-score">
+            <span class="score-value"></span><span class="visually-hidden"> de 100</span>
+        </div>
+
+        <div class="match-body">
+            <div class="match-head">
+                <div>
+                    <h2 class="job-title"></h2>
+                    <p class="job-meta"><span class="job-company"></span><span class="analysed-at"></span></p>
+                </div>
+                <p class="verdict"></p>
+            </div>
+
+            <div class="ruler" aria-hidden="true">
+                <div class="ruler-track">
+                    <span class="ruler-fill"></span>
+                    <span class="ruler-cut"></span>
+                </div>
+            </div>
+
+            <ul class="reasons"></ul>
+
+            <div class="match-actions">
+                <a class="button quiet job-link" target="_blank" rel="noopener">
+                    <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Abrir vaga
+                </a>
+                <button class="button quiet copy-ats" type="button" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copiar currículo adaptado
+                </button>
+            </div>
+
+            <details class="ats" hidden>
+                <summary>Ver currículo adaptado</summary>
+                <p class="ats-note">
+                    Reescrito para os sistemas de triagem (ATS) que as empresas usam: texto simples, com as palavras
+                    da vaga. Só usa o que já está no seu currículo; confira antes de enviar.
+                </p>
+                <pre class="ats-text"></pre>
+            </details>
+        </div>
+    </li>
+</template>
+
+<template id="email-form-template">
+    <form class="form email-form" novalidate>
+        <div class="field">
+            <label>Email</label>
+            <input name="username" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+            <div class="label-row">
+                <label>Senha de app</label>
+                <span class="tip">
+                    <button class="tip-trigger" type="button" aria-label="O que é uma senha de app">?</button>
+                    <span class="tip-bubble" role="tooltip">
+                        Uma senha de 16 letras que o Google gera só para um programa. Ela dá acesso ao email,
+                        mas não à sua conta Google, e pode ser revogada a qualquer momento sem trocar a senha principal.
+                    </span>
+                </span>
+            </div>
+            <input name="password" type="password" autocomplete="off" required>
+            <p class="hint">
+                Não é a senha normal do email. No Gmail, ative a verificação em duas etapas e gere uma em
+                <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a>.
+                Outlook, Yahoo e iCloud têm a mesma opção.
+            </p>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <button class="button primary" type="submit">Conectar email</button>
+        <p class="progress" hidden><span class="spinner" aria-hidden="true"></span>Conectando e procurando os alertas em todas as pastas. Pode levar até um minuto.</p>
+    </form>
+</template>
+
+<template id="linkedin-form-template">
+    <form class="form linkedin-form" novalidate>
+        <aside class="risk" aria-labelledby="risk-title">
+            <h3 class="risk-title"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>Antes de conectar, saiba os riscos para a sua conta</h3>
+            <ul>
+                <li>
+                    <strong>Pode contrariar os termos de uso.</strong> O contrato do LinkedIn proíbe ferramentas
+                    automatizadas que acessem o site. Ele pode limitar a sua conta temporariamente ou, em casos repetidos,
+                    suspendê-la.
+                </li>
+                <li>
+                    <strong>Verificações de segurança são comuns.</strong> No primeiro acesso, o LinkedIn costuma pedir
+                    um código por email ou um captcha. Com "Mostrar o navegador" ligado no Perfil, você resolve na janela
+                    que abrir; sem isso, o alerta espera no email.
+                </li>
+                <li>
+                    <strong>Você vai receber avisos de novo acesso.</strong> O login parte deste computador, como se fosse
+                    um navegador novo.
+                </li>
+                <li>
+                    <strong>A senha fica guardada neste computador,</strong> no arquivo <code>vagora.db</code> da pasta do
+                    projeto. Não compartilhe esse arquivo.
+                </li>
+            </ul>
+            <p class="risk-advice">
+                Para reduzir o risco, o Vagora analisa um alerta por vez, com 15 a 25 minutos entre um e outro, e
+                abre as vagas com pausas de 8 a 25 segundos e movimentos parecidos com os de uma pessoa. Se puder,
+                use uma conta secundária do LinkedIn só para isso.
+            </p>
+            <label class="check">
+                <input type="checkbox" name="acceptRisks" required>
+                <span>Entendi os riscos e quero conectar a minha conta.</span>
+            </label>
+        </aside>
+
+        <div class="field">
+            <label>Email ou telefone do LinkedIn</label>
+            <input name="username" autocomplete="off" required>
+        </div>
+        <div class="field">
+            <label>Senha do LinkedIn</label>
+            <input name="password" type="password" autocomplete="off" required>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <button class="button primary" type="submit">Conectar LinkedIn</button>
+    </form>
+</template>
+
+</body>
+</html>
