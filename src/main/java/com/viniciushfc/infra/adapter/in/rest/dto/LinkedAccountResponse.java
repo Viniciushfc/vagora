@@ -6,5 +6,6 @@ import java.util.UUID;
 
 public record LinkedAccountResponse(UUID id,
                                     String username,
-                                    ExternalProvider externalProvider) {
+                                    ExternalProvider externalProvider,
+                                    String folder) {
 }
