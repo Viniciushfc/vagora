@@ -49,3 +49,9 @@ python/.venv/
 python/.profile/
 __pycache__/
 *.pyc
+
+# Banco local (contém credenciais)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
