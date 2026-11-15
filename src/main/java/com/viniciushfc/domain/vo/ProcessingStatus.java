@@ -41,8 +41,11 @@ public record ProcessingStatus(LocalDateTime lastCheckAt,
     }
 
     public ProcessingStatus failed(Exception error) {
-        ErrorCode code = error instanceof DomainException domain ? domain.code() : null;
-        return new ProcessingStatus(lastCheckAt, null, error.getMessage(), code, LocalDateTime.now(), nextAlertAt, queuedAlerts);
+        // só mensagens de domínio são escritas para o usuário; o resto fica no log
+        boolean domain = error instanceof DomainException;
+        String message = domain ? error.getMessage() : "Erro inesperado ao analisar o alerta. Os detalhes estão no log do Vagora.";
+        ErrorCode code = domain ? ((DomainException) error).code() : null;
+        return new ProcessingStatus(lastCheckAt, null, message, code, LocalDateTime.now(), nextAlertAt, queuedAlerts);
     }
 
     public ProcessingStatus waitUntil(LocalDateTime next) {

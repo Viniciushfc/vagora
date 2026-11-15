@@ -138,6 +138,20 @@ class PollJobAlertsUseCaseImplTest {
     }
 
     @Test
+    void erroInesperadoNaoVazaParaATela() throws Exception {
+        var user = user(emailAccount);
+        var alerta = alert("1");
+        when(mailboxGateway.fetchUnreadJobAlerts(emailAccount)).thenReturn(List.of(alerta));
+        doThrow(new NullPointerException("Cannot invoke String.length() because x is null")).when(processEmailReceiverUseCase).execute(user, alerta);
+
+        useCase.execute();
+
+        var status = statusRepository.find(user.id());
+        assertFalse(status.lastError().contains("NullPointer") || status.lastError().contains("Cannot invoke"), status.lastError());
+        assertNull(status.lastErrorCode());
+    }
+
+    @Test
     void sucessoDepoisDeUmaFalhaLimpaOErro() {
         var user = user(emailAccount);
         statusRepository.save(user.id(), statusRepository.find(user.id()).failed(new RuntimeException("erro antigo")));

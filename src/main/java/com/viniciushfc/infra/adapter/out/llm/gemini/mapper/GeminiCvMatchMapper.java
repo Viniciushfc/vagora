@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.types.GenerateContentResponse;
 import com.viniciushfc.domain.vo.CvMatchResult;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
@@ -21,7 +22,7 @@ public class GeminiCvMatchMapper {
         String text = response.text();
 
         if (text == null || text.isBlank()) {
-            throw new ExternalServiceException("Gemini retornou uma resposta vazia.");
+            throw new ExternalServiceException("O Gemini não respondeu à análise. O alerta será tentado de novo.");
         }
 
         String json = removeMarkdownFences(text);
@@ -34,7 +35,8 @@ public class GeminiCvMatchMapper {
             }
             return objectMapper.treeToValue(node, CvMatchResult.class);
         } catch (JsonProcessingException e) {
-            throw new ExternalServiceException("Gemini retornou um JSON inválido: " + json, e);
+            Log.warnf(e, "Resposta do Gemini fora do formato: %s", json);
+            throw new ExternalServiceException("O Gemini devolveu uma resposta fora do formato esperado. O alerta será tentado de novo.", e);
         }
     }
 

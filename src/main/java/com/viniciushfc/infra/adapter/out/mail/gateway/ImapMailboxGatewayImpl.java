@@ -7,6 +7,7 @@ import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.infra.adapter.out.mail.mapper.MailMessageMapper;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.mail.*;
 import jakarta.mail.search.AndTerm;
@@ -80,7 +81,8 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
         } catch (MessagingException e) {
             throw translate(e);
         } catch (IOException e) {
-            throw new ExternalServiceException("Erro lendo email: " + e.getMessage(), e);
+            Log.warn("Erro lendo um alerta do email", e);
+            throw new ExternalServiceException("Não foi possível ler um alerta do email. Ele será tentado de novo.", e);
         }
     }
 
@@ -127,6 +129,7 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
         if (e instanceof AuthenticationFailedException) {
             return new ValidationException("Email ou senha inválidos. No Gmail, use uma senha de app: https://myaccount.google.com/apppasswords");
         }
-        return new ExternalServiceException("Falha ao acessar o email: " + e.getMessage(), e);
+        Log.warn("Falha ao acessar o email por IMAP", e);
+        return new ExternalServiceException("Não foi possível acessar o email agora. O Vagora tenta de novo no próximo ciclo.", e);
     }
 }
