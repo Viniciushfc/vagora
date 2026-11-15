@@ -15,4 +15,6 @@ public interface EmailReceivedRepository {
     EmailReceived findById(UUID id);
 
     boolean existsEmailByMessageId(String messageID);
+
+    void markSuccessProcessed(UUID id);
 }
