@@ -2,9 +2,11 @@ package com.viniciushfc.domain.usecases.impl;
 
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.EmailReceived;
+import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.entities.UserAccount;
 import com.viniciushfc.domain.gateways.*;
 import com.viniciushfc.domain.repositories.EmailReceivedRepository;
+import com.viniciushfc.domain.repositories.JobMatchRepository;
 import com.viniciushfc.domain.repositories.UserAccountRepository;
 import com.viniciushfc.domain.usecases.contracts.ProcessEmailReceiverUseCase;
 import com.viniciushfc.domain.vo.CvMatchResult;
@@ -23,13 +25,15 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
     private final AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway;
     private final UserAccountRepository userAccountRepository;
     private final PdfGateway pdfGateway;
+    private final JobMatchRepository jobMatchRepository;
 
-    public ProcessEmailReceiverUseCaseImpl(EmailReceivedRepository emailReceivedRepository, JobDetailsGateway jobDetailsGateway, AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway, UserAccountRepository userAccountRepository, PdfGateway pdfGateway) {
+    public ProcessEmailReceiverUseCaseImpl(EmailReceivedRepository emailReceivedRepository, JobDetailsGateway jobDetailsGateway, AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway, UserAccountRepository userAccountRepository, PdfGateway pdfGateway, JobMatchRepository jobMatchRepository) {
         this.emailReceivedRepository = emailReceivedRepository;
         this.jobDetailsGateway = jobDetailsGateway;
         this.analyzeJobsMatchCvGateway = analyzeJobsMatchCvGateway;
         this.userAccountRepository = userAccountRepository;
         this.pdfGateway = pdfGateway;
+        this.jobMatchRepository = jobMatchRepository;
     }
 
     @Override
@@ -41,12 +45,37 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         emailReceivedRepository.save(emailReceived);
 
         Set<String> links = extractLinksJobs(emailReceived.email().body());
-        List<JobDetail> jobDetailList = jobDetailsGateway.extractJobsDetails(links);
+        List<JobDetail> jobDetails = jobDetailsGateway.extractJobsDetails(links);
         UserAccount userAccount = userAccountRepository.findByLinkedUsername(emailReceived.email().to());
+
+        if (userAccount == null) {
+            throw new IllegalStateException("Nenhum usuário vinculado ao email: " + emailReceived.email().to());
+        }
+
+        List<JobDetail> jobDetailList = jobDetails.stream()
+                .filter(job -> !jobMatchRepository.existsByUserAccountIdAndJobLink(userAccount.id(), job.link()))
+                .toList();
+
+        if (jobDetailList.isEmpty()) {
+            emailReceivedRepository.markSuccessProcessed(emailReceived.id());
+            return;
+        }
 
         String userCurriculumText = pdfGateway.extractTextPdf(userAccount.curriculum());
         List<CvMatchResult> cvMatchResults = analyzeJobsMatchCvGateway.executeAnalysis(jobDetailList, userCurriculumText);
 
+        if (cvMatchResults.size() != jobDetailList.size()) {
+            throw new IllegalStateException("Quantidade de resultados (" + cvMatchResults.size()
+                    + ") diferente da quantidade de vagas (" + jobDetailList.size() + ")");
+        }
+
+        List<JobMatch> jobMatches = new ArrayList<>();
+        for (int i = 0; i < jobDetailList.size(); i++) {
+            jobMatches.add(JobMatch.create(userAccount.id(), emailReceived.id(), jobDetailList.get(i), cvMatchResults.get(i)));
+        }
+
+        jobMatchRepository.saveAll(jobMatches);
+        emailReceivedRepository.markSuccessProcessed(emailReceived.id());
     }
 
     private Set<String> extractLinksJobs(String body) {

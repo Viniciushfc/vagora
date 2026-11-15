@@ -8,6 +8,7 @@ Extrai os detalhes das vagas dos links do email de alerta do LinkedIn.
 import json
 import os
 import random
+import re
 import sys
 import time
 from pathlib import Path
@@ -70,7 +71,9 @@ def scrape(page, url):
 
     # título da aba: "Título da vaga | Empresa | LinkedIn"
     title, company, _ = page.title().rsplit(" | ", 2)
+    job_id = re.search(r"/jobs/view/(\d+)", url).group(1)
     return {
+        "link": f"https://www.linkedin.com/jobs/view/{job_id}/",
         "title": title,
         "description": description,
         "companyDetails": {"name": company, "descrition": company_description},
