@@ -93,9 +93,7 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         }
 
         String userCurriculumText = pdfGateway.extractTextPdf(profile.curriculum());
-        List<JobMatch> jobMatches = analyze(profile, emailId, jobDetailList, userCurriculumText);
-
-        jobMatchRepository.saveAll(jobMatches);
+        analyze(profile, emailId, jobDetailList, userCurriculumText);
         emailReceivedRepository.markSuccessProcessed(emailId);
         return true;
     }
@@ -109,7 +107,10 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
                 int index = i + 1;
                 activity(a -> a.analyzing(index, jobs.size(), job.title()));
                 CvMatchResult result = analyzeJobsMatchCvGateway.analyze(job, curriculum, profile.geminiApiKey());
-                jobMatches.add(JobMatch.create(profile.id(), emailId, job, result));
+                JobMatch jobMatch = JobMatch.create(profile.id(), emailId, job, result);
+                // salva na hora: se a próxima falhar, esta não é aberta de novo no LinkedIn
+                jobMatchRepository.saveAll(List.of(jobMatch));
+                jobMatches.add(jobMatch);
             }
         } catch (RuntimeException e) {
             String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado na análise do Gemini.";
