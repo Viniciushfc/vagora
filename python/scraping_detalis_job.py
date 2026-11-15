@@ -171,6 +171,7 @@ def main():
         links = json.load(sys.stdin)
         emit("start", total=len(links))
         results = []
+        unreadable = 0
         for i, url in enumerate(links, 1):
             if i > 1:
                 wait = random.uniform(8, 25)
@@ -185,6 +186,15 @@ def main():
                 else:
                     emit("read", index=i, title=job["title"])
                     results.append(job)
+            except PageUnreadable as e:
+                # uma vaga que não carrega não derruba o alerta: pula e guarda a tela para conferir
+                log(f"pulando vaga {i}: {str(e).splitlines()[0]}")
+                unreadable += 1
+                try:
+                    page.screenshot(path=SCREENSHOT)
+                except Exception:
+                    pass
+                emit("unreadable", index=i)
             except Exception as e:
                 # sem resultado parcial: o alerta inteiro é tentado de novo no próximo ciclo
                 log(f"parando: {str(e).splitlines()[0]}")   # 1a linha: sem a URL com token
@@ -200,6 +210,11 @@ def main():
                     page.close()
 
         browser.close()
+    if unreadable and not results:
+        # nenhuma vaga carregou: provavelmente login ou LinkedIn fora do ar; o alerta é tentado de novo
+        log("nenhuma vaga carregou neste alerta")
+        emit("fail", screenshot=SCREENSHOT.exists())
+        sys.exit(EXIT_PAGE_UNREADABLE)
     emit("done", count=len(results))
     json.dump(results, sys.stdout, ensure_ascii=False)
 

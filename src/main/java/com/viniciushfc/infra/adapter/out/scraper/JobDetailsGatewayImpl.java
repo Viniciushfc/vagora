@@ -64,6 +64,11 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         pb.environment().put("LINKEDIN_PASSWORD", linkedinAccount.password());
         pb.environment().put("VAGORA_HEADLESS", !showBrowser && !useVirtualDisplay ? "1" : "0");
         pb.environment().put("VAGORA_INTERACTIVE", showBrowser ? "1" : "0");
+        if (useVirtualDisplay) {
+            // no Wayland o Chrome prefere a tela real se WAYLAND_DISPLAY existir, e a janela aparece
+            pb.environment().remove("WAYLAND_DISPLAY");
+            pb.environment().put("XDG_SESSION_TYPE", "x11");
+        }
 
         try {
             Process process = pb.start();
@@ -133,6 +138,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
             case "job" -> a -> a.reading(index, "Abrindo a vaga " + index + " de " + total);
             case "read" -> a -> a.event("Vaga " + index + " lida: " + event.path("title").asText(), false);
             case "closed" -> a -> a.event("Vaga " + index + " não aceita mais candidaturas: pulada", false);
+            case "unreadable" -> a -> a.skipped("Vaga " + index + ": a descrição não carregou a tempo, pulada");
             case "pause" -> a -> a.event("Pausa de " + event.path("seconds").asInt() + " s antes da próxima vaga, como uma pessoa faria", false);
             case "login" -> a -> a.event("Sessão do LinkedIn expirada: entrando com a sua conta", false);
             case "checkpoint_wait" -> a -> a.event("O LinkedIn pediu uma verificação de segurança: resolva na janela do navegador (até 5 minutos)", true);

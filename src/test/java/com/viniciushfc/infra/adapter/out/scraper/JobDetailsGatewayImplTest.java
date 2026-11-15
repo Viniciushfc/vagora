@@ -39,6 +39,11 @@ class JobDetailsGatewayImplTest {
         activity = apply(activity, "{\"event\":\"closed\",\"index\":1}");
         assertEquals("Vaga 1 não aceita mais candidaturas: pulada", activity.events().getFirst().message());
 
+        activity = apply(activity, "{\"event\":\"unreadable\",\"index\":2}");
+        assertTrue(activity.screenshot(), "vaga pulada deixa a captura disponível");
+        assertTrue(activity.events().getFirst().problem());
+        assertNull(activity.failure(), "pular uma vaga não é falha do alerta");
+
         activity = apply(activity, "{\"event\":\"done\",\"count\":1}");
         assertFalse(activity.running());
         assertNull(activity.failure());

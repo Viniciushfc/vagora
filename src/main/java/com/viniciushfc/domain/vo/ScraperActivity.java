@@ -12,14 +12,14 @@ import java.util.List;
  * @param jobTotal          vagas do alerta atual
  * @param events            passos mais recentes primeiro
  * @param failure           explicação da última falha, ou null
- * @param failureScreenshot existe captura da tela no momento da falha
+ * @param screenshot existe captura da tela do último problema (falha ou vaga pulada)
  */
 public record ScraperActivity(boolean running,
                               int jobIndex,
                               int jobTotal,
                               List<ScraperEvent> events,
                               String failure,
-                              boolean failureScreenshot) {
+                              boolean screenshot) {
 
     static final int MAX_EVENTS = 60;
 
@@ -33,18 +33,23 @@ public record ScraperActivity(boolean running,
     }
 
     public ScraperActivity reading(int index, String message) {
-        return new ScraperActivity(running, index, jobTotal, events, failure, failureScreenshot).event(message, false);
+        return new ScraperActivity(running, index, jobTotal, events, failure, screenshot).event(message, false);
     }
 
     public ScraperActivity event(String message, boolean problem) {
         List<ScraperEvent> next = new ArrayList<>(MAX_EVENTS);
         next.add(new ScraperEvent(LocalDateTime.now(), message, problem));
         next.addAll(events.subList(0, Math.min(events.size(), MAX_EVENTS - 1)));
-        return new ScraperActivity(running, jobIndex, jobTotal, List.copyOf(next), failure, failureScreenshot);
+        return new ScraperActivity(running, jobIndex, jobTotal, List.copyOf(next), failure, screenshot);
+    }
+
+    /** Uma vaga não carregou e foi pulada; a captura da tela fica disponível. */
+    public ScraperActivity skipped(String message) {
+        return new ScraperActivity(running, jobIndex, jobTotal, events, failure, true).event(message, true);
     }
 
     public ScraperActivity finished(String message) {
-        return new ScraperActivity(false, jobIndex, jobTotal, events, null, false).event(message, false);
+        return new ScraperActivity(false, jobIndex, jobTotal, events, null, screenshot).event(message, false);
     }
 
     public ScraperActivity failed(String explanation, boolean screenshot) {

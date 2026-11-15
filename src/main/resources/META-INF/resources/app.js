@@ -359,7 +359,7 @@ function renderMonitor() {
     } else if (status?.lastError) {
         view = { state: "error", title: "Última análise falhou", detail: status.lastError };
     } else if (status?.nextAlertAt && new Date(status.nextAlertAt) > new Date()) {
-        // ritmo de segurança: um alerta a cada 15 a 25 minutos
+        // ritmo de segurança: 15 a 25 minutos entre um acesso ao LinkedIn e outro
         const at = timeFormat.format(new Date(status.nextAlertAt));
         const queue = status.queuedAlerts > 0
             ? ` · ${status.queuedAlerts} ${status.queuedAlerts === 1 ? "alerta" : "alertas"} na fila`
@@ -760,19 +760,25 @@ function renderScraper(activity) {
     progress.hidden = !(activity.running && activity.jobTotal);
     $("#scraper-progress-fill").style.width = activity.jobTotal ? `${Math.round(100 * activity.jobIndex / activity.jobTotal)}%` : "0";
 
+    // painel de problema: falha do alerta ou vaga pulada (com a captura do que o navegador mostrou)
     const failure = $("#scraper-failure");
-    failure.hidden = !activity.failure;
-    if (activity.failure) {
-        $("#scraper-failure-text").textContent = activity.failure;
-        $("#scraper-failure-help").textContent = SCRAPER_HELP[status?.lastErrorCode] ?? "O alerta continua no email e será tentado de novo.";
-        $("#scraper-shot").hidden = !activity.failureScreenshot;
-        if (activity.failureScreenshot) {
-            // a URL muda a cada falha para o navegador não reaproveitar a imagem anterior
+    failure.hidden = !activity.failure && !activity.screenshot;
+    if (!failure.hidden) {
+        $("#failure-title").textContent = activity.failure ? "O que deu errado" : "Vaga pulada";
+        $("#scraper-failure-text").textContent = activity.failure
+            ?? "Uma vaga não carregou a tempo e foi pulada; as outras foram lidas normalmente.";
+        $("#scraper-failure-help").textContent = activity.failure
+            ? (SCRAPER_HELP[status?.lastErrorCode] ?? "O alerta continua no email e será tentado de novo.")
+            : "Veja abaixo o que o navegador mostrava. Se for uma tela de login ou de verificação, ligue \"Mostrar o navegador\" no Perfil.";
+        $("#scraper-shot").hidden = !activity.screenshot;
+        if (activity.screenshot) {
+            // a URL muda a cada evento para o navegador não reaproveitar a imagem anterior
             const src = `/profile/scraper/screenshot?at=${encodeURIComponent(activity.events[0]?.at ?? "")}`;
             if ($("#scraper-shot-img").getAttribute("src") !== src) $("#scraper-shot-img").src = src;
             $("#scraper-shot-link").href = src;
         }
     }
+
 
     $("#scraper-empty").hidden = activity.events.length > 0;
     $("#scraper-events").replaceChildren(...activity.events.map((event) => {
@@ -1004,7 +1010,7 @@ function renderReadiness() {
         ? "Tudo pronto para analisar vagas"
         : `Falta ${missing} ${missing === 1 ? "item" : "itens"} para analisar vagas`;
     $("#readiness-lede").textContent = missing === 0
-        ? "O Vagora acompanha seu email e analisa um alerta de vaga por vez, com 15 a 25 minutos entre um e outro."
+        ? "O Vagora acompanha seu email, analisa os alertas da última semana e espera de 15 a 25 minutos entre um acesso ao LinkedIn e outro."
         : "Enquanto algum item estiver pendente, os alertas ficam no email esperando, sem serem marcados como lidos.";
     $("#checklist").replaceChildren(...items.map(checkItem));
 }
