@@ -39,15 +39,18 @@ Gemini para a análise).
 
 ```
  Alerta de vaga         Vagora lê o email        Navegador abre         Gemini compara       Resultado
- no seu email    ──▶    (um alerta por vez,  ──▶  cada vaga e lê   ──▶   vaga x currículo ──▶  na tela, com nota,
-                         15 a 25 min de pausa)     a descrição           e dá a nota          motivos e currículo
+ no seu email    ──▶    (última semana,      ──▶  só as vagas      ──▶   vaga x currículo ──▶  na tela, com nota,
+                         mais novos primeiro)      novas                 e dá a nota          motivos e currículo
 ```
 
 - **Só alertas de vaga:** o Vagora busca apenas os emails da plataforma e só marca como lido o que já analisou. Seus
   outros emails ficam intocados.
-- **Ritmo humano:** um alerta por vez, com 15 a 25 minutos entre eles, e pausas de 8 a 25 segundos entre as vagas,
-  para não chamar a atenção da plataforma.
-- **Sem retrabalho:** vagas já analisadas e vagas encerradas ("não aceita mais candidaturas") são puladas.
+- **Ritmo humano:** 15 a 25 minutos entre um acesso à plataforma e outro, e pausas de 8 a 25 segundos entre as
+  vagas, para não chamar a atenção.
+- **Recentes primeiro:** só alertas da última semana, dos mais novos para os mais antigos. Os mais antigos ficam
+  intocados no email.
+- **Sem retrabalho:** vagas já analisadas nem são abertas de novo; vagas encerradas ("não aceita mais candidaturas")
+  e vagas cuja página não carregou são puladas, sem derrubar o alerta.
 - **Corte de 70:** a vaga é *compatível* quando a nota chega a 70 **e** os requisitos obrigatórios são atendidos.
 
 ## Começando
