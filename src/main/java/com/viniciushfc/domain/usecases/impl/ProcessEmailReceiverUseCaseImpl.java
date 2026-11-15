@@ -1,6 +1,7 @@
 package com.viniciushfc.domain.usecases.impl;
 
 import com.viniciushfc.domain.exceptions.BusinessException;
+import com.viniciushfc.domain.exceptions.DomainException;
 import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.EmailReceived;
@@ -13,12 +14,15 @@ import com.viniciushfc.domain.gateways.JobDetailsGateway;
 import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.repositories.EmailReceivedRepository;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
+import com.viniciushfc.domain.repositories.ScraperActivityRepository;
 import com.viniciushfc.domain.usecases.contracts.ProcessEmailReceiverUseCase;
 import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
+import com.viniciushfc.domain.vo.ScraperActivity;
 
 import java.util.*;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,13 +37,15 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
     private final AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway;
     private final PdfGateway pdfGateway;
     private final JobMatchRepository jobMatchRepository;
+    private final ScraperActivityRepository scraperActivityRepository;
 
-    public ProcessEmailReceiverUseCaseImpl(EmailReceivedRepository emailReceivedRepository, JobDetailsGateway jobDetailsGateway, AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway, PdfGateway pdfGateway, JobMatchRepository jobMatchRepository) {
+    public ProcessEmailReceiverUseCaseImpl(EmailReceivedRepository emailReceivedRepository, JobDetailsGateway jobDetailsGateway, AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway, PdfGateway pdfGateway, JobMatchRepository jobMatchRepository, ScraperActivityRepository scraperActivityRepository) {
         this.emailReceivedRepository = emailReceivedRepository;
         this.jobDetailsGateway = jobDetailsGateway;
         this.analyzeJobsMatchCvGateway = analyzeJobsMatchCvGateway;
         this.pdfGateway = pdfGateway;
         this.jobMatchRepository = jobMatchRepository;
+        this.scraperActivityRepository = scraperActivityRepository;
     }
 
     @Override
@@ -87,16 +93,36 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         }
 
         String userCurriculumText = pdfGateway.extractTextPdf(profile.curriculum());
-        List<CvMatchResult> cvMatchResults = analyzeJobsMatchCvGateway.executeAnalysis(jobDetailList, userCurriculumText, profile.geminiApiKey());
-
-        List<JobMatch> jobMatches = new ArrayList<>();
-        for (int i = 0; i < jobDetailList.size(); i++) {
-            jobMatches.add(JobMatch.create(profile.id(), emailId, jobDetailList.get(i), cvMatchResults.get(i)));
-        }
+        List<JobMatch> jobMatches = analyze(profile, emailId, jobDetailList, userCurriculumText);
 
         jobMatchRepository.saveAll(jobMatches);
         emailReceivedRepository.markSuccessProcessed(emailId);
         return true;
+    }
+
+    // uma vaga por vez, registrando o progresso para a página de acompanhamento
+    private List<JobMatch> analyze(Profile profile, UUID emailId, List<JobDetail> jobs, String curriculum) {
+        List<JobMatch> jobMatches = new ArrayList<>();
+        try {
+            for (int i = 0; i < jobs.size(); i++) {
+                JobDetail job = jobs.get(i);
+                int index = i + 1;
+                activity(a -> a.analyzing(index, jobs.size(), job.title()));
+                CvMatchResult result = analyzeJobsMatchCvGateway.analyze(job, curriculum, profile.geminiApiKey());
+                jobMatches.add(JobMatch.create(profile.id(), emailId, job, result));
+            }
+        } catch (RuntimeException e) {
+            String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado na análise do Gemini.";
+            activity(a -> a.failed(message, a.screenshot()));
+            throw e;
+        }
+        long matches = jobMatches.stream().filter(JobMatch::match).count();
+        activity(a -> a.analysisFinished((int) matches, jobs.size()));
+        return jobMatches;
+    }
+
+    private void activity(UnaryOperator<ScraperActivity> change) {
+        scraperActivityRepository.save(change.apply(scraperActivityRepository.get()));
     }
 
     /** ID da vaga -> link do email, na ordem em que aparecem. */

@@ -6,11 +6,9 @@ import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.infra.adapter.out.llm.gemini.impl.GeminiServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import java.util.List;
 
 /**
- * Uma chamada ao Gemini por vaga, no formato que o prompt espera (uma vaga, um JSON):
- * assim a nota nunca é atribuída à vaga errada.
+ * Uma chamada ao Gemini por vaga, no formato que o prompt espera (uma vaga, um JSON).
  */
 @ApplicationScoped
 public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway {
@@ -22,10 +20,8 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
     }
 
     @Override
-    public List<CvMatchResult> executeAnalysis(List<JobDetail> jobDetails, String cvUser, String apiKey) {
-        return jobDetails.stream()
-                .map(job -> geminiServiceImpl.analyze(prompt(job, cvUser), apiKey))
-                .toList();
+    public CvMatchResult analyze(JobDetail jobDetail, String cvUser, String apiKey) {
+        return geminiServiceImpl.analyze(prompt(jobDetail, cvUser), apiKey);
     }
 
     static String prompt(JobDetail job, String cvUser) {

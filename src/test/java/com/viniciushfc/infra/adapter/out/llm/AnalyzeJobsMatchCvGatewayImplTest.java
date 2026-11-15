@@ -14,7 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class AnalyzeJobsMatchCvGatewayImplTest {
 
@@ -23,23 +25,17 @@ class AnalyzeJobsMatchCvGatewayImplTest {
     }
 
     @Test
-    void umaChamadaPorVagaNaMesmaOrdemComAsMarcacoesDoPrompt() {
+    void mandaUmaVagaPorPromptComAsMarcacoesEsperadas() {
         var gemini = mock(GeminiServiceImpl.class);
-        var java = new CvMatchResult(true, 90, List.of("m"), "cv");
-        var react = new CvMatchResult(false, 30, List.of("m"), null);
-        when(gemini.analyze(argThat(p -> p != null && p.contains("Dev Java")), eq("chave"))).thenReturn(java);
-        when(gemini.analyze(argThat(p -> p != null && p.contains("Dev React")), eq("chave"))).thenReturn(react);
+        var result = new CvMatchResult(true, 90, List.of("m"), "cv");
+        when(gemini.analyze(argThat(p -> p != null && p.contains("Dev Java")), eq("chave"))).thenReturn(result);
 
-        var results = new AnalyzeJobsMatchCvGatewayImpl(gemini)
-                .executeAnalysis(List.of(job("Dev Java"), job("Dev React")), "meu curriculo", "chave");
+        assertEquals(result, new AnalyzeJobsMatchCvGatewayImpl(gemini).analyze(job("Dev Java"), "meu curriculo", "chave"));
 
-        assertEquals(List.of(java, react), results);
-        ArgumentCaptor<String> prompts = ArgumentCaptor.forClass(String.class);
-        verify(gemini, times(2)).analyze(prompts.capture(), eq("chave"));
-        String first = prompts.getAllValues().getFirst();
-        assertTrue(first.contains("<vaga>") && first.contains("</vaga>"));
-        assertTrue(first.contains("<curriculo>\nmeu curriculo\n</curriculo>"));
-        assertTrue(first.contains("Empresa: ACME"));
-        assertTrue(!first.contains("Dev React"), "cada prompt leva só uma vaga");
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(gemini).analyze(prompt.capture(), eq("chave"));
+        assertTrue(prompt.getValue().contains("<vaga>") && prompt.getValue().contains("</vaga>"));
+        assertTrue(prompt.getValue().contains("<curriculo>\nmeu curriculo\n</curriculo>"));
+        assertTrue(prompt.getValue().contains("Empresa: ACME"));
     }
 }
