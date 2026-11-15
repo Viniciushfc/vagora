@@ -189,9 +189,8 @@ Erros têm sempre o mesmo formato:
 
 - [x] LinkedIn: leitura dos alertas, abertura das vagas e análise
 - [x] Interface web com acompanhamento do leitor e currículo adaptado
-- [ ] **Novas plataformas de vagas:** Indeed, Gupy, Catho e outras
-- [ ] Criptografia das credenciais salvas no `vagora.db`
 - [ ] Suporte a Windows no `run.sh` (`run.ps1`)
+- [ ] **Novas plataformas de vagas:** Indeed, Gupy, Catho e outras
 - [ ] Notificação quando surgir uma vaga compatível
 
 ## Licença
