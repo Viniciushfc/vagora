@@ -279,6 +279,8 @@ class ProfileResourceTest {
                 .statusCode(200)
                 .body("lastCheckAt", nullValue())
                 .body("lastError", nullValue());
+
+        given().when().get("/profile/scraper").then().statusCode(200).body("running", is(false));
     }
 
     @Test

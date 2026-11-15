@@ -13,4 +13,7 @@ public interface JobDetailsGateway {
      */
     List<JobDetail> extractJobsDetails(Set<String> jobLinks, LinkedAccount linkedinAccount, boolean showBrowser);
 
+    /** Captura da tela do navegador na última falha (PNG), ou null. */
+    byte[] lastFailureScreenshot();
+
 }

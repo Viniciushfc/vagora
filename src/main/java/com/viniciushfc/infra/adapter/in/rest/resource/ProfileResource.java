@@ -6,6 +6,7 @@ import com.viniciushfc.domain.usecases.contracts.*;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.domain.vo.ProcessingStatus;
+import com.viniciushfc.domain.vo.ScraperActivity;
 import com.viniciushfc.infra.adapter.in.rest.dto.*;
 import com.viniciushfc.infra.adapter.in.rest.mapper.JobMatchRestMapper;
 import com.viniciushfc.infra.adapter.in.rest.mapper.ProfileRestMapper;
@@ -32,6 +33,7 @@ public class ProfileResource {
     private final UpdateEmailFolderUseCase updateEmailFolderUseCase;
     private final ListJobMatchesUseCase listJobMatchesUseCase;
     private final GetProcessingStatusUseCase getProcessingStatusUseCase;
+    private final GetScraperActivityUseCase getScraperActivityUseCase;
 
     public ProfileResource(CreateProfileUseCase createProfileUseCase,
                            GetProfileUseCase getProfileUseCase,
@@ -42,7 +44,8 @@ public class ProfileResource {
                            ListEmailFoldersUseCase listEmailFoldersUseCase,
                            UpdateEmailFolderUseCase updateEmailFolderUseCase,
                            ListJobMatchesUseCase listJobMatchesUseCase,
-                           GetProcessingStatusUseCase getProcessingStatusUseCase) {
+                           GetProcessingStatusUseCase getProcessingStatusUseCase,
+                           GetScraperActivityUseCase getScraperActivityUseCase) {
         this.createProfileUseCase = createProfileUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
@@ -53,6 +56,7 @@ public class ProfileResource {
         this.updateEmailFolderUseCase = updateEmailFolderUseCase;
         this.listJobMatchesUseCase = listJobMatchesUseCase;
         this.getProcessingStatusUseCase = getProcessingStatusUseCase;
+        this.getScraperActivityUseCase = getScraperActivityUseCase;
     }
 
     @GET
@@ -134,5 +138,18 @@ public class ProfileResource {
     @Path("/status")
     public ProcessingStatus status() {
         return getProcessingStatusUseCase.execute();
+    }
+
+    @GET
+    @Path("/scraper")
+    public ScraperActivity scraper() {
+        return getScraperActivityUseCase.execute();
+    }
+
+    @GET
+    @Path("/scraper/screenshot")
+    @Produces("image/png")
+    public byte[] scraperScreenshot() {
+        return getScraperActivityUseCase.failureScreenshot();
     }
 }

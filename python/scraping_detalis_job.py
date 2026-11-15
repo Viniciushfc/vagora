@@ -8,7 +8,10 @@ Variáveis de ambiente (definidas pelo Vagora):
   VAGORA_HEADLESS=1     roda sem janela
   VAGORA_INTERACTIVE=1  a janela está na tela: espera a pessoa resolver verificações do LinkedIn
 
-Códigos de saída: 0 ok (JSON no stdout), 3 verificação de segurança, 4 login recusado, 1 outra falha.
+Códigos de saída: 0 ok (JSON no stdout), 3 verificação de segurança, 4 login recusado,
+5 a página da vaga não carregou como esperado, 1 outra falha.
+No stderr, linhas "@@ {json}" são eventos de progresso para o Vagora; as demais são log técnico.
+Na falha, a tela do navegador é salva em last-failure.png.
 """
 
 import json
@@ -18,15 +21,24 @@ import re
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
-from patchright.sync_api import sync_playwright
+from patchright.sync_api import TimeoutError as PlaywrightTimeout, sync_playwright
 
 from human import Human, pause
 
 PROFILE = Path(__file__).parent / ".profile"
-SECTION = 'xpath=//h2[normalize-space()="{}"]/ancestor::div[.//*[@data-testid="expandable-text-box"]][1]'
-JOB = SECTION.format("Sobre a vaga")
-COMPANY = SECTION.format("Sobre a empresa")
+SCREENSHOT = Path(__file__).parent / "last-failure.png"
+SECTION = 'xpath=//h2[{}]/ancestor::div[.//*[@data-testid="expandable-text-box"]][1]'
+
+
+def section(*titles):
+    # o LinkedIn pode vir em português ou inglês
+    return SECTION.format(" or ".join(f'normalize-space()="{t}"' for t in titles))
+
+
+JOB = section("Sobre a vaga", "About the job")
+COMPANY = section("Sobre a empresa", "About the company")
 TEXT = '[data-testid="expandable-text-box"]'
 MORE = '[data-testid="expandable-text-button"]'
 
@@ -37,7 +49,7 @@ HEADLESS = os.environ.get("VAGORA_HEADLESS") == "1"
 INTERACTIVE = os.environ.get("VAGORA_INTERACTIVE") == "1"
 CHECKPOINT_WAIT_MS = 5 * 60_000
 
-EXIT_FAILURE, EXIT_CHECKPOINT, EXIT_LOGIN_FAILED = 1, 3, 4
+EXIT_FAILURE, EXIT_CHECKPOINT, EXIT_LOGIN_FAILED, EXIT_PAGE_UNREADABLE = 1, 3, 4, 5
 
 
 class Checkpoint(Exception):
@@ -48,8 +60,17 @@ class LoginFailed(Exception):
     """O LinkedIn recusou o login (senha errada ou conta bloqueada)."""
 
 
+class PageUnreadable(Exception):
+    """A página abriu, mas a descrição da vaga não apareceu (lentidão, layout novo ou tela de login)."""
+
+
 def log(msg):
     print(f"[scraper] {msg}", file=sys.stderr, flush=True)
+
+
+def emit(event, **data):
+    # progresso estruturado: o Vagora traduz para a página de acompanhamento
+    print("@@ " + json.dumps({"event": event, **data}, ensure_ascii=False), file=sys.stderr, flush=True)
 
 
 def text(page, section):
@@ -76,12 +97,23 @@ def handle_checkpoint(page):
         return
     if not INTERACTIVE:
         raise Checkpoint("verificação de segurança com o navegador escondido")
-    log("verificação de segurança: resolva na janela do navegador (até 5 minutos)")
+    emit("checkpoint_wait")
     try:
         page.wait_for_url(lambda u: "/checkpoint/" not in u, timeout=CHECKPOINT_WAIT_MS)
     except Exception:
         raise Checkpoint("verificação de segurança não resolvida a tempo")
-    log("verificação resolvida")
+    emit("checkpoint_resolved")
+
+
+def parse_title(page_title):
+    """'(3) Vaga | Empresa | LinkedIn' -> ('Vaga', 'Empresa'); tolera títulos fora desse formato."""
+    parts = [p.strip() for p in re.sub(r"^\(\d+\)\s*", "", page_title).split(" | ")]
+    if parts[-1] == "LinkedIn":
+        parts = parts[:-1]
+    if len(parts) < 2:
+        return (parts[0] if parts else ""), ""
+    # a empresa é a última parte; o título da vaga pode conter " | "
+    return " | ".join(parts[:-1]), parts[-1]
 
 
 def scrape(page, url):
@@ -90,14 +122,16 @@ def scrape(page, url):
     human = Human(page)
 
     if "/login" in page.url or "/authwall" in page.url:
-        log("sessão expirada: fazendo login")
+        emit("login")
         login(page, human)
     handle_checkpoint(page)
 
     # espera a descrição ou o aviso de vaga encerrada, o que aparecer primeiro
-    page.locator(JOB).or_(page.locator(CLOSED)).first.wait_for(timeout=15_000)
+    try:
+        page.locator(JOB).or_(page.locator(CLOSED)).first.wait_for(timeout=15_000)
+    except PlaywrightTimeout:
+        raise PageUnreadable(f"descrição não apareceu em 15 s (página: {urlparse(page.url).path}, título: {page.title()!r})")
     if page.locator(CLOSED).count():
-        log("vaga encerrada: não aceita mais candidaturas, pulando")
         return None
     human.idle()
 
@@ -112,7 +146,7 @@ def scrape(page, url):
     company_description = text(page, COMPANY)
 
     # título da aba: "Título da vaga | Empresa | LinkedIn"
-    title, company, _ = page.title().rsplit(" | ", 2)
+    title, company = parse_title(page.title())
     job_id = re.search(r"/jobs/view/(\d+)", url).group(1)
     return {
         "link": f"https://www.linkedin.com/jobs/view/{job_id}/",
@@ -125,7 +159,7 @@ def scrape(page, url):
 def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch_persistent_context(
-            PROFILE, channel="chrome", headless=HEADLESS, no_viewport=True)
+            PROFILE, channel="chrome", headless=HEADLESS, no_viewport=True, locale="pt-BR")
 
         if "--login" in sys.argv:
             browser.pages[0].goto("https://www.linkedin.com/login")
@@ -133,19 +167,32 @@ def main():
             browser.close()
             return
 
+        SCREENSHOT.unlink(missing_ok=True)
+        links = json.load(sys.stdin)
+        emit("start", total=len(links))
         results = []
-        for i, url in enumerate(json.load(sys.stdin), 1):
+        for i, url in enumerate(links, 1):
             if i > 1:
-                time.sleep(random.uniform(8, 25))
-            log(f"vaga {i}")
+                wait = random.uniform(8, 25)
+                emit("pause", seconds=round(wait))
+                time.sleep(wait)
+            emit("job", index=i, total=len(links))
             page = browser.new_page()   # aba nova, como o clique no email
             try:
                 job = scrape(page, url)
-                if job is not None:
+                if job is None:
+                    emit("closed", index=i)
+                else:
+                    emit("read", index=i, title=job["title"])
                     results.append(job)
             except Exception as e:
                 # sem resultado parcial: o alerta inteiro é tentado de novo no próximo ciclo
                 log(f"parando: {str(e).splitlines()[0]}")   # 1a linha: sem a URL com token
+                try:
+                    page.screenshot(path=SCREENSHOT)
+                except Exception:
+                    pass
+                emit("fail", index=i, screenshot=SCREENSHOT.exists())
                 browser.close()
                 sys.exit(exit_code(e))
             finally:
@@ -153,6 +200,7 @@ def main():
                     page.close()
 
         browser.close()
+    emit("done", count=len(results))
     json.dump(results, sys.stdout, ensure_ascii=False)
 
 
@@ -161,6 +209,8 @@ def exit_code(error):
         return EXIT_CHECKPOINT
     if isinstance(error, LoginFailed):
         return EXIT_LOGIN_FAILED
+    if isinstance(error, PageUnreadable):
+        return EXIT_PAGE_UNREADABLE
     return EXIT_FAILURE
 
 

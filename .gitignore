@@ -55,3 +55,6 @@ __pycache__/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Captura da tela do scraper na última falha
+python/last-failure.png
