@@ -80,6 +80,14 @@ class PanacheRepositoriesTest {
 
         emailReceivedRepository.save(email);
         assertFalse(isSuccessProcessed(email.id()));
+        assertTrue(emailReceivedRepository.existsEmailByMessageId(email.messageId()));
+        assertFalse(emailReceivedRepository.existsEmailByMessageId(UUID.randomUUID().toString()));
+        assertNull(emailReceivedRepository.findByMessageId(UUID.randomUUID().toString()));
+
+        var found = emailReceivedRepository.findByMessageId(email.messageId());
+        assertEquals(email.id(), found.id());
+        assertEquals("corpo", found.email().body());
+        assertEquals(1, found.email().attachments().size());
 
         emailReceivedRepository.markSuccessProcessed(email.id());
         assertTrue(isSuccessProcessed(email.id()));

@@ -80,14 +80,36 @@ class ProcessEmailReceiverUseCaseImplTest {
     }
 
     @Test
-    void ignoraEmailJaRecebido() throws Exception {
+    void ignoraEmailJaProcessadoComSucesso() throws Exception {
         var email = alertEmail(LINK_1);
-        when(emailReceivedRepository.existsEmailByMessageId("msg-1")).thenReturn(true);
+        var processado = new EmailReceived(UUID.randomUUID(), "msg-1", email.email(), true);
+        when(emailReceivedRepository.findByMessageId("msg-1")).thenReturn(processado);
 
         useCase.execute(email);
 
         verify(emailReceivedRepository, never()).save(any());
-        verifyNoInteractions(jobDetailsGateway, analyzeJobsMatchCvGateway, jobMatchRepository);
+        verifyNoInteractions(userAccountRepository, jobDetailsGateway, analyzeJobsMatchCvGateway, jobMatchRepository);
+    }
+
+    @Test
+    void reprocessaEmailQueFalhouReaproveitandoORegistro() throws Exception {
+        var email = alertEmail(LINK_1);
+        var falhou = new EmailReceived(UUID.randomUUID(), "msg-1", email.email(), false);
+        var job = job("111");
+        when(emailReceivedRepository.findByMessageId("msg-1")).thenReturn(falhou);
+        when(userAccountRepository.findByLinkedUsername(TO)).thenReturn(user);
+        when(jobDetailsGateway.extractJobsDetails(any())).thenReturn(List.of(job));
+        when(pdfGateway.extractTextPdf(any())).thenReturn("texto cv");
+        when(analyzeJobsMatchCvGateway.executeAnalysis(anyList(), anyString())).thenReturn(List.of(result(true, 90)));
+
+        useCase.execute(email);
+
+        verify(emailReceivedRepository, never()).save(any());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<JobMatch>> captor = ArgumentCaptor.forClass(List.class);
+        verify(jobMatchRepository).saveAll(captor.capture());
+        assertEquals(falhou.id(), captor.getValue().getFirst().emailReceivedId());
+        verify(emailReceivedRepository).markSuccessProcessed(falhou.id());
     }
 
     @Test
@@ -104,14 +126,13 @@ class ProcessEmailReceiverUseCaseImplTest {
     }
 
     @Test
-    void lancaErroQuandoNaoHaUsuarioVinculado() {
+    void lancaErroAntesDoScrapingQuandoNaoHaUsuarioVinculado() {
         var email = alertEmail(LINK_1);
-        when(jobDetailsGateway.extractJobsDetails(any())).thenReturn(List.of(job("111")));
 
         assertThrows(IllegalStateException.class, () -> useCase.execute(email));
 
-        verify(emailReceivedRepository, never()).markSuccessProcessed(any());
-        verifyNoInteractions(analyzeJobsMatchCvGateway, jobMatchRepository);
+        verify(emailReceivedRepository, never()).save(any());
+        verifyNoInteractions(jobDetailsGateway, analyzeJobsMatchCvGateway, jobMatchRepository);
     }
 
     @Test
