@@ -3,6 +3,7 @@ package com.viniciushfc.infra.adapter.out.database.panache.repositories.impl;
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.repositories.EmailReceivedRepository;
 import com.viniciushfc.domain.utils.Utils;
+import com.viniciushfc.infra.adapter.out.database.panache.mapper.EmailReceivedMapper;
 import com.viniciushfc.infra.adapter.out.database.panache.repositories.contracts.PanacheEmailReceivedRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -41,8 +42,16 @@ public class PanacheEmailReceivedRepositoryImpl implements EmailReceivedReposito
     }
 
     @Override
+    @Transactional
     public boolean existsEmailByMessageId(String messageID) {
-        return false;
+        return panacheEmailReceivedRepository.count("messageId", messageID) > 0;
+    }
+
+    @Override
+    @Transactional
+    public EmailReceived findByMessageId(String messageId) {
+        var entity = panacheEmailReceivedRepository.find("messageId", messageId).firstResult();
+        return Utils.isNull(entity) ? null : EmailReceivedMapper.toDomain(entity);
     }
 
     @Override
