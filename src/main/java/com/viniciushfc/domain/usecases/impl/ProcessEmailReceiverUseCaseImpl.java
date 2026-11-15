@@ -37,20 +37,29 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
     }
 
     @Override
-    public void execute(EmailReceived emailReceived) throws IOException {
-        if (!emailReceived.isAlertJob() || emailReceivedRepository.existsEmailByMessageId(emailReceived.messageId())) {
+    public void execute(EmailReceived received) throws IOException {
+        if (!received.isAlertJob()) {
             return;
         }
 
-        emailReceivedRepository.save(emailReceived);
+        EmailReceived existing = emailReceivedRepository.findByMessageId(received.messageId());
+        if (existing != null && existing.successProcessed()) {
+            return;
+        }
+
+        UserAccount userAccount = userAccountRepository.findByLinkedUsername(received.email().to());
+        if (userAccount == null) {
+            throw new IllegalStateException("Nenhum usuário vinculado ao email: " + received.email().to());
+        }
+
+        EmailReceived emailReceived = existing;
+        if (emailReceived == null) {
+            emailReceived = received;
+            emailReceivedRepository.save(emailReceived);
+        }
 
         Set<String> links = extractLinksJobs(emailReceived.email().body());
         List<JobDetail> jobDetails = jobDetailsGateway.extractJobsDetails(links);
-        UserAccount userAccount = userAccountRepository.findByLinkedUsername(emailReceived.email().to());
-
-        if (userAccount == null) {
-            throw new IllegalStateException("Nenhum usuário vinculado ao email: " + emailReceived.email().to());
-        }
 
         List<JobDetail> jobDetailList = jobDetails.stream()
                 .filter(job -> !jobMatchRepository.existsByUserAccountIdAndJobLink(userAccount.id(), job.link()))
