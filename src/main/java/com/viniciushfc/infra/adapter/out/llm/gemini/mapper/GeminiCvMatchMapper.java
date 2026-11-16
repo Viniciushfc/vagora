@@ -4,10 +4,14 @@ import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.genai.types.GenerateContentResponse;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
+
+import java.util.List;
+import java.util.Arrays;
 
 @ApplicationScoped
 public class GeminiCvMatchMapper {
@@ -18,7 +22,7 @@ public class GeminiCvMatchMapper {
         this.objectMapper = objectMapper;
     }
 
-    public CvMatchResult toDomain(GenerateContentResponse response) {
+    public List<CvMatchResult> toDomain(GenerateContentResponse response, int expected) {
         String text = response.text();
 
         if (text == null || text.isBlank()) {
@@ -26,18 +30,29 @@ public class GeminiCvMatchMapper {
         }
 
         String json = removeMarkdownFences(text);
-
         try {
             JsonNode node = objectMapper.readTree(json);
-            // o prompt pede um objeto; se o modelo devolver uma lista com ele, aceita o primeiro
-            if (node.isArray() && !node.isEmpty()) {
-                node = node.get(0);
+            JsonNode items = node.isArray() ? node : objectMapper.createArrayNode().add(node);
+            CvMatchResult[] results = new CvMatchResult[expected];
+            for (JsonNode item : items) {
+                int id = item.path("id").asInt(expected == 1 ? 1 : 0);
+                if (id < 1 || id > expected || results[id - 1] != null) {
+                    throw invalid(json, null);
+                }
+                results[id - 1] = objectMapper.treeToValue(((ObjectNode) item.deepCopy()).without("id"), CvMatchResult.class);
             }
-            return objectMapper.treeToValue(node, CvMatchResult.class);
+            if (Arrays.asList(results).contains(null)) {
+                throw invalid(json, null);
+            }
+            return List.of(results);
         } catch (JsonProcessingException e) {
-            Log.warnf(e, "Resposta do Gemini fora do formato: %s", json);
-            throw new ExternalServiceException("O Gemini devolveu uma resposta fora do formato esperado. O alerta será tentado de novo.", e);
+            throw invalid(json, e);
         }
+    }
+
+    private ExternalServiceException invalid(String json, Exception cause) {
+        Log.warnf(cause, "Resposta do Gemini fora do formato: %s", json);
+        return new ExternalServiceException("O Gemini devolveu uma resposta fora do formato esperado. O alerta será tentado de novo.", cause);
     }
 
     private String removeMarkdownFences(String text) {

@@ -29,7 +29,6 @@ import java.util.regex.Pattern;
 @UseCase
 public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseCase {
 
-    // formato do link salvo nas vagas analisadas (o mesmo que o scraper devolve)
     static final String JOB_URL = "https://www.linkedin.com/jobs/view/%s/";
 
     private final EmailReceivedRepository emailReceivedRepository;
@@ -68,13 +67,11 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             throw new BusinessException("Configure a chave do Gemini no Perfil.", ErrorCode.GEMINI_KEY_MISSING);
         }
 
-        // o banco guarda só id e status; o conteúdo vem sempre do email recebido agora
         UUID emailId = existing != null ? existing.id() : received.id();
         if (existing == null) {
             emailReceivedRepository.save(received);
         }
 
-        // vaga já analisada não é aberta de novo: o ID vem no link do email
         Set<String> links = new LinkedHashSet<>();
         extractLinksJobs(received.email().body()).forEach((jobId, link) -> {
             if (!jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), JOB_URL.formatted(jobId))) {
@@ -98,17 +95,20 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         return true;
     }
 
-    // uma vaga por vez, registrando o progresso para a página de acompanhamento
     private List<JobMatch> analyze(Profile profile, UUID emailId, List<JobDetail> jobs, String curriculum) {
         List<JobMatch> jobMatches = new ArrayList<>();
         try {
+            activity(a -> a.analyzing(jobs.size()));
+            List<CvMatchResult> results = analyzeJobsMatchCvGateway.analyze(jobs, curriculum, profile.geminiApiKey());
             for (int i = 0; i < jobs.size(); i++) {
                 JobDetail job = jobs.get(i);
-                int index = i + 1;
-                activity(a -> a.analyzing(index, jobs.size(), job.title()));
-                CvMatchResult result = analyzeJobsMatchCvGateway.analyze(job, curriculum, profile.geminiApiKey());
+                CvMatchResult result = results.get(i);
+                if (result.match()) {
+                    activity(a -> a.adapting(job.title()));
+                    String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(job, curriculum, profile.geminiApiKey());
+                    result = new CvMatchResult(true, result.score(), result.motivos(), adapted);
+                }
                 JobMatch jobMatch = JobMatch.create(profile.id(), emailId, job, result);
-                // salva na hora: se a próxima falhar, esta não é aberta de novo no LinkedIn
                 jobMatchRepository.saveAll(List.of(jobMatch));
                 jobMatches.add(jobMatch);
             }
@@ -126,7 +126,6 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         scraperActivityRepository.save(change.apply(scraperActivityRepository.get()));
     }
 
-    /** ID da vaga -> link do email, na ordem em que aparecem. */
     private Map<String, String> extractLinksJobs(String body) {
         Map<String, String> linksById = new LinkedHashMap<>();
         Matcher matcher = Pattern.compile(

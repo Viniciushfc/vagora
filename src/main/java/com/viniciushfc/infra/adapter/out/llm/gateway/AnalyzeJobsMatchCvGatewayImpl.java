@@ -6,10 +6,8 @@ import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.infra.adapter.out.llm.gemini.impl.GeminiServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.List;
 
-/**
- * Uma chamada ao Gemini por vaga, no formato que o prompt espera (uma vaga, um JSON).
- */
 @ApplicationScoped
 public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway {
 
@@ -20,23 +18,33 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
     }
 
     @Override
-    public CvMatchResult analyze(JobDetail jobDetail, String cvUser, String apiKey) {
-        return geminiServiceImpl.analyze(prompt(jobDetail, cvUser), apiKey);
+    public List<CvMatchResult> analyze(List<JobDetail> jobs, String cvUser, String apiKey) {
+        StringBuilder prompt = new StringBuilder();
+        for (int i = 0; i < jobs.size(); i++) {
+            prompt.append(job(jobs.get(i), i + 1)).append('\n');
+        }
+        prompt.append(curriculum(cvUser));
+        return geminiServiceImpl.analyze(prompt.toString(), jobs.size(), apiKey);
     }
 
-    static String prompt(JobDetail job, String cvUser) {
+    @Override
+    public String adaptCurriculum(JobDetail jobDetail, String cvUser, String apiKey) {
+        return geminiServiceImpl.adaptCurriculum(job(jobDetail, 1) + "\n" + curriculum(cvUser), apiKey);
+    }
+
+    static String job(JobDetail job, int id) {
         var company = job.companyDetails();
         return """
-                <vaga>
+                <vaga id="%d">
                 Título: %s
                 Empresa: %s
                 Descrição: %s
                 Sobre a empresa: %s
-                </vaga>
-                <curriculo>
-                %s
-                </curriculo>
-                """.formatted(job.title(), company == null ? "" : company.name(), job.description(),
-                company == null ? "" : company.description(), cvUser);
+                </vaga>""".formatted(id, job.title(), company == null ? "" : company.name(), job.description(),
+                company == null ? "" : company.description());
+    }
+
+    static String curriculum(String cvUser) {
+        return "<curriculo>\n" + cvUser + "\n</curriculo>\n";
     }
 }

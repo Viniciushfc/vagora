@@ -23,32 +23,27 @@ class GeminiCvMatchMapperTest {
         return response;
     }
 
-    private static final String JSON = """
-            {"match": true, "score": 80, "motivos": ["a", "b"], "curriculoAts": "cv"}""";
-
     @Test
-    void converteOResultado() {
-        assertEquals(new CvMatchResult(true, 80, List.of("a", "b"), "cv"), mapper.toDomain(response(JSON)));
+    void ordenaPeloIdDaVaga() {
+        String json = """
+                [{"id": 2, "match": false, "score": 30, "motivos": ["b"]},
+                 {"id": 1, "match": true, "score": 80, "motivos": ["a"]}]""";
+        assertEquals(List.of(new CvMatchResult(true, 80, List.of("a"), null), new CvMatchResult(false, 30, List.of("b"), null)),
+                mapper.toDomain(response("```json\n" + json + "\n```"), 2));
     }
 
     @Test
-    void removeBlocoMarkdown() {
-        assertEquals(80, mapper.toDomain(response("```json\n" + JSON + "\n```")).score());
+    void recusaIdFaltandoRepetidoOuForaDoAlerta() {
+        assertThrows(ExternalServiceException.class, () -> mapper.toDomain(response("[{\"id\": 1, \"score\": 1}]"), 2));
+        assertThrows(ExternalServiceException.class,
+                () -> mapper.toDomain(response("[{\"id\": 1, \"score\": 1}, {\"id\": 1, \"score\": 2}]"), 2));
+        assertThrows(ExternalServiceException.class, () -> mapper.toDomain(response("[{\"id\": 3, \"score\": 1}]"), 1));
     }
 
     @Test
-    void aceitaListaComUmResultado() {
-        assertEquals(80, mapper.toDomain(response("[" + JSON + "]")).score());
-    }
-
-    @Test
-    void respostaVaziaLancaErro() {
-        assertThrows(ExternalServiceException.class, () -> mapper.toDomain(response("  ")));
-        assertThrows(ExternalServiceException.class, () -> mapper.toDomain(response(null)));
-    }
-
-    @Test
-    void jsonInvalidoLancaErro() {
-        assertThrows(ExternalServiceException.class, () -> mapper.toDomain(response("não é json")));
+    void respostaVaziaOuInvalidaLancaErro() {
+        assertThrows(ExternalServiceException.class, () -> mapper.toDomain(response("  "), 1));
+        assertThrows(ExternalServiceException.class, () -> mapper.toDomain(response(null), 1));
+        assertThrows(ExternalServiceException.class, () -> mapper.toDomain(response("não é json"), 1));
     }
 }

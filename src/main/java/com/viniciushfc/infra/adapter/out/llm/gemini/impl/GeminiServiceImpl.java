@@ -5,6 +5,8 @@ import com.google.genai.errors.ApiException;
 import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import io.quarkus.logging.Log;
+import com.viniciushfc.domain.exceptions.RateLimitedException;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import com.google.genai.types.*;
 import com.viniciushfc.domain.prompts.PromptsContextsLLM;
 import com.viniciushfc.domain.vo.CvMatchResult;
@@ -12,6 +14,9 @@ import com.viniciushfc.infra.adapter.out.llm.gemini.mapper.GeminiCvMatchMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.Duration;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -22,34 +27,47 @@ import java.util.concurrent.TimeoutException;
 @ApplicationScoped
 public class GeminiServiceImpl {
 
-    private static final String MODEL = "gemini-3.8-flash";
-    // o SDK só limita o tempo de conexão, não a espera da resposta: sem isso uma chamada travada
-    // prende o monitoramento para sempre. shortcut: valor fixo; respostas normais levam segundos.
     static final Duration TIMEOUT = Duration.ofSeconds(90);
     private static final ExecutorService CALLS = Executors.newVirtualThreadPerTaskExecutor();
 
-    private final GenerateContentConfig config;
+    private final GenerateContentConfig analysisConfig = config(PromptsContextsLLM.MatchAnalysisPrompt, "application/json");
+    private final GenerateContentConfig curriculumConfig = config(PromptsContextsLLM.AtsCurriculumPrompt, "text/plain");
 
     private final GeminiCvMatchMapper cvMatchMapper;
 
-    public GeminiServiceImpl(GeminiCvMatchMapper cvMatchMapper) {
-        this.config = GenerateContentConfig.builder()
-                .temperature(0.2f)
-                .responseMimeType("application/json")
-                .systemInstruction(Content.fromParts(Part.fromText(PromptsContextsLLM.AnalyzerCvMatcherPrompt)))
-                .build();
-        ;
+    private final String model;
+
+    public GeminiServiceImpl(GeminiCvMatchMapper cvMatchMapper, @ConfigProperty(name = "vagora.gemini.model", defaultValue = "gemini-3.8-flash") String model) {
         this.cvMatchMapper = cvMatchMapper;
+        this.model = model;
     }
 
-    public CvMatchResult analyze(String prompt, String apiKey) {
-        // cada perfil usa a própria chave
+    private static GenerateContentConfig config(String systemPrompt, String mimeType) {
+        return GenerateContentConfig.builder()
+                .temperature(0.2f)
+                .responseMimeType(mimeType)
+                .systemInstruction(Content.fromParts(Part.fromText(systemPrompt)))
+                .build();
+    }
+
+    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey) {
+        return cvMatchMapper.toDomain(call(analysisConfig, prompt, apiKey), jobs);
+    }
+
+    public String adaptCurriculum(String prompt, String apiKey) {
+        String text = call(curriculumConfig, prompt, apiKey).text();
+        if (text == null || text.isBlank()) {
+            throw new ExternalServiceException("O Gemini não devolveu o currículo adaptado. O alerta será tentado de novo.");
+        }
+        return text.strip();
+    }
+
+    private GenerateContentResponse call(GenerateContentConfig config, String prompt, String apiKey) {
         Client client = Client.builder().apiKey(apiKey).build();
         try {
-            GenerateContentResponse response = CompletableFuture
-                    .supplyAsync(() -> client.models.generateContent(MODEL, prompt, config), CALLS)
+            return CompletableFuture
+                    .supplyAsync(() -> client.models.generateContent(model, prompt, config), CALLS)
                     .get(TIMEOUT.toSeconds(), TimeUnit.SECONDS);
-            return cvMatchMapper.toDomain(response);
         } catch (TimeoutException e) {
             Log.warnf("O Gemini não respondeu em %d s", TIMEOUT.toSeconds());
             throw new ExternalServiceException("O Gemini demorou demais para responder. O alerta será tentado de novo.");
@@ -59,8 +77,34 @@ public class GeminiServiceImpl {
             Thread.currentThread().interrupt();
             throw new ExternalServiceException("A análise do Gemini foi interrompida.");
         } finally {
-            client.close(); // fecha a conexão, inclusive a que ficou pendurada no timeout
+            client.close();
         }
+    }
+
+    private static final Pattern RETRY_IN = Pattern.compile("retry in (?:(\\d+)h)?(?:(\\d+)m)?(?:([\\d.]+)s)?");
+
+    static RateLimitedException quotaExceeded(String apiMessage) {
+        Duration wait = Duration.ofMinutes(30);
+        Matcher m = RETRY_IN.matcher(apiMessage == null ? "" : apiMessage);
+        if (m.find() && (m.group(1) != null || m.group(2) != null || m.group(3) != null)) {
+            wait = Duration.ofHours(parse(m.group(1))).plusMinutes(parse(m.group(2)))
+                    .plusSeconds((long) Math.ceil(m.group(3) == null ? 0 : Double.parseDouble(m.group(3))));
+        }
+        return new RateLimitedException("O limite de uso do Gemini foi atingido. A análise volta a funcionar em cerca de "
+                + humanize(wait) + ".", ErrorCode.GEMINI_QUOTA_EXCEEDED, wait);
+    }
+
+    private static long parse(String number) {
+        return number == null ? 0 : Long.parseLong(number);
+    }
+
+    private static String humanize(Duration wait) {
+        long hours = wait.toHours();
+        long minutes = wait.toMinutesPart() + (wait.toSecondsPart() > 0 ? 1 : 0);
+        if (hours == 0) {
+            return Math.max(1, minutes) + " min";
+        }
+        return hours + " h" + (minutes > 0 ? " " + minutes + " min" : "");
     }
 
     private RuntimeException translate(Throwable cause) {
@@ -69,8 +113,7 @@ public class GeminiServiceImpl {
             return switch (e.code()) {
                 case 400, 401, 403 -> new ExternalServiceException(
                         "A chave do Gemini foi recusada. Confira a chave no Perfil.", ErrorCode.GEMINI_KEY_REJECTED);
-                case 429 -> new ExternalServiceException(
-                        "O limite de uso do Gemini foi atingido. O alerta será tentado de novo mais tarde.");
+                case 429 -> quotaExceeded(e.message());
                 default -> new ExternalServiceException("O Gemini está indisponível agora. O alerta será tentado de novo.");
             };
         }

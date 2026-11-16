@@ -78,7 +78,7 @@ class ProcessEmailReceiverUseCaseImplTest {
     }
 
     private CvMatchResult result(boolean match, int score) {
-        return new CvMatchResult(match, score, List.of("motivo"), match ? "cv ats" : null);
+        return new CvMatchResult(match, score, List.of("motivo"), null);
     }
 
     @Test
@@ -143,7 +143,8 @@ class ProcessEmailReceiverUseCaseImplTest {
         when(jobMatchRepository.existsByProfileIdAndJobLink(user.id(), "https://www.linkedin.com/jobs/view/111/")).thenReturn(true);
         when(jobDetailsGateway.extractJobsDetails(Set.of(LINK_2), linkedin, false)).thenReturn(List.of(nova));
         when(pdfGateway.extractTextPdf(user.curriculum())).thenReturn("texto cv");
-        when(analyzeJobsMatchCvGateway.analyze(nova, "texto cv", "chave-gemini")).thenReturn(result(true, 85));
+        when(analyzeJobsMatchCvGateway.analyze(List.of(nova), "texto cv", "chave-gemini")).thenReturn(List.of(result(true, 85)));
+        when(analyzeJobsMatchCvGateway.adaptCurriculum(nova, "texto cv", "chave-gemini")).thenReturn("cv ats");
 
         assertTrue(useCase.execute(user, email), "acessou o LinkedIn");
 
@@ -155,11 +156,13 @@ class ProcessEmailReceiverUseCaseImplTest {
         assertEquals(1, captor.getValue().size());
         assertEquals(email.id(), saved.emailReceivedId());
         assertEquals(nova.link(), saved.jobLink());
+        assertEquals("cv ats", saved.curriculoAts(), "currículo adaptado vem da segunda chamada");
         verify(emailReceivedRepository).markSuccessProcessed(email.id());
 
         var events = scraperActivityRepository.get().events().stream().map(e -> e.message()).toList();
         assertEquals("Análise concluída: 1 compatível de 1", events.get(0));
-        assertEquals("Gemini analisando a vaga 1 de 1: Dev 222", events.get(1));
+        assertEquals("Vaga compatível: Gemini escrevendo o currículo adaptado para Dev 222", events.get(1));
+        assertEquals("Gemini analisando 1 vaga de uma vez", events.get(2));
         assertFalse(scraperActivityRepository.get().analyzing());
     }
 
@@ -192,7 +195,7 @@ class ProcessEmailReceiverUseCaseImplTest {
         when(emailReceivedRepository.findByMessageId("msg-1")).thenReturn(falhou);
         when(jobDetailsGateway.extractJobsDetails(any(), any(), anyBoolean())).thenReturn(List.of(job("111")));
         when(pdfGateway.extractTextPdf(any())).thenReturn("texto cv");
-        when(analyzeJobsMatchCvGateway.analyze(any(), anyString(), anyString())).thenReturn(result(true, 90));
+        when(analyzeJobsMatchCvGateway.analyze(anyList(), anyString(), anyString())).thenReturn(List.of(result(false, 40)));
 
         useCase.execute(user, email);
 
