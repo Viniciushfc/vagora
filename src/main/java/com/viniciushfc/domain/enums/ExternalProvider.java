@@ -1,4 +1,4 @@
-package com.viniciushfc.domain.enums.impl;
+package com.viniciushfc.domain.enums;
 
 public enum ExternalProvider {
     LINKEDIN("LinkedIn"),

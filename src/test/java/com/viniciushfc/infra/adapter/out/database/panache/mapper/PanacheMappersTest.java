@@ -3,7 +3,7 @@ package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
-import com.viniciushfc.domain.enums.impl.ExternalProvider;
+import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheProfileEntity;
 import org.junit.jupiter.api.Test;

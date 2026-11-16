@@ -4,7 +4,7 @@ import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
-import com.viniciushfc.domain.enums.impl.ExternalProvider;
+import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.repositories.EmailReceivedRepository;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
 import com.viniciushfc.domain.repositories.ProfileRepository;

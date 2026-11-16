@@ -2,7 +2,7 @@ package com.viniciushfc.domain.usecases.impl;
 
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.Profile;
-import com.viniciushfc.domain.enums.impl.ExternalProvider;
+import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.UnlinkAccountUseCase;

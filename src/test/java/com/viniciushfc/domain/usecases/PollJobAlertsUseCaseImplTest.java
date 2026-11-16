@@ -3,7 +3,7 @@ package com.viniciushfc.domain.usecases;
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
-import com.viniciushfc.domain.enums.impl.ExternalProvider;
+import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.gateways.MailboxGateway;

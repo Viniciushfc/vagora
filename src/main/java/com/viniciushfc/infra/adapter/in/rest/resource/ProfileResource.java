@@ -1,6 +1,6 @@
 package com.viniciushfc.infra.adapter.in.rest.resource;
 
-import com.viniciushfc.domain.enums.impl.ExternalProvider;
+import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.domain.usecases.contracts.*;
 import com.viniciushfc.domain.vo.Attachment;

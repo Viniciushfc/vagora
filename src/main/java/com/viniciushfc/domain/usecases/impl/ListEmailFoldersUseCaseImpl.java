@@ -4,7 +4,7 @@ import com.viniciushfc.domain.exceptions.BusinessException;
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
-import com.viniciushfc.domain.enums.impl.ExternalProvider;
+import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.ListEmailFoldersUseCase;

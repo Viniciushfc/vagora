@@ -1,6 +1,6 @@
 package com.viniciushfc.infra.adapter.in.rest.dto;
 
-import com.viniciushfc.domain.enums.impl.ExternalProvider;
+import com.viniciushfc.domain.enums.ExternalProvider;
 
 public record LinkedAccountRequest(String username,
                                    String password,

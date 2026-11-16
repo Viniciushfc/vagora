@@ -1,6 +1,6 @@
 package com.viniciushfc.domain.entities;
 
-import com.viniciushfc.domain.enums.impl.ExternalProvider;
+import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.vo.*;
 import org.junit.jupiter.api.Test;
 
