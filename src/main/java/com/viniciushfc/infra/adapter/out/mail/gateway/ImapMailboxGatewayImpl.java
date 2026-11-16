@@ -26,10 +26,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 
-/**
- * Acessa a caixa de email por IMAP. A leitura abre as pastas em modo somente leitura,
- * então nenhum email é marcado como lido sem chamar {@link #markAsRead}.
- */
 @ApplicationScoped
 public class ImapMailboxGatewayImpl implements MailboxGateway {
 
@@ -78,7 +74,6 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
                         new ReceivedDateTerm(ComparisonTerm.GE, sinceDate)});
                 Message[] messages = folder.search(unreadAlerts);
 
-                // a pasta vem do mais antigo para o mais novo: as vagas recentes aparecem primeiro
                 List<EmailReceived> alerts = new ArrayList<>();
                 for (int i = messages.length - 1; i >= 0 && alerts.size() < MAX_ALERTS_PER_POLL; i--) {
                     alerts.add(mapper.toDomain(messages[i]));

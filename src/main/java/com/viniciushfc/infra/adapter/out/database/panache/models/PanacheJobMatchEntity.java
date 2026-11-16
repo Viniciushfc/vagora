@@ -12,7 +12,7 @@ public class PanacheJobMatchEntity {
 
     @Id
     private UUID id;
-    @Column(name = "userAccountId") // nome antigo mantido: bancos existentes já têm as vagas nessa coluna
+    @Column(name = "userAccountId")
     private UUID profileId;
     private UUID emailReceivedId;
     private String jobLink;

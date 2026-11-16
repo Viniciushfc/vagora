@@ -14,7 +14,6 @@ public class JobAlertsPollingJob {
         this.pollJobAlertsUseCase = pollJobAlertsUseCase;
     }
 
-    // SKIP: o processamento de um alerta pode levar minutos (scraping), não sobrepõe execuções
     @Scheduled(every = "{vagora.poll.every}", delayed = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void poll() {
         try {

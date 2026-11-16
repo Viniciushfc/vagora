@@ -5,17 +5,6 @@ import com.viniciushfc.domain.exceptions.ErrorCode;
 
 import java.time.LocalDateTime;
 
-/**
- * Situação do monitoramento do perfil.
- *
- * @param lastCheckAt  última vez que o ciclo rodou
- * @param currentAlert alerta sendo analisado agora
- * @param lastError    último erro (limpo quando um alerta dá certo)
- * @param lastErrorCode código do último erro, quando ele tem tratamento específico
- * @param lastErrorAt  quando o último erro aconteceu
- * @param nextAlertAt  antes disso nenhum alerta novo é aberto (ritmo de segurança do LinkedIn)
- * @param queuedAlerts alertas não lidos esperando a vez
- */
 public record ProcessingStatus(LocalDateTime lastCheckAt,
                                String currentAlert,
                                String lastError,
@@ -41,7 +30,6 @@ public record ProcessingStatus(LocalDateTime lastCheckAt,
     }
 
     public ProcessingStatus failed(Exception error) {
-        // só mensagens de domínio são escritas para o usuário; o resto fica no log
         boolean domain = error instanceof DomainException;
         String message = domain ? error.getMessage() : "Erro inesperado ao analisar o alerta. Os detalhes estão no log do Vagora.";
         ErrorCode code = domain ? ((DomainException) error).code() : null;

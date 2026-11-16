@@ -7,7 +7,6 @@ import jakarta.persistence.Table;
 
 import java.util.UUID;
 
-/** Só o necessário para não processar o mesmo alerta duas vezes: o conteúdo do email não é guardado. */
 @Entity
 @Table(name = "email_received")
 public class PanacheEmailReceivedEntity {

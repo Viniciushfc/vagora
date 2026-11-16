@@ -11,7 +11,6 @@ public interface MailboxGateway {
 
     List<MailFolder> listFolders(LinkedAccount emailAccount);
 
-    /** Alertas não lidos recebidos a partir de {@code since}, do mais novo para o mais antigo. */
     List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, LocalDate since);
 
     void markAsRead(LinkedAccount emailAccount, String messageId);

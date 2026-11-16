@@ -19,12 +19,10 @@ public record Profile(UUID id,
         return new Profile(UUID.randomUUID(), name, geminiApiKey, curriculum, new ArrayList<>(), false, true);
     }
 
-    /** Mostrar o navegador do scraper na tela; por padrão ele roda escondido. */
     public boolean isBrowserVisible() {
         return Boolean.TRUE.equals(showBrowser);
     }
 
-    /** Verificar o email automaticamente; só fica pausado quando a pessoa desliga. */
     public boolean isMonitoringEnabled() {
         return !Boolean.FALSE.equals(monitoringEnabled);
     }

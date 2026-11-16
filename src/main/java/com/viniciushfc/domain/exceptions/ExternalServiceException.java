@@ -1,8 +1,5 @@
 package com.viniciushfc.domain.exceptions;
 
-/**
- * Falha em serviço externo (email, Gemini, scraper do LinkedIn).
- */
 public non-sealed class ExternalServiceException extends DomainException {
 
     public ExternalServiceException(String message) {

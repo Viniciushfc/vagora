@@ -16,10 +16,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Conecta uma conta externa ao perfil: no máximo uma por provider (uma de email, uma do LinkedIn...).
- * Para conta de email, testa o login e, se a pasta não for informada, escolhe a que tem mais alertas de vaga.
- */
 @UseCase
 public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
 
@@ -77,7 +73,6 @@ public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
     }
 
     private String resolveFolder(LinkedAccount emailAccount, String requestedFolder) {
-        // listar as pastas também valida usuário e senha do email
         List<MailFolder> folders = mailboxGateway.listFolders(emailAccount);
 
         if (!Utils.isNull(requestedFolder) && !requestedFolder.isBlank()) {

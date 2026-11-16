@@ -10,7 +10,6 @@ import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.io.IOException;
 
-/** Extrai o texto do PDF com PDFBox. Que o arquivo é um PDF já foi validado no upload (CurriculumValidator). */
 @ApplicationScoped
 public class PdfGatewayImpl implements PdfGateway {
 

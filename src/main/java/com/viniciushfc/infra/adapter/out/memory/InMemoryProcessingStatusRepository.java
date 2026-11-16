@@ -8,10 +8,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Em memória de propósito: o estado se renova a cada ciclo de verificação,
- * então não precisa sobreviver a um reinício.
- */
 @ApplicationScoped
 public class InMemoryProcessingStatusRepository implements ProcessingStatusRepository {
 

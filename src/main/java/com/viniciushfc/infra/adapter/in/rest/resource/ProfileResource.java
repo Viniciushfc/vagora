@@ -18,7 +18,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-/** O perfil desta instalação: cada instalação tem um só, então as rotas não levam id. */
 @Path("/profile")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProfileResource {
@@ -85,7 +84,6 @@ public class ProfileResource {
         return Response.noContent().build();
     }
 
-    // abre o PDF no navegador (inline); o nome segue o RFC 5987 para aceitar acentos
     @GET
     @Path("/curriculum")
     @Produces("application/pdf")

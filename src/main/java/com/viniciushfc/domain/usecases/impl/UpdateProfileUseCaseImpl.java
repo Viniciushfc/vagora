@@ -15,7 +15,6 @@ public class UpdateProfileUseCaseImpl implements UpdateProfileUseCase {
         this.profileRepository = profileRepository;
     }
 
-    /** Campos nulos em {@code changes} mantêm o valor atual. */
     @Override
     public Profile execute(Profile changes) {
         Profile current = profileRepository.require();

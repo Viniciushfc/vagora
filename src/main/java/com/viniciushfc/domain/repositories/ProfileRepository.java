@@ -7,12 +7,10 @@ import com.viniciushfc.domain.exceptions.NotFoundException;
 import java.util.List;
 import java.util.UUID;
 
-/** Cada instalação tem um único perfil. */
 public interface ProfileRepository {
 
     Profile save(Profile profile);
 
-    /** O perfil desta instalação, ou {@code null} se ainda não foi criado. */
     Profile find();
 
     Profile update(UUID id, Profile profile);

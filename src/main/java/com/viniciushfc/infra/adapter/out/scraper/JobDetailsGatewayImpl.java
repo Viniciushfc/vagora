@@ -26,20 +26,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
 
-/**
- * Executa o scraper em Python. Com o navegador escondido, usa uma tela virtual (xvfb-run)
- * quando existe: o Chrome continua "normal" para o LinkedIn. Sem xvfb, cai no modo headless.
- * Os eventos do scraper viram a página de acompanhamento; o log técnico fica só no terminal.
- */
 @ApplicationScoped
 public class JobDetailsGatewayImpl implements JobDetailsGateway {
 
-    // códigos de saída combinados com python/scraping_detalis_job.py
     static final int EXIT_CHECKPOINT = 3;
     static final int EXIT_LOGIN_FAILED = 4;
     static final int EXIT_PAGE_UNREADABLE = 5;
 
-    // shortcut: limite fixo; ~10 vagas com pausas + 5 min de verificação cabem com folga. Aumente se os alertas crescerem.
     static final Duration TIMEOUT = Duration.ofMinutes(30);
 
     private static final String EVENT_PREFIX = "@@ ";
@@ -65,7 +58,6 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         pb.environment().put("VAGORA_HEADLESS", !showBrowser && !useVirtualDisplay ? "1" : "0");
         pb.environment().put("VAGORA_INTERACTIVE", showBrowser ? "1" : "0");
         if (useVirtualDisplay) {
-            // no Wayland o Chrome prefere a tela real se WAYLAND_DISPLAY existir, e a janela aparece
             pb.environment().remove("WAYLAND_DISPLAY");
             pb.environment().put("XDG_SESSION_TYPE", "x11");
         }
@@ -74,7 +66,6 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
             Process process = pb.start();
             Thread stderr = Thread.ofVirtual().start(() -> process.errorReader().lines().forEach(this::onScraperLine));
 
-            // sem isso, um Chrome travado prende o monitoramento para sempre
             AtomicBoolean timedOut = new AtomicBoolean();
             CompletableFuture.delayedExecutor(TIMEOUT.toMinutes(), TimeUnit.MINUTES).execute(() -> {
                 if (process.isAlive()) {
@@ -119,7 +110,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
 
     private void onScraperLine(String line) {
         if (!line.startsWith(EVENT_PREFIX)) {
-            System.err.println(line); // log técnico: terminal, nunca a interface
+            System.err.println(line);
             return;
         }
         try {
@@ -129,7 +120,6 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         }
     }
 
-    /** Traduz um evento do scraper para o estado mostrado na página do LinkedIn. */
     static UnaryOperator<ScraperActivity> applyEvent(JsonNode event) {
         int index = event.path("index").asInt();
         int total = event.path("total").asInt();

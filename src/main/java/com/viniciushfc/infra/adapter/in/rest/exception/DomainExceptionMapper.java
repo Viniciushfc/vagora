@@ -12,14 +12,10 @@ import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 
 import java.util.UUID;
 
-/**
- * Converte qualquer exception em {@link ErrorResponse}, para a API ter um único formato de erro.
- */
 public class DomainExceptionMapper {
 
     @ServerExceptionMapper
     public Response map(DomainException e, UriInfo uriInfo) {
-        // sem default: DomainException é sealed, então uma categoria nova sem tratamento não compila
         ErrorType type = switch (e) {
             case NotFoundException ignored -> ErrorType.NOT_FOUND;
             case ValidationException ignored -> ErrorType.VALIDATION_ERROR;
@@ -35,7 +31,6 @@ public class DomainExceptionMapper {
         return build(ErrorResponse.of(type, e.getMessage(), type.status, path(uriInfo), e.code()));
     }
 
-    // erros do próprio JAX-RS: rota inexistente (404), método errado (405), content-type errado (415)...
     @ServerExceptionMapper
     public Response map(WebApplicationException e, UriInfo uriInfo) {
         int status = e.getResponse().getStatus();
@@ -43,7 +38,6 @@ public class DomainExceptionMapper {
                 ? Response.Status.fromStatusCode(status).getReasonPhrase() : e.getMessage(), status, path(uriInfo)));
     }
 
-    // qualquer outra coisa: não expõe detalhes internos, só um id para achar no log
     @ServerExceptionMapper
     public Response map(Exception e, UriInfo uriInfo) {
         String errorId = UUID.randomUUID().toString();
