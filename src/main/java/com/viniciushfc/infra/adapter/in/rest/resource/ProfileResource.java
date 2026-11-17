@@ -1,8 +1,10 @@
 package com.viniciushfc.infra.adapter.in.rest.resource;
 
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.domain.usecases.contracts.*;
+import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.domain.vo.ProcessingStatus;
@@ -17,6 +19,7 @@ import jakarta.ws.rs.core.Response;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @Path("/profile")
 @Produces(MediaType.APPLICATION_JSON)
@@ -131,7 +134,8 @@ public class ProfileResource {
     @Path("/email/folder")
     @Consumes(MediaType.APPLICATION_JSON)
     public ProfileResponse updateEmailFolder(EmailFolderRequest request) {
-        return ProfileRestMapper.toResponse(updateEmailFolderUseCase.execute(request.folder()));
+        return ProfileRestMapper.toResponse(updateEmailFolderUseCase.execute(
+                Utils.isNull(request.source()) ? AlertSource.LINKEDIN : request.source(), request.folder()));
     }
 
     @GET
@@ -144,7 +148,7 @@ public class ProfileResource {
 
     @GET
     @Path("/status")
-    public ProcessingStatus status() {
+    public Map<AlertSource, ProcessingStatus> status() {
         return getProcessingStatusUseCase.execute();
     }
 

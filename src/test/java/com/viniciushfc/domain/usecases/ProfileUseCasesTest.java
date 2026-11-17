@@ -22,8 +22,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import static com.viniciushfc.domain.enums.AlertSource.INDEED;
+import static com.viniciushfc.domain.enums.AlertSource.LINKEDIN;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -50,7 +53,7 @@ class ProfileUseCasesTest {
     }
 
     private LinkedAccount request(String login, ExternalProvider provider, String folder) {
-        return new LinkedAccount(null, login, "senha", provider, folder);
+        return new LinkedAccount(null, login, "senha", provider, folder, null);
     }
 
     @SuppressWarnings("unchecked")
@@ -115,10 +118,10 @@ class ProfileUseCasesTest {
     void linkRejeitaCamposVaziosSemConsultarNada() {
         var useCase = new LinkAccountUseCaseImpl(profileRepository, mailboxGateway);
 
-        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, null, "s", ExternalProvider.EMAIL, null)));
-        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, " ", "s", ExternalProvider.EMAIL, null)));
-        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, "u", "", ExternalProvider.EMAIL, null)));
-        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, "u", "s", null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, null, "s", ExternalProvider.EMAIL, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, " ", "s", ExternalProvider.EMAIL, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, "u", "", ExternalProvider.EMAIL, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, "u", "s", null, null, null)));
         verifyNoInteractions(profileRepository, mailboxGateway);
     }
 
@@ -161,7 +164,7 @@ class ProfileUseCasesTest {
     void linkEmailDetectaPastaComMaisAlertas() {
         Profile current = existing();
         when(mailboxGateway.listFolders(any())).thenReturn(List.of(
-                new MailFolder("INBOX", 0), new MailFolder("LinkedIn", 12), new MailFolder("Spam", 1)));
+                new MailFolder("INBOX", Map.of(LINKEDIN, 0)), new MailFolder("LinkedIn", Map.of(LINKEDIN, 12)), new MailFolder("Spam", Map.of(LINKEDIN, 1))));
 
         new LinkAccountUseCaseImpl(profileRepository, mailboxGateway).execute(request("f@gmail.com", ExternalProvider.EMAIL, null));
 
@@ -169,19 +172,32 @@ class ProfileUseCasesTest {
     }
 
     @Test
+    void linkEmailDetectaAPastaDoIndeedSeparada() {
+        Profile current = existing();
+        when(mailboxGateway.listFolders(any())).thenReturn(List.of(
+                new MailFolder("INBOX", Map.of(LINKEDIN, 2, INDEED, 1)), new MailFolder("Indeed", Map.of(INDEED, 4))));
+
+        new LinkAccountUseCaseImpl(profileRepository, mailboxGateway).execute(request("f@gmail.com", ExternalProvider.EMAIL, null));
+
+        assertEquals("INBOX", savedAccounts(current).getFirst().folder(LINKEDIN));
+        assertEquals("Indeed", savedAccounts(current).getFirst().folder(INDEED));
+    }
+
+    @Test
     void linkEmailUsaInboxQuandoNaoHaAlertas() {
         Profile current = existing();
-        when(mailboxGateway.listFolders(any())).thenReturn(List.of(new MailFolder("INBOX", 0), new MailFolder("Outros", 0)));
+        when(mailboxGateway.listFolders(any())).thenReturn(List.of(new MailFolder("INBOX", Map.of(LINKEDIN, 0)), new MailFolder("Outros", Map.of(LINKEDIN, 0))));
 
         new LinkAccountUseCaseImpl(profileRepository, mailboxGateway).execute(request("f@gmail.com", ExternalProvider.EMAIL, null));
 
         assertEquals("INBOX", savedAccounts(current).getFirst().folder());
+        assertNull(savedAccounts(current).getFirst().indeedFolder(), "sem alerta do Indeed, o Indeed fica sem pasta");
     }
 
     @Test
     void linkEmailComPastaInformadaValidaSeExiste() {
         existing();
-        when(mailboxGateway.listFolders(any())).thenReturn(List.of(new MailFolder("INBOX", 0)));
+        when(mailboxGateway.listFolders(any())).thenReturn(List.of(new MailFolder("INBOX", Map.of(LINKEDIN, 0))));
 
         var useCase = new LinkAccountUseCaseImpl(profileRepository, mailboxGateway);
         assertThrows(ValidationException.class, () -> useCase.execute(request("f@gmail.com", ExternalProvider.EMAIL, "NaoExiste")));
@@ -201,12 +217,13 @@ class ProfileUseCasesTest {
         var email = LinkedAccount.create("f@gmail.com", "app", ExternalProvider.EMAIL, "INBOX");
         var linkedin = LinkedAccount.create("login", "x", ExternalProvider.LINKEDIN, null);
         Profile current = existing(email, linkedin);
-        when(mailboxGateway.listFolders(email)).thenReturn(List.of(new MailFolder("INBOX", 0), new MailFolder("LinkedIn", 5)));
+        when(mailboxGateway.listFolders(email)).thenReturn(List.of(new MailFolder("INBOX", Map.of(LINKEDIN, 0)), new MailFolder("LinkedIn", Map.of(LINKEDIN, 5))));
 
-        new UpdateEmailFolderUseCaseImpl(profileRepository, mailboxGateway).execute("LinkedIn");
+        new UpdateEmailFolderUseCaseImpl(profileRepository, mailboxGateway).execute(LINKEDIN, "LinkedIn");
 
         var linked = savedAccounts(current);
         assertEquals("LinkedIn", linked.get(0).folder());
+        assertNull(linked.get(0).indeedFolder());
         assertEquals(email.id(), linked.get(0).id());
         assertEquals(linkedin, linked.get(1));
     }
@@ -215,10 +232,10 @@ class ProfileUseCasesTest {
     void updateEmailFolderRejeitaPastaInexistente() {
         var email = LinkedAccount.create("f@gmail.com", "app", ExternalProvider.EMAIL, "INBOX");
         existing(email);
-        when(mailboxGateway.listFolders(email)).thenReturn(List.of(new MailFolder("INBOX", 0)));
+        when(mailboxGateway.listFolders(email)).thenReturn(List.of(new MailFolder("INBOX", Map.of(LINKEDIN, 0))));
 
         var useCase = new UpdateEmailFolderUseCaseImpl(profileRepository, mailboxGateway);
-        assertThrows(ValidationException.class, () -> useCase.execute("Nada"));
+        assertThrows(ValidationException.class, () -> useCase.execute(LINKEDIN, "Nada"));
     }
 
     @Test
@@ -226,17 +243,17 @@ class ProfileUseCasesTest {
         Profile profile = existing(request("eu@x.com", ExternalProvider.LINKEDIN, null));
         JobDetailsGateway gateway = mock(JobDetailsGateway.class);
         ProcessingStatusRepository statuses = mock(ProcessingStatusRepository.class);
-        when(statuses.find(profile.id())).thenReturn(ProcessingStatus.empty().waitUntil(LocalDateTime.now().plusMinutes(20)));
+        when(statuses.find(profile.id(), LINKEDIN)).thenReturn(ProcessingStatus.empty().waitUntil(LocalDateTime.now().plusMinutes(20)));
 
         new OpenLinkedinLoginUseCaseImpl(profileRepository, gateway, statuses).execute();
 
         ArgumentCaptor<Runnable> onSaved = ArgumentCaptor.forClass(Runnable.class);
         verify(gateway).openLoginWindow(any(), onSaved.capture());
-        verify(statuses, never()).save(any(), any());
+        verify(statuses, never()).save(any(), any(), any());
 
         onSaved.getValue().run();
         ArgumentCaptor<ProcessingStatus> saved = ArgumentCaptor.forClass(ProcessingStatus.class);
-        verify(statuses).save(eq(profile.id()), saved.capture());
+        verify(statuses).save(eq(profile.id()), eq(LINKEDIN), saved.capture());
         assertFalse(saved.getValue().isWaiting(LocalDateTime.now()));
     }
 

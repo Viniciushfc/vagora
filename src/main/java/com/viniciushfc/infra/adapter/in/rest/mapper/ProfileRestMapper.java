@@ -21,7 +21,7 @@ public class ProfileRestMapper {
     }
 
     public static LinkedAccount toDomain(LinkedAccountRequest request) {
-        return new LinkedAccount(null, request.username(), request.password(), request.externalProvider(), request.folder());
+        return new LinkedAccount(null, request.username(), request.password(), request.externalProvider(), request.folder(), null);
     }
 
     public static ProfileResponse toResponse(Profile profile) {
@@ -35,7 +35,7 @@ public class ProfileRestMapper {
                 Utils.isNull(profile.curriculum()) || Utils.isNull(profile.curriculum().content())
                         ? null : profile.curriculum().content().length,
                 profile.linkedAccounts().stream()
-                        .map(l -> new LinkedAccountResponse(l.id(), l.username(), l.externalProvider(), l.folder()))
+                        .map(l -> new LinkedAccountResponse(l.id(), l.username(), l.externalProvider(), l.folder(), l.indeedFolder()))
                         .toList()
         );
     }

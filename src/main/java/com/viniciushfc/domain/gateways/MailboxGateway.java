@@ -2,6 +2,7 @@ package com.viniciushfc.domain.gateways;
 
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.LinkedAccount;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.vo.MailFolder;
 
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ public interface MailboxGateway {
 
     List<MailFolder> listFolders(LinkedAccount emailAccount);
 
-    List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, LocalDate since);
+    List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, AlertSource source, LocalDate since);
 
-    void markAsRead(LinkedAccount emailAccount, String messageId);
+    void markAsRead(LinkedAccount emailAccount, AlertSource source, String messageId);
 }

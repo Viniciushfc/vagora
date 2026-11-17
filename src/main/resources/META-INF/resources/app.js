@@ -56,7 +56,7 @@ const api = {
     unlinkAccount: (provider) => request("DELETE", `/profile/accounts/${provider}`),
     openLinkedinLogin: () => request("POST", "/profile/accounts/LINKEDIN/session"),
     listFolders: () => request("GET", "/profile/email/folders"),
-    updateFolder: (folder) => request("PUT", "/profile/email/folder", { folder }),
+    updateFolder: (folder, source) => request("PUT", "/profile/email/folder", { folder, source }),
     listMatches: () => request("GET", "/profile/job-matches"),
     status: () => request("GET", "/profile/status"),
     scraper: () => request("GET", "/profile/scraper"),
@@ -128,6 +128,19 @@ function cloneTemplate(id) {
 
 function account(provider) {
     return state.profile?.linkedAccounts.find((a) => a.externalProvider === provider) ?? null;
+}
+
+const SOURCE_LABELS = { LINKEDIN: "LinkedIn", INDEED: "Indeed" };
+
+function folderOf(email, source) {
+    return source === "INDEED" ? email.indeedFolder : email.folder;
+}
+
+function foldersText(email) {
+    return [
+        "Alertas do LinkedIn na pasta ", { strong: email.folder },
+        ...(email.indeedFolder ? [", do Indeed na pasta ", { strong: email.indeedFolder }] : [", do Indeed sem pasta escolhida"]),
+    ];
 }
 
 let toastTimer;
@@ -329,12 +342,29 @@ window.addEventListener("hashchange", route);
 async function loadStatus() {
     if (!state.profile) return;
     try {
-        state.status = await api.status();
+        state.status = mergeStatus(await api.status());
     } catch {
         state.status = null;
     }
     renderMonitor();
     renderProcessingAlert();
+}
+
+function mergeStatus(statuses) {
+    const entries = Object.entries(statuses).map(([source, s]) => ({ ...s, label: SOURCE_LABELS[source] }));
+    const busy = entries.find((s) => s.currentAlert);
+    const failed = entries.find((s) => s.lastError);
+    const now = new Date();
+    const waits = entries.map((s) => s.nextAlertAt).filter((at) => at && new Date(at) > now).sort();
+    const checks = entries.map((s) => s.lastCheckAt).filter(Boolean).sort();
+    return {
+        currentAlert: busy ? `${busy.label}: ${busy.currentAlert}` : null,
+        lastError: failed ? `${failed.label}: ${failed.lastError}` : null,
+        lastErrorCode: failed?.lastErrorCode ?? null,
+        nextAlertAt: waits[0] ?? null,
+        queuedAlerts: entries.reduce((total, s) => total + s.queuedAlerts, 0),
+        lastCheckAt: checks.at(-1) ?? null,
+    };
 }
 
 function missingSetup() {
@@ -487,7 +517,8 @@ $("#setup-profile-form").addEventListener("submit", async (event) => {
 
 function onSetupEmailLinked(profile) {
     const email = profile.linkedAccounts.find((a) => a.externalProvider === "EMAIL");
-    completeStep("email", `Conectado a ${email.username}. Os alertas serão lidos da pasta ${email.folder}.`);
+    completeStep("email", `Conectado a ${email.username}. Os alertas do LinkedIn serão lidos da pasta ${email.folder}`
+        + (email.indeedFolder ? ` e os do Indeed, da pasta ${email.indeedFolder}.` : "."));
     unlockStep("linkedin", linkedinForm(onSetupLinkedinLinked));
 }
 
@@ -845,13 +876,13 @@ function renderEmailAccount() {
     const onLinked = () => { toast("Email conectado."); renderAccounts(); loadStatus(); };
 
     if (!email) {
-        const status = el("p", "account-status", "Conecte o email que recebe os alertas de vaga do LinkedIn.");
+        const status = el("p", "account-status", "Conecte o email que recebe os alertas de vaga do LinkedIn e do Indeed.");
         card.replaceChildren(accountHead("mail", "Email", false), status, emailForm(onLinked));
         return;
     }
 
     const status = el("p", "account-status");
-    status.append(...rich(["Lendo ", { strong: email.username }, " na pasta ", { strong: email.folder }, "."]));
+    status.append(...rich(["Lendo ", { strong: email.username }, ". ", ...foldersText(email), "."]));
     card.replaceChildren(
         accountHead("mail", "Email", true),
         status,
@@ -864,7 +895,7 @@ function folderPicker(email) {
     const wrapper = el("div", "folder-picker");
     const load = el("button", "button quiet");
     load.type = "button";
-    load.append(icon("folder"), "Escolher outra pasta");
+    load.append(icon("folder"), "Escolher as pastas");
     const error = el("p", "form-error");
     error.hidden = true;
 
@@ -874,11 +905,11 @@ function folderPicker(email) {
         error.hidden = true;
         try {
             const folders = await api.listFolders();
-            wrapper.replaceChildren(folderSelect(email, folders), error);
+            wrapper.replaceChildren(folderSelect(email, folders, "LINKEDIN"), folderSelect(email, folders, "INDEED"), error);
         } catch (e) {
             showError(e, error);
             load.disabled = false;
-            load.replaceChildren(icon("folder"), "Escolher outra pasta");
+            load.replaceChildren(icon("folder"), "Escolher as pastas");
         }
     });
 
@@ -886,18 +917,19 @@ function folderPicker(email) {
     return wrapper;
 }
 
-function folderSelect(email, folders) {
+function folderSelect(email, folders, source) {
     const form = el("form", "folder-picker");
     const field = el("div", "field");
-    const label = el("label", "", "Pasta dos alertas");
+    const label = el("label", "", `Pasta dos alertas do ${SOURCE_LABELS[source]}`);
     const select = el("select");
     select.id = `f-${++uid}`;
     label.htmlFor = select.id;
 
-    const sorted = [...folders].sort((a, b) => b.jobAlerts - a.jobAlerts || a.name.localeCompare(b.name));
+    const alerts = (f) => f.jobAlerts[source] ?? 0;
+    const sorted = [...folders].sort((a, b) => alerts(b) - alerts(a) || a.name.localeCompare(b.name));
     select.append(...sorted.map((f) => new Option(
-        f.jobAlerts === 0 ? `${f.name} (nenhum alerta)` : `${f.name} (${f.jobAlerts} ${f.jobAlerts === 1 ? "alerta" : "alertas"})`,
-        f.name, false, f.name === email.folder)));
+        alerts(f) === 0 ? `${f.name} (nenhum alerta)` : `${f.name} (${alerts(f)} ${alerts(f) === 1 ? "alerta" : "alertas"})`,
+        f.name, false, f.name === folderOf(email, source))));
 
     const row = el("div", "folder-picker-row");
     row.append(select, el("button", "button primary", "Usar esta pasta"));
@@ -912,8 +944,8 @@ function folderSelect(email, folders) {
         const folder = select.value;
         setBusy(form, true);
         try {
-            state.profile = await api.updateFolder(folder);
-            toast(`Os alertas serão lidos da pasta ${folder}.`);
+            state.profile = await api.updateFolder(folder, source);
+            toast(`Os alertas do ${SOURCE_LABELS[source]} serão lidos da pasta ${folder}.`);
             renderAccounts();
         } catch (e) {
             showError(e, error);
@@ -1025,7 +1057,7 @@ function renderReadiness() {
             : { ok: false, name: "Chave do Gemini", detail: ["Falta a chave que permite ao Gemini dar a nota."],
                 actions: [actionLink("Adicionar", "#", { focus: "#profile-gemini", primary: true })] },
         email
-            ? { ok: true, name: "Email", detail: [{ strong: email.username }, ", lendo a pasta ", { strong: email.folder }],
+            ? { ok: true, name: "Email", detail: [{ strong: email.username }, ". ", ...foldersText(email)],
                 actions: [actionLink("Gerenciar", "#contas")] }
             : { ok: false, name: "Email", detail: ["Nenhum email conectado. É de onde vêm os alertas de vaga."],
                 actions: [actionLink("Conectar", "#contas", { primary: true })] },

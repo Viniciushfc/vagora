@@ -1,5 +1,6 @@
 package com.viniciushfc.infra.adapter.out.mail;
 
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.infra.adapter.out.mail.mapper.MailMessageMapper;
 import jakarta.activation.DataHandler;
 import jakarta.mail.Message;
@@ -49,7 +50,7 @@ class MailMessageMapperTest {
         assertEquals("fulano@gmail.com", received.email().to());
         assertEquals("Novas vagas: Desenvolvedor Java", received.email().subject());
         assertEquals("<a href=\"x\">versão html</a>", received.email().body());
-        assertTrue(received.isAlertJob());
+        assertTrue(received.isFrom(AlertSource.LINKEDIN));
         assertTrue(received.email().attachments().isEmpty());
     }
 

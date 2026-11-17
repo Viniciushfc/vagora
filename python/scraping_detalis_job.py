@@ -1,5 +1,5 @@
 """
-Extrai os detalhes das vagas dos links do email de alerta do LinkedIn.
+Extrai os detalhes das vagas dos links dos emails de alerta do LinkedIn e do Indeed.
 
   echo '["https://..."]' | python scraping_detalis_job.py   # como o Vagora chama
   python scraping_detalis_job.py --login   # abre uma janela, preenche login e senha e espera a pessoa terminar o login
@@ -7,7 +7,7 @@ Extrai os detalhes das vagas dos links do email de alerta do LinkedIn.
 Variáveis de ambiente (definidas pelo Vagora):
   VAGORA_HEADLESS=1     roda sem janela
 
-No stdout, uma linha JSON por vaga lida, enviada assim que a vaga termina de carregar.
+No stdout, uma linha JSON por vaga lida, enviada assim que a vaga termina de carregar; "link" é o link recebido.
 Códigos de saída: 0 ok, 3 verificação de segurança, 4 login recusado,
 5 a página da vaga não carregou como esperado, 6 o navegador foi fechado, 1 outra falha.
 No stderr, linhas "@@ {json}" são eventos de progresso para o Vagora; as demais são log técnico.
@@ -45,6 +45,9 @@ MORE = '[data-testid="expandable-text-button"]'
 
 # aviso do LinkedIn em vagas encerradas (site em português ou inglês)
 CLOSED = "text=/Não aceita mais candidaturas|No longer accepting applications/i"
+
+INDEED_TEXT = "#jobDescriptionText, .simple-job-description-html"
+INDEED_CLOSED = "text=/Esta vaga expirou|vaga não está mais disponível|This job has expired/i"
 
 HEADLESS = os.environ.get("VAGORA_HEADLESS") == "1"
 CHECKPOINT_WAIT_MS = 5 * 60_000
@@ -147,7 +150,35 @@ def parse_title(page_title):
     return " | ".join(parts[:-1]), parts[-1]
 
 
+def meta(page, selector):
+    tag = page.locator(selector).first
+    return (tag.get_attribute("content") or "").strip() if tag.count() else ""
+
+
+def scrape_indeed(page, url):
+    page.goto(url, wait_until="domcontentloaded")
+    pause(1.5, 3.5)
+    human = Human(page)
+    try:
+        page.locator(INDEED_TEXT).or_(page.locator(INDEED_CLOSED)).first.wait_for(timeout=15_000)
+    except PlaywrightTimeout:
+        raise PageUnreadable(f"descrição não apareceu em 15 s (página: {urlparse(page.url).path}, título: {page.title()!r})")
+    if page.locator(INDEED_CLOSED).count():
+        return None
+    human.idle()
+    description = page.locator(INDEED_TEXT).first.inner_text().strip()
+    human.read(description)
+    return {
+        "link": url,
+        "title": meta(page, "#indeed-share-message") or page.title().split(" - ")[0],
+        "description": description,
+        "companyDetails": {"name": meta(page, 'meta[property="og:description"]'), "description": None},
+    }
+
+
 def scrape(page, url):
+    if urlparse(url).hostname.endswith("indeed.com"):
+        return scrape_indeed(page, url)
     page.goto(url, wait_until="domcontentloaded")
     settle(page)
     pause(1.5, 3.5)
@@ -179,9 +210,8 @@ def scrape(page, url):
 
     # título da aba: "Título da vaga | Empresa | LinkedIn"
     title, company = parse_title(page.title())
-    job_id = re.search(r"/jobs/view/(\d+)", url).group(1)
     return {
-        "link": f"https://www.linkedin.com/jobs/view/{job_id}/",
+        "link": url,
         "title": title,
         "description": description,
         "companyDetails": {"name": company, "description": company_description},

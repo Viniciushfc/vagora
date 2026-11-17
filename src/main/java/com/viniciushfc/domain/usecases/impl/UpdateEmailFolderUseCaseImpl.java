@@ -5,6 +5,7 @@ import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.repositories.ProfileRepository;
@@ -25,7 +26,7 @@ public class UpdateEmailFolderUseCaseImpl implements UpdateEmailFolderUseCase {
     }
 
     @Override
-    public Profile execute(String folder) {
+    public Profile execute(AlertSource source, String folder) {
         Profile profile = profileRepository.require();
 
         LinkedAccount emailAccount = profile.findLinkedAccount(ExternalProvider.EMAIL);
@@ -39,7 +40,7 @@ public class UpdateEmailFolderUseCaseImpl implements UpdateEmailFolderUseCase {
         }
 
         List<LinkedAccount> linkedAccounts = profile.linkedAccounts().stream()
-                .map(account -> account.id().equals(emailAccount.id()) ? account.withFolder(folder) : account)
+                .map(account -> account.id().equals(emailAccount.id()) ? account.withFolder(source, folder) : account)
                 .toList();
 
         return profileRepository.updateLinkedAccounts(profile.id(), linkedAccounts);

@@ -1,4 +1,6 @@
 package com.viniciushfc.infra.adapter.in.rest.dto;
 
-public record EmailFolderRequest(String folder) {
+import com.viniciushfc.domain.enums.AlertSource;
+
+public record EmailFolderRequest(String folder, AlertSource source) {
 }

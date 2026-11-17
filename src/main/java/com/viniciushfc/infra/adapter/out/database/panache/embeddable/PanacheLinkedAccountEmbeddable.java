@@ -12,5 +12,6 @@ public record PanacheLinkedAccountEmbeddable (UUID id,
                                               String username,
                                               String password,
                                               @Enumerated(EnumType.STRING) ExternalProvider externalProvider,
-                                              String folder) {
+                                              String folder,
+                                              String indeedFolder) {
 }

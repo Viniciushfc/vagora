@@ -3,6 +3,7 @@ package com.viniciushfc.domain.usecases.impl;
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.BusinessException;
 import com.viniciushfc.domain.exceptions.ErrorCode;
@@ -34,6 +35,7 @@ public class OpenLinkedinLoginUseCaseImpl implements OpenLinkedinLoginUseCase {
             throw new BusinessException("Conecte uma conta do LinkedIn em Contas.", ErrorCode.LINKEDIN_NOT_CONNECTED);
         }
         jobDetailsGateway.openLoginWindow(linkedin,
-                () -> statusRepository.save(profile.id(), statusRepository.find(profile.id()).waitUntil(null)));
+                () -> statusRepository.save(profile.id(), AlertSource.LINKEDIN,
+                        statusRepository.find(profile.id(), AlertSource.LINKEDIN).waitUntil(null)));
     }
 }

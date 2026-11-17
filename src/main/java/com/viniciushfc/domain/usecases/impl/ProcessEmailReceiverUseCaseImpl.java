@@ -8,6 +8,7 @@ import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.gateways.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.gateways.JobDetailsGateway;
@@ -23,13 +24,9 @@ import com.viniciushfc.domain.vo.ScraperActivity;
 
 import java.util.*;
 import java.util.function.UnaryOperator;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @UseCase
 public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseCase {
-
-    static final String JOB_URL = "https://www.linkedin.com/jobs/view/%s/";
 
     private final EmailReceivedRepository emailReceivedRepository;
     private final JobDetailsGateway jobDetailsGateway;
@@ -48,18 +45,14 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
     }
 
     @Override
-    public boolean execute(Profile profile, EmailReceived received) {
-        if (!received.isAlertJob()) {
-            return false;
-        }
-
-        EmailReceived existing = emailReceivedRepository.findByMessageId(received.messageId());
-        if (existing != null && existing.successProcessed()) {
+    public boolean execute(Profile profile, AlertSource source, List<EmailReceived> received) {
+        List<EmailReceived> alerts = received.stream().filter(alert -> alert.isFrom(source)).toList();
+        if (alerts.isEmpty()) {
             return false;
         }
 
         LinkedAccount linkedinAccount = profile.findLinkedAccount(ExternalProvider.LINKEDIN);
-        if (Utils.isNull(linkedinAccount)) {
+        if (source == AlertSource.LINKEDIN && Utils.isNull(linkedinAccount)) {
             throw new BusinessException("Conecte uma conta do LinkedIn em Contas.", ErrorCode.LINKEDIN_NOT_CONNECTED);
         }
 
@@ -67,38 +60,56 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             throw new BusinessException("Configure a chave do Gemini no Perfil.", ErrorCode.GEMINI_KEY_MISSING);
         }
 
-        UUID emailId = existing != null ? existing.id() : received.id();
-        if (existing == null) {
-            emailReceivedRepository.save(received);
+        List<UUID> emailIds = new ArrayList<>();
+        Map<String, UUID> emailOf = new HashMap<>();
+        List<JobDetail> jobs = new ArrayList<>();
+        Map<String, String> toScrape = new LinkedHashMap<>();
+        for (EmailReceived alert : alerts) {
+            EmailReceived existing = emailReceivedRepository.findByMessageId(alert.messageId());
+            if (existing != null && existing.successProcessed()) {
+                continue;
+            }
+            UUID emailId = existing != null ? existing.id() : alert.id();
+            if (existing == null) {
+                emailReceivedRepository.save(alert);
+            }
+            emailIds.add(emailId);
+
+            for (JobDetail job : emailReceivedRepository.findScrapedJobs(emailId)) {
+                if (emailOf.putIfAbsent(job.link(), emailId) == null && !analyzed(profile, job.link())) {
+                    jobs.add(job);
+                }
+            }
+            source.jobLinks(alert.email().body()).forEach((jobUrl, link) -> {
+                if (emailOf.putIfAbsent(jobUrl, emailId) == null && !analyzed(profile, jobUrl)) {
+                    toScrape.put(link, jobUrl);
+                }
+            });
+        }
+        if (emailIds.isEmpty()) {
+            return false;
         }
 
-        List<JobDetail> jobs = new ArrayList<>(emailReceivedRepository.findScrapedJobs(emailId).stream()
-                .filter(job -> !jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), job.link()))
-                .toList());
-        Set<String> scraped = new HashSet<>(jobs.stream().map(JobDetail::link).toList());
-
-        Set<String> links = new LinkedHashSet<>();
-        extractLinksJobs(received.email().body()).forEach((jobId, link) -> {
-            String jobUrl = JOB_URL.formatted(jobId);
-            if (!scraped.contains(jobUrl) && !jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), jobUrl)) {
-                links.add(link);
-            }
-        });
-
-        if (!links.isEmpty()) {
-            jobDetailsGateway.extractJobsDetails(links, linkedinAccount, profile.isBrowserVisible(), job -> {
-                emailReceivedRepository.addScrapedJob(emailId, job);
+        if (!toScrape.isEmpty()) {
+            jobDetailsGateway.extractJobsDetails(toScrape.keySet(), linkedinAccount, profile.isBrowserVisible(), read -> {
+                String jobUrl = toScrape.get(read.link());
+                JobDetail job = new JobDetail(jobUrl, read.title(), read.description(), read.companyDetails());
+                emailReceivedRepository.addScrapedJob(emailOf.get(jobUrl), job);
                 jobs.add(job);
             });
         }
         if (!jobs.isEmpty()) {
-            analyze(profile, emailId, jobs, pdfGateway.extractTextPdf(profile.curriculum()));
+            analyze(profile, emailOf, jobs, pdfGateway.extractTextPdf(profile.curriculum()));
         }
-        emailReceivedRepository.markSuccessProcessed(emailId);
-        return !links.isEmpty();
+        emailIds.forEach(emailReceivedRepository::markSuccessProcessed);
+        return !toScrape.isEmpty();
     }
 
-    private List<JobMatch> analyze(Profile profile, UUID emailId, List<JobDetail> jobs, String curriculum) {
+    private boolean analyzed(Profile profile, String jobUrl) {
+        return jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), jobUrl);
+    }
+
+    private List<JobMatch> analyze(Profile profile, Map<String, UUID> emailOf, List<JobDetail> jobs, String curriculum) {
         List<JobMatch> jobMatches = new ArrayList<>();
         try {
             activity(a -> a.analyzing(jobs.size()));
@@ -111,7 +122,7 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
                     String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(job, curriculum, profile.geminiApiKey());
                     result = new CvMatchResult(true, result.score(), result.motivos(), adapted);
                 }
-                JobMatch jobMatch = JobMatch.create(profile.id(), emailId, job, result);
+                JobMatch jobMatch = JobMatch.create(profile.id(), emailOf.get(job.link()), job, result);
                 jobMatchRepository.saveAll(List.of(jobMatch));
                 jobMatches.add(jobMatch);
             }
@@ -127,16 +138,5 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
 
     private void activity(UnaryOperator<ScraperActivity> change) {
         scraperActivityRepository.save(change.apply(scraperActivityRepository.get()));
-    }
-
-    private Map<String, String> extractLinksJobs(String body) {
-        Map<String, String> linksById = new LinkedHashMap<>();
-        Matcher matcher = Pattern.compile(
-                "https://www\\.linkedin\\.com/comm/jobs/view/(\\d+)/?(?:\\?[^\\s\"'<>]*)?").matcher(body);
-        while (matcher.find()) {
-            linksById.putIfAbsent(matcher.group(1), matcher.group().replace("&amp;", "&"));
-        }
-
-        return linksById;
     }
 }

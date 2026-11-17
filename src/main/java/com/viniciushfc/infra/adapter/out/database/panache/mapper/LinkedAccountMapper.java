@@ -16,7 +16,8 @@ public class LinkedAccountMapper {
                     panacheLinkedAccountEmbeddable.username(),
                     panacheLinkedAccountEmbeddable.password(),
                     panacheLinkedAccountEmbeddable.externalProvider(),
-                    panacheLinkedAccountEmbeddable.folder()
+                    panacheLinkedAccountEmbeddable.folder(),
+                    panacheLinkedAccountEmbeddable.indeedFolder()
             );
 
             linkedAccounts.add(linkedAccount);
@@ -34,7 +35,8 @@ public class LinkedAccountMapper {
                     linkedAccount.username(),
                     linkedAccount.password(),
                     linkedAccount.externalProvider(),
-                    linkedAccount.folder()
+                    linkedAccount.folder(),
+                    linkedAccount.indeedFolder()
             );
 
             panacheLinkedAccountEmbeddables.add(panacheLinkedAccountEmbeddable);

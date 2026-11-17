@@ -217,8 +217,10 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     private static ProcessBuilder processBuilder(List<String> command, LinkedAccount linkedinAccount,
                                                  boolean showBrowser, boolean useVirtualDisplay) {
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.environment().put("LINKEDIN_LOGIN", linkedinAccount.username());
-        pb.environment().put("LINKEDIN_PASSWORD", linkedinAccount.password());
+        if (linkedinAccount != null) {
+            pb.environment().put("LINKEDIN_LOGIN", linkedinAccount.username());
+            pb.environment().put("LINKEDIN_PASSWORD", linkedinAccount.password());
+        }
         pb.environment().put("VAGORA_HEADLESS", !showBrowser && !useVirtualDisplay ? "1" : "0");
         if (useVirtualDisplay) {
             pb.environment().remove("WAYLAND_DISPLAY");
@@ -246,7 +248,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
             case EXIT_LOGIN_FAILED -> new ExternalServiceException(
                     "Não foi possível entrar no LinkedIn. Confira o login e a senha em Contas.", ErrorCode.LINKEDIN_LOGIN_FAILED);
             case EXIT_PAGE_UNREADABLE -> new ExternalServiceException(
-                    "O LinkedIn não mostrou a descrição da vaga a tempo. Pode ser lentidão, uma mudança na página "
+                    "A página da vaga não mostrou a descrição a tempo. Pode ser lentidão, uma mudança na página "
                             + "ou uma tela pedindo login. Veja a captura da tela na página do LinkedIn.", ErrorCode.LINKEDIN_PAGE_UNREADABLE);
             case EXIT_BROWSER_CLOSED -> new ExternalServiceException(
                     "O navegador do Vagora foi fechado no meio da leitura. As vagas já lidas ficaram guardadas "

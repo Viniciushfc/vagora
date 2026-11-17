@@ -4,6 +4,7 @@ import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.LinkedAccount;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.infra.adapter.out.mail.mapper.MailMessageMapper;
@@ -23,13 +24,14 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 @ApplicationScoped
 public class ImapMailboxGatewayImpl implements MailboxGateway {
 
-    static final String JOB_ALERTS_SENDER = "jobalerts-noreply@linkedin.com";
     private static final int MAX_ALERTS_PER_POLL = 10;
 
     private final MailMessageMapper mapper;
@@ -49,7 +51,11 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
                 }
                 folder.open(Folder.READ_ONLY);
                 try {
-                    folders.add(new MailFolder(folder.getFullName(), folder.search(new FromStringTerm(JOB_ALERTS_SENDER)).length));
+                    Map<AlertSource, Integer> alerts = new EnumMap<>(AlertSource.class);
+                    for (AlertSource source : AlertSource.values()) {
+                        alerts.put(source, folder.search(new FromStringTerm(source.sender)).length);
+                    }
+                    folders.add(new MailFolder(folder.getFullName(), alerts));
                 } finally {
                     folder.close(false);
                 }
@@ -62,15 +68,15 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
     }
 
     @Override
-    public List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, LocalDate since) {
+    public List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, AlertSource source, LocalDate since) {
         try (Store store = connect(emailAccount)) {
-            Folder folder = store.getFolder(emailAccount.folder());
+            Folder folder = store.getFolder(emailAccount.folder(source));
             folder.open(Folder.READ_ONLY);
             try {
                 Date sinceDate = Date.from(since.atStartOfDay(ZoneId.systemDefault()).toInstant());
                 SearchTerm unreadAlerts = new AndTerm(new SearchTerm[]{
                         new FlagTerm(new Flags(Flags.Flag.SEEN), false),
-                        new FromStringTerm(JOB_ALERTS_SENDER),
+                        new FromStringTerm(source.sender),
                         new ReceivedDateTerm(ComparisonTerm.GE, sinceDate)});
                 Message[] messages = folder.search(unreadAlerts);
 
@@ -91,9 +97,9 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
     }
 
     @Override
-    public void markAsRead(LinkedAccount emailAccount, String messageId) {
+    public void markAsRead(LinkedAccount emailAccount, AlertSource source, String messageId) {
         try (Store store = connect(emailAccount)) {
-            Folder folder = store.getFolder(emailAccount.folder());
+            Folder folder = store.getFolder(emailAccount.folder(source));
             folder.open(Folder.READ_WRITE);
             try {
                 for (Message message : folder.search(new HeaderTerm("Message-ID", messageId))) {

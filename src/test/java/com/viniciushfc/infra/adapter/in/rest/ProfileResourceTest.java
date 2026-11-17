@@ -4,6 +4,7 @@ import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.infra.adapter.out.database.panache.repositories.contracts.PanacheProfileRepository;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
@@ -40,7 +42,7 @@ class ProfileResourceTest {
         // um perfil por instalação: cada teste começa sem nenhum
         QuarkusTransaction.requiringNew().run(() -> panacheProfileRepository.listAll().forEach(panacheProfileRepository::delete));
         when(mailboxGateway.listFolders(any())).thenReturn(List.of(
-                new MailFolder("INBOX", 0), new MailFolder("LinkedIn", 7)));
+                new MailFolder("INBOX", Map.of(AlertSource.LINKEDIN, 0)), new MailFolder("LinkedIn", Map.of(AlertSource.LINKEDIN, 7))));
     }
 
     private String createProfile() {
@@ -204,11 +206,17 @@ class ProfileResourceTest {
                 .then()
                 .statusCode(200)
                 .body("name", contains("INBOX", "LinkedIn"))
-                .body("jobAlerts", contains(0, 7));
+                .body("jobAlerts.LINKEDIN", contains(0, 7));
 
         given().contentType(ContentType.JSON).body("{\"folder\":\"LinkedIn\"}")
                 .when().put("/profile/email/folder")
                 .then().statusCode(200).body("linkedAccounts[0].folder", is("LinkedIn"));
+
+        given().contentType(ContentType.JSON).body("{\"folder\":\"INBOX\",\"source\":\"INDEED\"}")
+                .when().put("/profile/email/folder")
+                .then().statusCode(200)
+                .body("linkedAccounts[0].folder", is("LinkedIn"))
+                .body("linkedAccounts[0].indeedFolder", is("INBOX"));
 
         given().contentType(ContentType.JSON).body("{\"folder\":\"NaoExiste\"}")
                 .when().put("/profile/email/folder")
@@ -277,8 +285,8 @@ class ProfileResourceTest {
         given().when().get("/profile/status")
                 .then()
                 .statusCode(200)
-                .body("lastCheckAt", nullValue())
-                .body("lastError", nullValue());
+                .body("LINKEDIN.lastCheckAt", nullValue())
+                .body("INDEED.lastError", nullValue());
 
         given().when().get("/profile/scraper").then().statusCode(200).body("running", is(false));
     }

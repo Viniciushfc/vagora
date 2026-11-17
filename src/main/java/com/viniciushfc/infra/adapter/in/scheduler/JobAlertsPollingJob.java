@@ -1,5 +1,6 @@
 package com.viniciushfc.infra.adapter.in.scheduler;
 
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.usecases.contracts.PollJobAlertsUseCase;
 import io.quarkus.logging.Log;
 import io.quarkus.scheduler.Scheduled;
@@ -16,10 +17,12 @@ public class JobAlertsPollingJob {
 
     @Scheduled(every = "{vagora.poll.every}", delayed = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void poll() {
-        try {
-            pollJobAlertsUseCase.execute();
-        } catch (Exception e) {
-            Log.warn("Falha ao buscar alertas de vaga", e);
+        for (AlertSource source : AlertSource.values()) {
+            try {
+                pollJobAlertsUseCase.execute(source);
+            } catch (Exception e) {
+                Log.warn("Falha ao buscar alertas de vaga do " + source.label, e);
+            }
         }
     }
 }

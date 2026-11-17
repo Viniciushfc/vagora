@@ -7,6 +7,7 @@ import com.viniciushfc.infra.adapter.out.llm.gemini.impl.GeminiServiceImpl;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
+import java.util.Objects;
 
 @ApplicationScoped
 public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway {
@@ -41,7 +42,7 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
                 Descrição: %s
                 Sobre a empresa: %s
                 </vaga>""".formatted(id, job.title(), company == null ? "" : company.name(), job.description(),
-                company == null ? "" : company.description());
+                company == null ? "" : Objects.toString(company.description(), ""));
     }
 
     static String curriculum(String cvUser) {

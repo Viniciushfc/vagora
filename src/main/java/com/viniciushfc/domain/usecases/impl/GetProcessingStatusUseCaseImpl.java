@@ -1,10 +1,15 @@
 package com.viniciushfc.domain.usecases.impl;
 
 import com.viniciushfc.domain.annotations.UseCase;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.repositories.ProcessingStatusRepository;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.GetProcessingStatusUseCase;
 import com.viniciushfc.domain.vo.ProcessingStatus;
+
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.UUID;
 
 @UseCase
 public class GetProcessingStatusUseCaseImpl implements GetProcessingStatusUseCase {
@@ -18,7 +23,12 @@ public class GetProcessingStatusUseCaseImpl implements GetProcessingStatusUseCas
     }
 
     @Override
-    public ProcessingStatus execute() {
-        return processingStatusRepository.find(profileRepository.require().id());
+    public Map<AlertSource, ProcessingStatus> execute() {
+        UUID profileId = profileRepository.require().id();
+        Map<AlertSource, ProcessingStatus> statuses = new EnumMap<>(AlertSource.class);
+        for (AlertSource source : AlertSource.values()) {
+            statuses.put(source, processingStatusRepository.find(profileId, source));
+        }
+        return statuses;
     }
 }

@@ -4,6 +4,7 @@ import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.repositories.ProfileRepository;
@@ -15,6 +16,7 @@ import com.viniciushfc.domain.vo.MailFolder;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @UseCase
 public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
@@ -47,7 +49,9 @@ public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
         );
 
         if (linkedAccount.externalProvider() == ExternalProvider.EMAIL) {
-            newAccount = newAccount.withFolder(resolveFolder(newAccount, linkedAccount.folder()));
+            List<MailFolder> folders = mailboxGateway.listFolders(newAccount);
+            newAccount = newAccount.withFolder(AlertSource.LINKEDIN, resolveFolder(folders, linkedAccount.folder()))
+                    .withFolder(AlertSource.INDEED, mostAlerts(folders, AlertSource.INDEED).orElse(null));
         }
 
         List<LinkedAccount> linkedAccounts = new ArrayList<>(profile.linkedAccounts());
@@ -72,9 +76,7 @@ public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
         return Utils.isNull(value) || value.isBlank();
     }
 
-    private String resolveFolder(LinkedAccount emailAccount, String requestedFolder) {
-        List<MailFolder> folders = mailboxGateway.listFolders(emailAccount);
-
+    private String resolveFolder(List<MailFolder> folders, String requestedFolder) {
         if (!Utils.isNull(requestedFolder) && !requestedFolder.isBlank()) {
             if (folders.stream().noneMatch(f -> f.name().equals(requestedFolder))) {
                 throw new ValidationException("Pasta não encontrada no email: " + requestedFolder);
@@ -82,10 +84,13 @@ public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
             return requestedFolder;
         }
 
+        return mostAlerts(folders, AlertSource.LINKEDIN).orElse(DEFAULT_FOLDER);
+    }
+
+    private Optional<String> mostAlerts(List<MailFolder> folders, AlertSource source) {
         return folders.stream()
-                .filter(f -> f.jobAlerts() > 0)
-                .max(Comparator.comparingInt(MailFolder::jobAlerts))
-                .map(MailFolder::name)
-                .orElse(DEFAULT_FOLDER);
+                .filter(f -> f.alerts(source) > 0)
+                .max(Comparator.comparingInt(f -> f.alerts(source)))
+                .map(MailFolder::name);
     }
 }

@@ -4,6 +4,7 @@ import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.RateLimitedException;
 import com.viniciushfc.domain.gateways.MailboxGateway;
@@ -45,61 +46,63 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
     }
 
     @Override
-    public void execute() {
+    public void execute(AlertSource source) {
         Profile profile = profileRepository.find();
         if (Utils.isNull(profile) || !profile.isMonitoringEnabled()) {
             return;
         }
         LinkedAccount emailAccount = profile.findLinkedAccount(ExternalProvider.EMAIL);
-        if (Utils.isNull(emailAccount)) {
+        if (Utils.isNull(emailAccount) || Utils.isNull(emailAccount.folder(source))) {
             return;
         }
 
-        if (status(profile).isWaiting(LocalDateTime.now())) {
-            save(profile, status(profile).checked());
+        if (status(profile, source).isWaiting(LocalDateTime.now())) {
+            save(profile, source, status(profile, source).checked());
             return;
         }
 
         List<EmailReceived> alerts;
         try {
-            alerts = mailboxGateway.fetchUnreadJobAlerts(emailAccount, LocalDate.now().minus(MAX_ALERT_AGE));
+            alerts = mailboxGateway.fetchUnreadJobAlerts(emailAccount, source, LocalDate.now().minus(MAX_ALERT_AGE));
         } catch (Exception e) {
-            save(profile, status(profile).failed(e).checked());
+            save(profile, source, status(profile, source).failed(e).checked());
             throw e;
         }
 
         if (alerts.isEmpty()) {
-            save(profile, status(profile).queued(0).checked());
+            save(profile, source, status(profile, source).queued(0).checked());
             return;
         }
 
-        for (int i = 0; i < alerts.size(); i++) {
-            EmailReceived alert = alerts.get(i);
-            String subject = alert.email().subject();
-            save(profile, status(profile).analysing(subject, alerts.size() - i - 1));
+        for (int i = 0; i < alerts.size(); i += source.alertsPerRun) {
+            List<EmailReceived> run = alerts.subList(i, Math.min(i + source.alertsPerRun, alerts.size()));
+            String subject = run.size() == 1 ? run.getFirst().email().subject() : run.size() + " emails do " + source.label;
+            save(profile, source, status(profile, source).analysing(subject, alerts.size() - i - run.size()));
             try {
                 LOG.log(Level.INFO, "Processando alerta: {0}", subject);
-                boolean linkedinAccessed = processEmailReceiverUseCase.execute(profile, alert);
-                mailboxGateway.markAsRead(emailAccount, alert.messageId());
-                save(profile, status(profile).succeeded());
-                if (linkedinAccessed) {
-                    waitInterval(profile);
+                boolean siteAccessed = processEmailReceiverUseCase.execute(profile, source, run);
+                for (EmailReceived alert : run) {
+                    mailboxGateway.markAsRead(emailAccount, source, alert.messageId());
+                }
+                save(profile, source, status(profile, source).succeeded());
+                if (siteAccessed) {
+                    waitInterval(profile, source);
                     return;
                 }
             } catch (Exception e) {
                 LOG.log(Level.WARNING, "Falha ao processar alerta '" + subject + "', será tentado de novo depois do intervalo", e);
-                save(profile, status(profile).failed(e));
+                save(profile, source, status(profile, source).failed(e));
                 Duration wait = e instanceof RateLimitedException limited && limited.retryAfter().compareTo(MIN_INTERVAL) > 0
                         ? limited.retryAfter() : nextInterval();
-                save(profile, status(profile).waitUntil(LocalDateTime.now().plus(wait)).checked());
+                save(profile, source, status(profile, source).waitUntil(LocalDateTime.now().plus(wait)).checked());
                 return;
             }
         }
-        save(profile, status(profile).queued(0).checked());
+        save(profile, source, status(profile, source).queued(0).checked());
     }
 
-    private void waitInterval(Profile profile) {
-        save(profile, status(profile).waitUntil(LocalDateTime.now().plus(nextInterval())).checked());
+    private void waitInterval(Profile profile, AlertSource source) {
+        save(profile, source, status(profile, source).waitUntil(LocalDateTime.now().plus(nextInterval())).checked());
     }
 
     public static Duration nextInterval() {
@@ -107,11 +110,11 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
         return MIN_INTERVAL.plusSeconds(jitterSeconds);
     }
 
-    private ProcessingStatus status(Profile profile) {
-        return statusRepository.find(profile.id());
+    private ProcessingStatus status(Profile profile, AlertSource source) {
+        return statusRepository.find(profile.id(), source);
     }
 
-    private void save(Profile profile, ProcessingStatus status) {
-        statusRepository.save(profile.id(), status);
+    private void save(Profile profile, AlertSource source, ProcessingStatus status) {
+        statusRepository.save(profile.id(), source, status);
     }
 }
