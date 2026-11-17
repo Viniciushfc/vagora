@@ -54,6 +54,7 @@ const api = {
     deleteProfile: () => request("DELETE", "/profile"),
     linkAccount: (account) => request("POST", "/profile/accounts", account),
     unlinkAccount: (provider) => request("DELETE", `/profile/accounts/${provider}`),
+    openLinkedinLogin: () => request("POST", "/profile/accounts/LINKEDIN/session"),
     listFolders: () => request("GET", "/profile/email/folders"),
     updateFolder: (folder) => request("PUT", "/profile/email/folder", { folder }),
     listMatches: () => request("GET", "/profile/job-matches"),
@@ -406,7 +407,7 @@ $("#monitoring").addEventListener("change", (event) => setMonitoring(event.targe
 
 // o atalho de cada falha vem do código do erro (ErrorCode no backend), nunca do texto
 const ERROR_ACTIONS = {
-    LINKEDIN_CHECKPOINT: ["Mostrar o navegador", "#perfil"],
+    LINKEDIN_CHECKPOINT: ["Entrar no LinkedIn", "#contas"],
     LINKEDIN_LOGIN_FAILED: ["Abrir contas", "#contas"],
     LINKEDIN_NOT_CONNECTED: ["Abrir contas", "#contas"],
     LINKEDIN_PAGE_UNREADABLE: ["Ver o leitor do LinkedIn", "#linkedin"],
@@ -424,8 +425,7 @@ function renderProcessingAlert() {
     }
     box.replaceChildren(el("strong", "", "A última análise falhou. "), error, " ");
     const action = ERROR_ACTIONS[state.status.lastErrorCode];
-    // com o navegador já visível, o atalho para ligá-lo não ajuda
-    if (action && !(state.status.lastErrorCode === "LINKEDIN_CHECKPOINT" && state.profile.showBrowser)) {
+    if (action) {
         const link = el("a", "", action[0]);
         link.href = action[1];
         box.append(link);
@@ -491,8 +491,11 @@ function onSetupEmailLinked(profile) {
     unlockStep("linkedin", linkedinForm(onSetupLinkedinLinked));
 }
 
-function onSetupLinkedinLinked() {
-    completeStep("linkedin", "LinkedIn conectado.");
+async function onSetupLinkedinLinked() {
+    const opened = await openLinkedinLogin();
+    completeStep("linkedin", opened
+        ? "LinkedIn conectado. Termine o login na janela do navegador que abriu: captcha, código ou aprovação no app do celular."
+        : "LinkedIn conectado. Abra a janela de login depois em Contas, no botão \"Entrar no LinkedIn\".");
     $("#setup-finish").hidden = false;
     $("#setup-finish").focus();
 }
@@ -720,7 +723,7 @@ $("#refresh-matches").addEventListener("click", () => {
 // o que fazer em cada falha do leitor, pelo código do erro
 const SCRAPER_HELP = {
     LINKEDIN_PAGE_UNREADABLE: "Olhe a captura abaixo. Se aparece uma tela de login ou de verificação, ligue \"Mostrar o navegador\" no Perfil para resolver na próxima análise. Se a página parece normal, foi lentidão e a próxima tentativa costuma passar.",
-    LINKEDIN_CHECKPOINT: "Ligue \"Mostrar o navegador\" no Perfil. Na próxima análise o navegador abre na tela e espera até 5 minutos você resolver a verificação.",
+    LINKEDIN_CHECKPOINT: "Em Contas, clique em \"Entrar no LinkedIn\". O navegador abre na tela com login e senha preenchidos e espera até 5 minutos você resolver a verificação.",
     LINKEDIN_LOGIN_FAILED: "Confira o login e a senha da conta do LinkedIn em Contas. Se mudou a senha, desconecte e conecte de novo.",
     SCRAPER_FAILED: "Os detalhes técnicos estão no terminal onde o Vagora está rodando. Se o erro se repetir, pare o Vagora e rode ./run.sh --clean.",
 };
@@ -741,7 +744,9 @@ function renderScraper(activity) {
     const status = state.status;
     const next = status?.nextAlertAt && new Date(status.nextAlertAt) > new Date() ? timeFormat.format(new Date(status.nextAlertAt)) : null;
     let view;
-    if (activity.running) {
+    if (activity.running && !activity.jobTotal) {
+        view = { state: "busy", title: "Entrando no LinkedIn", detail: "Termine o login na janela do navegador." };
+    } else if (activity.running) {
         view = { state: "busy", title: "Lendo vagas",
             detail: activity.jobIndex ? `Vaga ${activity.jobIndex} de ${activity.jobTotal}${status?.currentAlert ? ` do alerta "${status.currentAlert}"` : ""}.` : "Abrindo o navegador." };
     } else if (activity.analyzing) {
@@ -921,7 +926,7 @@ function folderSelect(email, folders) {
 function renderLinkedinAccount() {
     const card = $("#account-linkedin");
     const linkedin = account("LINKEDIN");
-    const onLinked = () => { toast("LinkedIn conectado."); renderAccounts(); loadStatus(); };
+    const onLinked = async () => { renderAccounts(); loadStatus(); await openLinkedinLogin(); };
 
     if (!linkedin) {
         const status = el("p", "account-status", "O Vagora abre cada vaga com a sua conta para ler a descrição completa.");
@@ -934,8 +939,32 @@ function renderLinkedinAccount() {
     card.replaceChildren(
         accountHead("globe", "LinkedIn", true),
         status,
+        el("p", "hint", "Se o LinkedIn pedir verificação, entre por aqui: o navegador do Vagora abre na tela e guarda a sessão."),
+        linkedinLoginButton(),
         unlinkButton("LINKEDIN"),
     );
+}
+
+function linkedinLoginButton() {
+    const button = el("button", "button primary", "Entrar no LinkedIn");
+    button.type = "button";
+    button.addEventListener("click", async () => {
+        button.disabled = true;
+        if (await openLinkedinLogin()) location.hash = "#linkedin";
+        button.disabled = false;
+    });
+    return button;
+}
+
+async function openLinkedinLogin() {
+    try {
+        await api.openLinkedinLogin();
+        toast("Navegador aberto: termine o login na janela (captcha, código ou aprovação no celular).");
+        return true;
+    } catch (error) {
+        toast(messageFor(error));
+        return false;
+    }
 }
 
 /* ============================================================

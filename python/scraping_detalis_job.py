@@ -2,14 +2,14 @@
 Extrai os detalhes das vagas dos links do email de alerta do LinkedIn.
 
   echo '["https://..."]' | python scraping_detalis_job.py   # como o Vagora chama
-  python scraping_detalis_job.py --login   # opcional: login manual numa janela, se o automático não passar
+  python scraping_detalis_job.py --login   # abre uma janela, preenche login e senha e espera a pessoa terminar o login
 
 Variáveis de ambiente (definidas pelo Vagora):
   VAGORA_HEADLESS=1     roda sem janela
-  VAGORA_INTERACTIVE=1  a janela está na tela: espera a pessoa resolver verificações do LinkedIn
 
-Códigos de saída: 0 ok (JSON no stdout), 3 verificação de segurança, 4 login recusado,
-5 a página da vaga não carregou como esperado, 1 outra falha.
+No stdout, uma linha JSON por vaga lida, enviada assim que a vaga termina de carregar.
+Códigos de saída: 0 ok, 3 verificação de segurança, 4 login recusado,
+5 a página da vaga não carregou como esperado, 6 o navegador foi fechado, 1 outra falha.
 No stderr, linhas "@@ {json}" são eventos de progresso para o Vagora; as demais são log técnico.
 Na falha, a tela do navegador é salva em last-failure.png.
 """
@@ -23,6 +23,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
+from patchright._impl._errors import TargetClosedError
 from patchright.sync_api import TimeoutError as PlaywrightTimeout, sync_playwright
 
 from human import Human, pause
@@ -46,10 +47,9 @@ MORE = '[data-testid="expandable-text-button"]'
 CLOSED = "text=/Não aceita mais candidaturas|No longer accepting applications/i"
 
 HEADLESS = os.environ.get("VAGORA_HEADLESS") == "1"
-INTERACTIVE = os.environ.get("VAGORA_INTERACTIVE") == "1"
 CHECKPOINT_WAIT_MS = 5 * 60_000
 
-EXIT_FAILURE, EXIT_CHECKPOINT, EXIT_LOGIN_FAILED, EXIT_PAGE_UNREADABLE = 1, 3, 4, 5
+EXIT_FAILURE, EXIT_CHECKPOINT, EXIT_LOGIN_FAILED, EXIT_PAGE_UNREADABLE, EXIT_BROWSER_CLOSED = 1, 3, 4, 5, 6
 
 
 class Checkpoint(Exception):
@@ -82,27 +82,58 @@ def login(page, human):
     email = page.locator('input[name="session_key"]').first
     if email.count() and email.is_visible() and not email.input_value():
         human.type(email, os.environ["LINKEDIN_LOGIN"])
-    password = page.locator('input[type="password"]').first
+    password = page.locator('input[name="session_password"]').first
     password.wait_for(timeout=10_000)
     human.type(password, os.environ["LINKEDIN_PASSWORD"])
     page.keyboard.press("Enter")
     try:
-        page.wait_for_url(lambda u: "/jobs/view/" in u or "/checkpoint/" in u, timeout=30_000)
-    except Exception:
+        page.wait_for_url(lambda u: "/login" not in u and "/authwall" not in u, timeout=30_000)
+    except PlaywrightTimeout:
         raise LoginFailed("o LinkedIn não aceitou o login")
 
 
 def handle_checkpoint(page):
     if "/checkpoint/" not in page.url:
         return
-    if not INTERACTIVE:
-        raise Checkpoint("verificação de segurança com o navegador escondido")
     emit("checkpoint_wait")
     try:
         page.wait_for_url(lambda u: "/checkpoint/" not in u, timeout=CHECKPOINT_WAIT_MS)
-    except Exception:
+    except PlaywrightTimeout:
         raise Checkpoint("verificação de segurança não resolvida a tempo")
     emit("checkpoint_resolved")
+
+
+def settle(page, timeout_s=20):
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if urlparse(page.url).path.startswith(("/checkpoint/", "/authwall", "/login")):
+            return
+        try:
+            if page.locator(JOB).or_(page.locator(CLOSED)).first.is_visible():
+                return
+        except Exception:
+            pass
+        page.wait_for_timeout(500)
+
+
+def on_feed(url):
+    return urlparse(url).path.startswith("/feed")
+
+
+def save_session(page):
+    page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded")
+    pause(1.5, 3.5)
+    if on_feed(page.url):
+        return
+    emit("session_wait")
+    try:
+        login(page, Human(page))
+    except Exception as e:
+        log(f"login automático não passou, segue com a pessoa: {str(e).splitlines()[0]}")
+    try:
+        page.wait_for_url(on_feed, timeout=CHECKPOINT_WAIT_MS)
+    except PlaywrightTimeout:
+        raise Checkpoint("o login não terminou a tempo")
 
 
 def parse_title(page_title):
@@ -118,6 +149,7 @@ def parse_title(page_title):
 
 def scrape(page, url):
     page.goto(url, wait_until="domcontentloaded")
+    settle(page)
     pause(1.5, 3.5)
     human = Human(page)
 
@@ -162,15 +194,19 @@ def main():
             PROFILE, channel="chrome", headless=HEADLESS, no_viewport=True, locale="pt-BR")
 
         if "--login" in sys.argv:
-            browser.pages[0].goto("https://www.linkedin.com/login")
-            input("Faça login no browser e pressione ENTER...")
+            try:
+                save_session(browser.pages[0])
+            except Exception as e:
+                log(f"login: {str(e).splitlines()[0]}")
+                stop(browser, e)
+            emit("session_saved")
             browser.close()
             return
 
         SCREENSHOT.unlink(missing_ok=True)
         links = json.load(sys.stdin)
         emit("start", total=len(links))
-        results = []
+        read = 0
         unreadable = 0
         for i, url in enumerate(links, 1):
             if i > 1:
@@ -178,14 +214,16 @@ def main():
                 emit("pause", seconds=round(wait))
                 time.sleep(wait)
             emit("job", index=i, total=len(links))
-            page = browser.new_page()   # aba nova, como o clique no email
+            page = None
             try:
+                page = browser.new_page()   # aba nova, como o clique no email
                 job = scrape(page, url)
                 if job is None:
                     emit("closed", index=i)
                 else:
+                    print(json.dumps(job, ensure_ascii=False), flush=True)
+                    read += 1
                     emit("read", index=i, title=job["title"])
-                    results.append(job)
             except PageUnreadable as e:
                 # uma vaga que não carrega não derruba o alerta: pula e guarda a tela para conferir
                 log(f"pulando vaga {i}: {str(e).splitlines()[0]}")
@@ -203,20 +241,26 @@ def main():
                 except Exception:
                     pass
                 emit("fail", index=i, screenshot=SCREENSHOT.exists())
-                browser.close()
-                sys.exit(exit_code(e))
+                stop(browser, e)
             finally:
-                if not page.is_closed():
+                if page and not page.is_closed():
                     page.close()
 
         browser.close()
-    if unreadable and not results:
+    if unreadable and not read:
         # nenhuma vaga carregou: provavelmente login ou LinkedIn fora do ar; o alerta é tentado de novo
         log("nenhuma vaga carregou neste alerta")
         emit("fail", screenshot=SCREENSHOT.exists())
         sys.exit(EXIT_PAGE_UNREADABLE)
-    emit("done", count=len(results))
-    json.dump(results, sys.stdout, ensure_ascii=False)
+    emit("done", count=read)
+
+
+def stop(browser, error):
+    try:
+        browser.close()
+    except Exception:
+        pass
+    sys.exit(exit_code(error))
 
 
 def exit_code(error):
@@ -226,6 +270,8 @@ def exit_code(error):
         return EXIT_LOGIN_FAILED
     if isinstance(error, PageUnreadable):
         return EXIT_PAGE_UNREADABLE
+    if isinstance(error, TargetClosedError):
+        return EXIT_BROWSER_CLOSED
     return EXIT_FAILURE
 
 

@@ -3,13 +3,15 @@ package com.viniciushfc.domain.gateways;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.vo.JobDetail;
 
-import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public interface JobDetailsGateway {
 
-    List<JobDetail> extractJobsDetails(Set<String> jobLinks, LinkedAccount linkedinAccount, boolean showBrowser);
+    void extractJobsDetails(Set<String> jobLinks, LinkedAccount linkedinAccount, boolean showBrowser, Consumer<JobDetail> onJobRead);
 
     byte[] lastFailureScreenshot();
+
+    void openLoginWindow(LinkedAccount linkedinAccount, Runnable onSessionSaved);
 
 }

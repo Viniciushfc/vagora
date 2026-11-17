@@ -72,27 +72,30 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             emailReceivedRepository.save(received);
         }
 
+        List<JobDetail> jobs = new ArrayList<>(emailReceivedRepository.findScrapedJobs(emailId).stream()
+                .filter(job -> !jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), job.link()))
+                .toList());
+        Set<String> scraped = new HashSet<>(jobs.stream().map(JobDetail::link).toList());
+
         Set<String> links = new LinkedHashSet<>();
         extractLinksJobs(received.email().body()).forEach((jobId, link) -> {
-            if (!jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), JOB_URL.formatted(jobId))) {
+            String jobUrl = JOB_URL.formatted(jobId);
+            if (!scraped.contains(jobUrl) && !jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), jobUrl)) {
                 links.add(link);
             }
         });
-        if (links.isEmpty()) {
-            emailReceivedRepository.markSuccessProcessed(emailId);
-            return false;
-        }
 
-        List<JobDetail> jobDetailList = jobDetailsGateway.extractJobsDetails(links, linkedinAccount, profile.isBrowserVisible());
-        if (jobDetailList.isEmpty()) {
-            emailReceivedRepository.markSuccessProcessed(emailId);
-            return true;
+        if (!links.isEmpty()) {
+            jobDetailsGateway.extractJobsDetails(links, linkedinAccount, profile.isBrowserVisible(), job -> {
+                emailReceivedRepository.addScrapedJob(emailId, job);
+                jobs.add(job);
+            });
         }
-
-        String userCurriculumText = pdfGateway.extractTextPdf(profile.curriculum());
-        analyze(profile, emailId, jobDetailList, userCurriculumText);
+        if (!jobs.isEmpty()) {
+            analyze(profile, emailId, jobs, pdfGateway.extractTextPdf(profile.curriculum()));
+        }
         emailReceivedRepository.markSuccessProcessed(emailId);
-        return true;
+        return !links.isEmpty();
     }
 
     private List<JobMatch> analyze(Profile profile, UUID emailId, List<JobDetail> jobs, String curriculum) {

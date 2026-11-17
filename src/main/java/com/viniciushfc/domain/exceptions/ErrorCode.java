@@ -2,6 +2,7 @@ package com.viniciushfc.domain.exceptions;
 
 public enum ErrorCode {
     LINKEDIN_CHECKPOINT,
+    LINKEDIN_BROWSER_CLOSED,
     LINKEDIN_LOGIN_FAILED,
     LINKEDIN_NOT_CONNECTED,
     LINKEDIN_PAGE_UNREADABLE,

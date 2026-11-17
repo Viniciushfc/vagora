@@ -9,6 +9,8 @@ import com.viniciushfc.domain.repositories.EmailReceivedRepository;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.vo.Attachment;
+import com.viniciushfc.domain.vo.CompanyDetails;
+import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.domain.vo.Email;
 import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.infra.adapter.out.database.panache.repositories.contracts.PanacheEmailReceivedRepository;
@@ -113,6 +115,23 @@ class PanacheRepositoriesTest {
     private boolean isSuccessProcessed(UUID id) {
         return QuarkusTransaction.requiringNew()
                 .call(() -> panacheEmailReceivedRepository.findById(id).isSuccessProcessed());
+    }
+
+    @Test
+    void emailReceivedGuardaVagasLidasAteSerProcessado() {
+        var email = EmailReceived.create(UUID.randomUUID().toString(),
+                new Email("from@x.com", "to@x.com", "assunto", "corpo", List.of()));
+        var vaga1 = new JobDetail("https://www.linkedin.com/jobs/view/1/", "Dev", "desc", new CompanyDetails("ACME", "sobre"));
+        var vaga2 = new JobDetail("https://www.linkedin.com/jobs/view/2/", "QA", "desc", new CompanyDetails("ACME", null));
+        emailReceivedRepository.save(email);
+        assertEquals(List.of(), emailReceivedRepository.findScrapedJobs(email.id()));
+
+        emailReceivedRepository.addScrapedJob(email.id(), vaga1);
+        emailReceivedRepository.addScrapedJob(email.id(), vaga2);
+        assertEquals(List.of(vaga1, vaga2), emailReceivedRepository.findScrapedJobs(email.id()));
+
+        emailReceivedRepository.markSuccessProcessed(email.id());
+        assertEquals(List.of(), emailReceivedRepository.findScrapedJobs(email.id()), "alerta processado descarta as vagas");
     }
 
     @Test

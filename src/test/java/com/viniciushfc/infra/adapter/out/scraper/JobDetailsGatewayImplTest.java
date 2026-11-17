@@ -21,10 +21,15 @@ class JobDetailsGatewayImplTest {
         assertEquals(ErrorCode.LINKEDIN_LOGIN_FAILED, JobDetailsGatewayImpl.failure(4).code());
         assertEquals(ErrorCode.LINKEDIN_PAGE_UNREADABLE, JobDetailsGatewayImpl.failure(5).code());
         assertEquals(ErrorCode.SCRAPER_FAILED, JobDetailsGatewayImpl.failure(1).code());
-        for (int code : new int[]{1, 3, 4, 5}) {
+        assertEquals(ErrorCode.LINKEDIN_BROWSER_CLOSED, JobDetailsGatewayImpl.failure(6).code());
+        for (int code : new int[]{1, 3, 4, 5, 6}) {
             String message = JobDetailsGatewayImpl.failure(code).getMessage();
             assertFalse(message.matches(".*(Timeout|Locator|Exception|código \\d).*"), message);
         }
+        assertEquals(ErrorCode.LINKEDIN_CHECKPOINT, JobDetailsGatewayImpl.loginFailure(3).code());
+        assertTrue(JobDetailsGatewayImpl.loginFailure(3).getMessage().contains("não terminou em 5 minutos"));
+        assertEquals(ErrorCode.SCRAPER_FAILED, JobDetailsGatewayImpl.loginFailure(1).code());
+        assertTrue(JobDetailsGatewayImpl.loginFailure(6).getMessage().contains("antes de o login terminar"));
     }
 
     @Test
@@ -45,6 +50,15 @@ class JobDetailsGatewayImplTest {
         assertNull(activity.failure(), "pular uma vaga não é falha do alerta");
 
         activity = apply(activity, "{\"event\":\"done\",\"count\":1}");
+        assertFalse(activity.running());
+        assertNull(activity.failure());
+
+        activity = apply(activity.loggingIn(), "{\"event\":\"session_wait\"}");
+        assertTrue(activity.running());
+        assertEquals(0, activity.jobTotal(), "o login roda sem vagas na fila");
+        assertTrue(activity.events().getFirst().problem(), "esperar a pessoa no navegador fica em destaque");
+
+        activity = apply(activity, "{\"event\":\"session_saved\"}");
         assertFalse(activity.running());
         assertNull(activity.failure());
 

@@ -33,6 +33,7 @@ public class ProfileResource {
     private final ListJobMatchesUseCase listJobMatchesUseCase;
     private final GetProcessingStatusUseCase getProcessingStatusUseCase;
     private final GetScraperActivityUseCase getScraperActivityUseCase;
+    private final OpenLinkedinLoginUseCase openLinkedinLoginUseCase;
 
     public ProfileResource(CreateProfileUseCase createProfileUseCase,
                            GetProfileUseCase getProfileUseCase,
@@ -44,7 +45,8 @@ public class ProfileResource {
                            UpdateEmailFolderUseCase updateEmailFolderUseCase,
                            ListJobMatchesUseCase listJobMatchesUseCase,
                            GetProcessingStatusUseCase getProcessingStatusUseCase,
-                           GetScraperActivityUseCase getScraperActivityUseCase) {
+                           GetScraperActivityUseCase getScraperActivityUseCase,
+                           OpenLinkedinLoginUseCase openLinkedinLoginUseCase) {
         this.createProfileUseCase = createProfileUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
@@ -56,6 +58,7 @@ public class ProfileResource {
         this.listJobMatchesUseCase = listJobMatchesUseCase;
         this.getProcessingStatusUseCase = getProcessingStatusUseCase;
         this.getScraperActivityUseCase = getScraperActivityUseCase;
+        this.openLinkedinLoginUseCase = openLinkedinLoginUseCase;
     }
 
     @GET
@@ -109,6 +112,13 @@ public class ProfileResource {
     @Path("/accounts/{provider}")
     public ProfileResponse unlinkAccount(@PathParam("provider") ExternalProvider provider) {
         return ProfileRestMapper.toResponse(unlinkAccountUseCase.execute(provider));
+    }
+
+    @POST
+    @Path("/accounts/LINKEDIN/session")
+    public Response openLinkedinLogin() {
+        openLinkedinLoginUseCase.execute();
+        return Response.accepted().build();
     }
 
     @GET

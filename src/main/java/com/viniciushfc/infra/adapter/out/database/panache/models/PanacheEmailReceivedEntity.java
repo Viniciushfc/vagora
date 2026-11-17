@@ -19,6 +19,9 @@ public class PanacheEmailReceivedEntity {
 
     private boolean successProcessed;
 
+    @Column(columnDefinition = "TEXT")
+    private String scrapedJobs;
+
     public PanacheEmailReceivedEntity(UUID id, String messageId, boolean successProcessed) {
         this.id = id;
         this.messageId = messageId;
@@ -43,5 +46,13 @@ public class PanacheEmailReceivedEntity {
 
     public void setSuccessProcessed(boolean successProcessed) {
         this.successProcessed = successProcessed;
+    }
+
+    public String getScrapedJobs() {
+        return scrapedJobs;
+    }
+
+    public void setScrapedJobs(String scrapedJobs) {
+        this.scrapedJobs = scrapedJobs;
     }
 }

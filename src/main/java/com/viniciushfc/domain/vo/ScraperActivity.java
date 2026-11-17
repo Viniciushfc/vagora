@@ -23,6 +23,11 @@ public record ScraperActivity(boolean running,
                 .event("Iniciando o navegador para ler " + total + (total == 1 ? " vaga" : " vagas"), false);
     }
 
+    public ScraperActivity loggingIn() {
+        return new ScraperActivity(true, false, 0, 0, events, null, false)
+                .event("Abrindo o navegador para você entrar no LinkedIn", false);
+    }
+
     public ScraperActivity reading(int index, String message) {
         return new ScraperActivity(running, false, index, jobTotal, events, failure, screenshot).event(message, false);
     }

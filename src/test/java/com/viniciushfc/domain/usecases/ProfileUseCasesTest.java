@@ -4,18 +4,22 @@ import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.*;
+import com.viniciushfc.domain.gateways.JobDetailsGateway;
 import com.viniciushfc.domain.gateways.MailboxGateway;
+import com.viniciushfc.domain.repositories.ProcessingStatusRepository;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.impl.*;
 import com.viniciushfc.domain.validators.CurriculumValidator;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.MailFolder;
+import com.viniciushfc.domain.vo.ProcessingStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -215,5 +219,35 @@ class ProfileUseCasesTest {
 
         var useCase = new UpdateEmailFolderUseCaseImpl(profileRepository, mailboxGateway);
         assertThrows(ValidationException.class, () -> useCase.execute("Nada"));
+    }
+
+    @Test
+    void loginNoLinkedinComSessaoSalvaLiberaAProximaChecagem() {
+        Profile profile = existing(request("eu@x.com", ExternalProvider.LINKEDIN, null));
+        JobDetailsGateway gateway = mock(JobDetailsGateway.class);
+        ProcessingStatusRepository statuses = mock(ProcessingStatusRepository.class);
+        when(statuses.find(profile.id())).thenReturn(ProcessingStatus.empty().waitUntil(LocalDateTime.now().plusMinutes(20)));
+
+        new OpenLinkedinLoginUseCaseImpl(profileRepository, gateway, statuses).execute();
+
+        ArgumentCaptor<Runnable> onSaved = ArgumentCaptor.forClass(Runnable.class);
+        verify(gateway).openLoginWindow(any(), onSaved.capture());
+        verify(statuses, never()).save(any(), any());
+
+        onSaved.getValue().run();
+        ArgumentCaptor<ProcessingStatus> saved = ArgumentCaptor.forClass(ProcessingStatus.class);
+        verify(statuses).save(eq(profile.id()), saved.capture());
+        assertFalse(saved.getValue().isWaiting(LocalDateTime.now()));
+    }
+
+    @Test
+    void loginNoLinkedinSemContaConectadaAvisa() {
+        existing();
+        JobDetailsGateway gateway = mock(JobDetailsGateway.class);
+
+        var useCase = new OpenLinkedinLoginUseCaseImpl(profileRepository, gateway, mock(ProcessingStatusRepository.class));
+        var error = assertThrows(BusinessException.class, useCase::execute);
+        assertEquals(ErrorCode.LINKEDIN_NOT_CONNECTED, error.code());
+        verifyNoInteractions(gateway);
     }
 }
