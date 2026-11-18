@@ -26,8 +26,8 @@ class GeminiCvMatchMapperTest {
     @Test
     void ordenaPeloIdDaVaga() {
         String json = """
-                [{"id": 2, "match": false, "score": 30, "motivos": ["b"]},
-                 {"id": 1, "match": true, "score": 80, "motivos": ["a"]}]""";
+                {"resultados": [{"id": 2, "match": false, "score": 30, "motivos": ["b"]},
+                 {"id": 1, "match": true, "score": 80, "motivos": ["a"]}]}""";
         assertEquals(List.of(new CvMatchResult(true, 80, List.of("a"), null), new CvMatchResult(false, 30, List.of("b"), null)),
                 mapper.toDomain(response("```json\n" + json + "\n```"), 2));
     }

@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -27,10 +28,26 @@ import java.util.concurrent.TimeoutException;
 @ApplicationScoped
 public class GeminiServiceImpl {
 
-    static final Duration TIMEOUT = Duration.ofSeconds(90);
+    static final Duration TIMEOUT = Duration.ofMinutes(5);
     private static final ExecutorService CALLS = Executors.newVirtualThreadPerTaskExecutor();
 
-    private final GenerateContentConfig analysisConfig = config(PromptsContextsLLM.MatchAnalysisPrompt, "application/json");
+    // o esquema garante o formato da resposta; a raiz é objeto porque é o formato que a documentação do Gemini mostra
+    private static final Map<String, Object> ANALYSIS_SCHEMA = Map.of(
+            "type", "object",
+            "properties", Map.of("resultados", Map.of(
+                    "type", "array",
+                    "items", Map.of(
+                            "type", "object",
+                            "properties", Map.of(
+                                    "id", Map.of("type", "integer"),
+                                    "match", Map.of("type", "boolean"),
+                                    "score", Map.of("type", "integer", "minimum", 0, "maximum", 100),
+                                    "motivos", Map.of("type", "array", "items", Map.of("type", "string"), "minItems", 2, "maxItems", 5)),
+                            "required", List.of("id", "match", "score", "motivos")))),
+            "required", List.of("resultados"));
+
+    private final GenerateContentConfig analysisConfig = config(PromptsContextsLLM.MatchAnalysisPrompt, "application/json")
+            .toBuilder().responseJsonSchema(ANALYSIS_SCHEMA).build();
     private final GenerateContentConfig curriculumConfig = config(PromptsContextsLLM.AtsCurriculumPrompt, "text/plain");
 
     private final GeminiCvMatchMapper cvMatchMapper;
@@ -43,8 +60,9 @@ public class GeminiServiceImpl {
     }
 
     private static GenerateContentConfig config(String systemPrompt, String mimeType) {
+        // o 3.8-flash pensa no nível médio por padrão e o pensamento era ~80% do tempo da resposta; LOW é o mínimo dele
         return GenerateContentConfig.builder()
-                .temperature(0.2f)
+                .thinkingConfig(ThinkingConfig.builder().thinkingLevel(ThinkingLevel.Known.LOW))
                 .responseMimeType(mimeType)
                 .systemInstruction(Content.fromParts(Part.fromText(systemPrompt)))
                 .build();
@@ -64,10 +82,19 @@ public class GeminiServiceImpl {
 
     private GenerateContentResponse call(GenerateContentConfig config, String prompt, String apiKey) {
         Client client = Client.builder().apiKey(apiKey).build();
+        long start = System.nanoTime();
         try {
-            return CompletableFuture
+            GenerateContentResponse response = CompletableFuture
                     .supplyAsync(() -> client.models.generateContent(model, prompt, config), CALLS)
                     .get(TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+            var usage = response.usageMetadata();
+            Log.infof("Gemini respondeu em %.1f s: %s tokens de entrada, %s pensando, %s de resposta (%s)",
+                    (System.nanoTime() - start) / 1e9,
+                    usage.flatMap(u -> u.promptTokenCount()).orElse(null),
+                    usage.flatMap(u -> u.thoughtsTokenCount()).orElse(null),
+                    usage.flatMap(u -> u.candidatesTokenCount()).orElse(null),
+                    config == analysisConfig ? "análise" : "currículo");
+            return response;
         } catch (TimeoutException e) {
             Log.warnf("O Gemini não respondeu em %d s", TIMEOUT.toSeconds());
             throw new ExternalServiceException("O Gemini demorou demais para responder. O alerta será tentado de novo.");

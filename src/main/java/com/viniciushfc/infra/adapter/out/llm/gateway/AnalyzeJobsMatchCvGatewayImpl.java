@@ -20,17 +20,17 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
 
     @Override
     public List<CvMatchResult> analyze(List<JobDetail> jobs, String cvUser, String apiKey) {
-        StringBuilder prompt = new StringBuilder();
+        // o currículo vem primeiro: o começo igual entre chamadas aproveita o cache automático do Gemini
+        StringBuilder prompt = new StringBuilder(curriculum(cvUser));
         for (int i = 0; i < jobs.size(); i++) {
             prompt.append(job(jobs.get(i), i + 1)).append('\n');
         }
-        prompt.append(curriculum(cvUser));
         return geminiServiceImpl.analyze(prompt.toString(), jobs.size(), apiKey);
     }
 
     @Override
     public String adaptCurriculum(JobDetail jobDetail, String cvUser, String apiKey) {
-        return geminiServiceImpl.adaptCurriculum(job(jobDetail, 1) + "\n" + curriculum(cvUser), apiKey);
+        return geminiServiceImpl.adaptCurriculum(curriculum(cvUser) + job(jobDetail, 1), apiKey);
     }
 
     static String job(JobDetail job, int id) {

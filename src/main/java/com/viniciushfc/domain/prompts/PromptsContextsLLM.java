@@ -48,16 +48,18 @@ public class PromptsContextsLLM {
             - Na dúvida, seja conservador: é melhor reprovar um match fraco do que aprovar um candidato inadequado.
 
             ## FORMATO DE SAÍDA
-            Responda EXCLUSIVAMENTE com um array JSON válido, sem markdown, sem blocos de código e \
-            sem nenhum texto antes ou depois, com exatamente um objeto por vaga recebida:
-            [
-              {
-                "id": <o mesmo N da tag vaga>,
-                "match": <true ou false>,
-                "score": <inteiro de 0 a 100>,
-                "motivos": ["<ponto forte ou lacuna relevante 1>", "<ponto forte ou lacuna relevante 2>"]
-              }
-            ]
+            Responda EXCLUSIVAMENTE com um objeto JSON válido, sem markdown, sem blocos de código e \
+            sem nenhum texto antes ou depois, com exatamente um item em "resultados" por vaga recebida:
+            {
+              "resultados": [
+                {
+                  "id": <o mesmo N da tag vaga>,
+                  "match": <true ou false>,
+                  "score": <inteiro de 0 a 100>,
+                  "motivos": ["<ponto forte ou lacuna relevante 1>", "<ponto forte ou lacuna relevante 2>"]
+                }
+              ]
+            }
 
             O campo "motivos" deve conter de 2 a 5 itens curtos e objetivos, em português.
             """;

@@ -32,7 +32,8 @@ public class GeminiCvMatchMapper {
         String json = removeMarkdownFences(text);
         try {
             JsonNode node = objectMapper.readTree(json);
-            JsonNode items = node.isArray() ? node : objectMapper.createArrayNode().add(node);
+            JsonNode items = node.has("resultados") ? node.get("resultados")
+                    : node.isArray() ? node : objectMapper.createArrayNode().add(node);
             CvMatchResult[] results = new CvMatchResult[expected];
             for (JsonNode item : items) {
                 int id = item.path("id").asInt(expected == 1 ? 1 : 0);
