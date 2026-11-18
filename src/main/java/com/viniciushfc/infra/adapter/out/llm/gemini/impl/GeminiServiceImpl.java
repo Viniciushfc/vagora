@@ -10,7 +10,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import com.google.genai.types.*;
 import com.viniciushfc.domain.prompts.PromptsContextsLLM;
 import com.viniciushfc.domain.vo.CvMatchResult;
-import com.viniciushfc.infra.adapter.out.llm.gemini.mapper.GeminiCvMatchMapper;
+import com.viniciushfc.infra.adapter.out.llm.LlmService;
+import com.viniciushfc.infra.adapter.out.llm.mapper.CvMatchMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.Duration;
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @ApplicationScoped
-public class GeminiServiceImpl {
+public class GeminiServiceImpl implements LlmService {
 
     static final Duration TIMEOUT = Duration.ofMinutes(5);
     private static final ExecutorService CALLS = Executors.newVirtualThreadPerTaskExecutor();
@@ -50,11 +51,11 @@ public class GeminiServiceImpl {
             .toBuilder().responseJsonSchema(ANALYSIS_SCHEMA).build();
     private final GenerateContentConfig curriculumConfig = config(PromptsContextsLLM.AtsCurriculumPrompt, "text/plain");
 
-    private final GeminiCvMatchMapper cvMatchMapper;
+    private final CvMatchMapper cvMatchMapper;
 
     private final String model;
 
-    public GeminiServiceImpl(GeminiCvMatchMapper cvMatchMapper, @ConfigProperty(name = "vagora.gemini.model", defaultValue = "gemini-3.8-flash-lite") String model) {
+    public GeminiServiceImpl(CvMatchMapper cvMatchMapper, @ConfigProperty(name = "vagora.gemini.model", defaultValue = "gemini-3.8-flash-lite") String model) {
         this.cvMatchMapper = cvMatchMapper;
         this.model = model;
     }
@@ -68,10 +69,12 @@ public class GeminiServiceImpl {
                 .build();
     }
 
+    @Override
     public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey) {
-        return cvMatchMapper.toDomain(call(analysisConfig, prompt, apiKey), jobs);
+        return cvMatchMapper.toDomain("Gemini", call(analysisConfig, prompt, apiKey).text(), jobs);
     }
 
+    @Override
     public String adaptCurriculum(String prompt, String apiKey) {
         String text = call(curriculumConfig, prompt, apiKey).text();
         if (text == null || text.isBlank()) {
@@ -117,21 +120,11 @@ public class GeminiServiceImpl {
             wait = Duration.ofHours(parse(m.group(1))).plusMinutes(parse(m.group(2)))
                     .plusSeconds((long) Math.ceil(m.group(3) == null ? 0 : Double.parseDouble(m.group(3))));
         }
-        return new RateLimitedException("O limite de uso do Gemini foi atingido. A análise volta a funcionar em cerca de "
-                + humanize(wait) + ".", ErrorCode.GEMINI_QUOTA_EXCEEDED, wait);
+        return RateLimitedException.quota("Gemini", wait);
     }
 
     private static long parse(String number) {
         return number == null ? 0 : Long.parseLong(number);
-    }
-
-    private static String humanize(Duration wait) {
-        long hours = wait.toHours();
-        long minutes = wait.toMinutesPart() + (wait.toSecondsPart() > 0 ? 1 : 0);
-        if (hours == 0) {
-            return Math.max(1, minutes) + " min";
-        }
-        return hours + " h" + (minutes > 0 ? " " + minutes + " min" : "");
     }
 
     static RuntimeException translate(Throwable cause) {
@@ -141,7 +134,7 @@ public class GeminiServiceImpl {
                     || (e.code() == 400 && e.message() != null && e.message().contains("API key"));
             if (keyRejected) {
                 return new ExternalServiceException(
-                        "A chave do Gemini foi recusada. Confira a chave no Perfil.", ErrorCode.GEMINI_KEY_REJECTED);
+                        "A chave do Gemini foi recusada. Confira a chave no Perfil.", ErrorCode.LLM_KEY_REJECTED);
             }
             return switch (e.code()) {
                 case 400 -> new ExternalServiceException(

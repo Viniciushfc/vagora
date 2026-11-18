@@ -4,6 +4,7 @@ import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.entities.PendingJob;
 import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.enums.AlertSource;
+import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.exceptions.RateLimitedException;
@@ -70,12 +71,17 @@ class AnalyzePendingJobsUseCaseImplTest {
 
     private Profile profile(String key, Boolean monitoring) {
         return new Profile(UUID.randomUUID(), "F", key, new Attachment("cv.pdf", "application/pdf", new byte[]{1}),
-                new ArrayList<>(), null, monitoring);
+                new ArrayList<>(), null, monitoring, null, null);
     }
 
     private PendingJob pending(String id, AlertSource source, int attempts) {
         var job = new JobDetail("https://www.linkedin.com/jobs/view/" + id + "/", "Dev " + id, "desc", new CompanyDetails("ACME", null));
         return new PendingJob(UUID.randomUUID(), user.id(), UUID.randomUUID(), source, job, false, attempts, LocalDateTime.now());
+    }
+
+    private PendingJob pendingWithDescription(String id, String description) {
+        var job = new JobDetail("https://www.linkedin.com/jobs/view/" + id + "/", "Dev " + id, description, null);
+        return new PendingJob(UUID.randomUUID(), user.id(), UUID.randomUUID(), LINKEDIN, job, false, 0, LocalDateTime.now());
     }
 
     private void queue(PendingJob... jobs) {
@@ -92,9 +98,9 @@ class AnalyzePendingJobsUseCaseImplTest {
         var compativel = pending("1", LINKEDIN, 0);
         var fraca = pending("2", LINKEDIN, 0);
         queue(compativel, fraca);
-        when(analyzeJobsMatchCvGateway.analyze(List.of(compativel.job(), fraca.job()), "texto cv", "chave"))
+        when(analyzeJobsMatchCvGateway.analyze(List.of(compativel.job(), fraca.job()), "texto cv", user))
                 .thenReturn(List.of(result(true, 85), result(false, 30)));
-        when(analyzeJobsMatchCvGateway.adaptCurriculum(compativel.job(), "texto cv", "chave")).thenReturn("cv ats");
+        when(analyzeJobsMatchCvGateway.adaptCurriculum(compativel.job(), "texto cv", user)).thenReturn("cv ats");
 
         useCase.execute();
 
@@ -146,12 +152,30 @@ class AnalyzePendingJobsUseCaseImplTest {
     }
 
     @Test
+    void comChaveDoGroqOLoteCabeNoLimiteDeTexto() {
+        user = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(),
+                null, null, "gsk", LlmProvider.GROQ);
+        when(profileRepository.find()).thenReturn(user);
+        String metadeDoLimite = "x".repeat(LlmProvider.GROQ.maxJobChars / 2);
+        var primeira = pendingWithDescription("1", metadeDoLimite);
+        var segunda = pendingWithDescription("2", metadeDoLimite);
+        var terceira = pendingWithDescription("3", metadeDoLimite);
+        queue(primeira, segunda, terceira);
+        when(analyzeJobsMatchCvGateway.analyze(anyList(), any(), any()))
+                .thenReturn(List.of(result(false, 10), result(false, 10)));
+
+        useCase.execute();
+
+        verify(analyzeJobsMatchCvGateway).analyze(eq(List.of(primeira.job(), segunda.job())), any(), any());
+    }
+
+    @Test
     void respostaInvalidaContaFalhaEAVagaQueJaFalhouVaiSozinha() {
         var a = pending("1", LINKEDIN, 0);
         var b = pending("2", LINKEDIN, 0);
         queue(a, b);
         when(analyzeJobsMatchCvGateway.analyze(anyList(), any(), any()))
-                .thenThrow(new ExternalServiceException("fora do formato", ErrorCode.GEMINI_INVALID_RESPONSE));
+                .thenThrow(new ExternalServiceException("fora do formato", ErrorCode.LLM_INVALID_RESPONSE));
 
         useCase.execute();
 
@@ -171,13 +195,13 @@ class AnalyzePendingJobsUseCaseImplTest {
     void cotaDoGeminiEsperaOTempoPedidoSemContarFalha() {
         queue(pending("1", LINKEDIN, 0));
         when(analyzeJobsMatchCvGateway.analyze(anyList(), any(), any()))
-                .thenThrow(new RateLimitedException("cota", ErrorCode.GEMINI_QUOTA_EXCEEDED, Duration.ofHours(2)));
+                .thenThrow(new RateLimitedException("cota", ErrorCode.LLM_QUOTA_EXCEEDED, Duration.ofHours(2)));
 
         useCase.execute();
 
         verify(pendingJobRepository, never()).registerFailure(any());
         var status = statusRepository.findAnalysis(user.id());
-        assertEquals(ErrorCode.GEMINI_QUOTA_EXCEEDED, status.lastErrorCode());
+        assertEquals(ErrorCode.LLM_QUOTA_EXCEEDED, status.lastErrorCode());
         assertTrue(status.nextAlertAt().isAfter(LocalDateTime.now().plusMinutes(110)));
 
         useCase.execute();

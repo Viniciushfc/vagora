@@ -1,5 +1,6 @@
 package com.viniciushfc.infra.adapter.out.database.panache.models;
 
+import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheAttachmentEmbeddable;
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheLinkedAccountEmbeddable;
 import jakarta.persistence.*;
@@ -15,6 +16,8 @@ public class PanacheProfileEntity {
     private UUID id;
     private String name;
     private String geminiApiKey;
+    private String groqApiKey;
+    private String llmProvider;
     private Boolean showBrowser;
     private Boolean monitoringEnabled;
 
@@ -33,7 +36,15 @@ public class PanacheProfileEntity {
     )
     private List<PanacheLinkedAccountEmbeddable> linkedAccounts;
 
-    public PanacheProfileEntity(UUID id, String name, String geminiApiKey, PanacheAttachmentEmbeddable curriculum, List<PanacheLinkedAccountEmbeddable> linkedAccounts, Boolean showBrowser, Boolean monitoringEnabled) {
+    public PanacheProfileEntity(UUID id,
+                                String name,
+                                String geminiApiKey,
+                                PanacheAttachmentEmbeddable curriculum,
+                                List<PanacheLinkedAccountEmbeddable> linkedAccounts,
+                                Boolean showBrowser,
+                                Boolean monitoringEnabled,
+                                String groqApiKey,
+                                LlmProvider llmProvider) {
         this.id = id;
         this.name = name;
         this.geminiApiKey = geminiApiKey;
@@ -41,6 +52,8 @@ public class PanacheProfileEntity {
         this.linkedAccounts = linkedAccounts;
         this.showBrowser = showBrowser;
         this.monitoringEnabled = monitoringEnabled;
+        this.groqApiKey = groqApiKey;
+        setLlmProvider(llmProvider);
     }
 
     public PanacheProfileEntity() {
@@ -81,6 +94,22 @@ public class PanacheProfileEntity {
 
     public void setGeminiApiKey(String geminiApiKey) {
         this.geminiApiKey = geminiApiKey;
+    }
+
+    public String getGroqApiKey() {
+        return groqApiKey;
+    }
+
+    public void setGroqApiKey(String groqApiKey) {
+        this.groqApiKey = groqApiKey;
+    }
+
+    public LlmProvider getLlmProvider() {
+        return llmProvider == null ? null : LlmProvider.valueOf(llmProvider);
+    }
+
+    public void setLlmProvider(LlmProvider llmProvider) {
+        this.llmProvider = llmProvider == null ? null : llmProvider.name();
     }
 
     public PanacheAttachmentEmbeddable getCurriculum() {

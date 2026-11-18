@@ -380,11 +380,15 @@ function mergeStatus(statuses) {
     };
 }
 
+function hasAiKey() {
+    return state.profile.hasGeminiApiKey || state.profile.hasGroqApiKey;
+}
+
 function missingSetup() {
     const missing = [];
     if (!account("EMAIL")) missing.push("o email");
     if (!account("LINKEDIN")) missing.push("o LinkedIn");
-    if (!state.profile.hasGeminiApiKey) missing.push("a chave do Gemini");
+    if (!hasAiKey()) missing.push("a chave do Gemini ou do Groq");
     if (!state.profile.curriculumName) missing.push("o currículo");
     return missing;
 }
@@ -455,8 +459,8 @@ const ERROR_ACTIONS = {
     LINKEDIN_NOT_CONNECTED: ["Abrir contas", "#contas"],
     LINKEDIN_PAGE_UNREADABLE: ["Ver o leitor", "#leitor"],
     SCRAPER_FAILED: ["Ver o leitor", "#leitor"],
-    GEMINI_KEY_MISSING: ["Abrir perfil", "#perfil"],
-    GEMINI_KEY_REJECTED: ["Abrir perfil", "#perfil"],
+    LLM_KEY_MISSING: ["Abrir perfil", "#perfil"],
+    LLM_KEY_REJECTED: ["Abrir perfil", "#perfil"],
 };
 
 function renderProcessingAlert() {
@@ -515,6 +519,10 @@ $("#setup-profile-form").addEventListener("submit", async (event) => {
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     clearError(form);
+    if (!$("#setup-gemini").value.trim() && !$("#setup-groq").value.trim()) {
+        showError(new ApiError({ type_error: "VALIDATION_ERROR", message_error: "Preencha a chave do Gemini ou a do Groq." }), $(".form-error", form));
+        return;
+    }
     // lê os campos antes de desabilitar: campos desabilitados ficam fora do FormData
     const data = new FormData(form);
     setBusy(form, true);
@@ -606,7 +614,7 @@ function renderMissingSetup() {
     if (missing.length === 0) return;
 
     const box = $("#setup-warning");
-    const onlyProfile = missing.every((item) => item === "a chave do Gemini" || item === "o currículo");
+    const onlyProfile = missing.every((item) => item === "a chave do Gemini ou do Groq" || item === "o currículo");
     const link = el("a", "", onlyProfile ? "Abrir perfil" : "Abrir contas");
     link.href = onlyProfile ? "#perfil" : "#contas";
     box.replaceChildren(`Para analisar novas vagas, falta configurar ${joinList(missing)}. `, link);
@@ -759,7 +767,7 @@ async function loadPending() {
 function renderPending(queue) {
     const jobs = queue.jobs;
     $("#pending-summary").textContent = jobs.length === 0
-        ? "As vagas lidas dos alertas esperam aqui pela análise do Gemini."
+        ? "As vagas lidas dos alertas esperam aqui pela análise da IA."
         : `${jobs.length} ${jobs.length === 1 ? "vaga aguardando" : "vagas aguardando"} análise. As priorizadas vão primeiro.`;
     $("#pending-empty").hidden = jobs.length > 0;
     $("#pending").replaceChildren(...jobs.map((job) => pendingItem(job, queue.maxAttempts)));
@@ -775,11 +783,11 @@ function renderAnalysisStatus(analysis, total) {
     } else if (!state.profile.monitoringEnabled) {
         text = "Monitoramento pausado: a análise volta quando você retomar.";
         warn = true;
-    } else if (!state.profile.hasGeminiApiKey) {
-        text = "Configure a chave do Gemini no Perfil para analisar as vagas.";
+    } else if (!hasAiKey()) {
+        text = "Configure a chave do Gemini ou do Groq no Perfil para analisar as vagas.";
         warn = true;
     } else if (analysis?.currentAlert) {
-        text = `Gemini analisando ${analysis.currentAlert} agora.`;
+        text = `Analisando ${analysis.currentAlert} agora.`;
     } else if (analysis?.lastError) {
         const retry = analysis.nextAlertAt && new Date(analysis.nextAlertAt) > new Date()
             ? ` Nova tentativa às ${timeFormat.format(new Date(analysis.nextAlertAt))}.`
@@ -907,7 +915,7 @@ function renderScraper(activity) {
         view = { state: "busy", title: "Lendo vagas",
             detail: activity.jobIndex ? `Vaga ${activity.jobIndex} de ${activity.jobTotal}${status?.currentAlert ? ` do alerta "${status.currentAlert}"` : ""}.` : "Abrindo o navegador." };
     } else if (activity.analyzing) {
-        view = { state: "busy", title: "Analisando com o Gemini",
+        view = { state: "busy", title: "Analisando com a IA",
             detail: `Comparando ${activity.jobTotal} ${activity.jobTotal === 1 ? "vaga" : "vagas"} com o seu currículo.` };
     } else if (activity.failure) {
         view = { state: "error", title: "Parou com um problema", detail: next ? `Vai tentar de novo às ${next}.` : "Vai tentar de novo no próximo ciclo." };
@@ -1194,10 +1202,10 @@ function renderReadiness() {
                 actions: [actionLink("Abrir PDF", "/profile/curriculum", { newTab: true }), actionLink("Trocar", "#", { focus: "#profile-curriculum" })] }
             : { ok: false, name: "Currículo", detail: ["Nenhum currículo enviado. Sem ele não há com o que comparar as vagas."],
                 actions: [actionLink("Enviar", "#", { focus: "#profile-curriculum", primary: true })] },
-        profile.hasGeminiApiKey
-            ? { ok: true, name: "Chave do Gemini", detail: ["Configurada. Ela não é exibida por segurança."],
-                actions: [actionLink("Trocar", "#", { focus: "#profile-gemini" })] }
-            : { ok: false, name: "Chave do Gemini", detail: ["Falta a chave que permite ao Gemini dar a nota."],
+        hasAiKey()
+            ? { ok: true, name: "Chave da IA", detail: [aiKeysText(profile)],
+                actions: [actionLink("Trocar", "#", { focus: profile.llmProvider === "GROQ" ? "#profile-groq" : "#profile-gemini" })] }
+            : { ok: false, name: "Chave da IA", detail: ["Falta a chave do Gemini ou do Groq, que permite à IA dar a nota."],
                 actions: [actionLink("Adicionar", "#", { focus: "#profile-gemini", primary: true })] },
         email
             ? { ok: true, name: "Email", detail: [{ strong: email.username }, ". ", ...foldersText(email)],
@@ -1222,6 +1230,17 @@ function renderReadiness() {
     $("#checklist").replaceChildren(...items.map(checkItem));
 }
 
+function aiKeysText(profile) {
+    const names = { GEMINI: "Gemini", GROQ: "Groq" };
+    const configured = Object.keys(names).filter((key) =>
+        key === "GEMINI" ? profile.hasGeminiApiKey : profile.hasGroqApiKey);
+    const primary = configured.includes(profile.llmProvider) ? profile.llmProvider : configured[0];
+    const backup = configured.find((key) => key !== primary);
+
+    const backupText = backup ? `Reserva: ${names[backup]}.` : "Sem reserva.";
+    return `Principal: ${names[primary]}. ${backupText} As chaves não são exibidas por segurança.`;
+}
+
 function initials(name) {
     const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
     return ((parts[0]?.[0] ?? "?") + (parts.length > 1 ? parts.at(-1)[0] : "")).toUpperCase();
@@ -1244,7 +1263,11 @@ function renderProfile() {
     $("#profile-name").value = profile.name ?? "";
     $("#profile-gemini-hint").textContent = profile.hasGeminiApiKey
         ? "Chave configurada. Deixe em branco para manter a atual."
-        : "Nenhuma chave configurada: sem ela as vagas não são analisadas.";
+        : "Nenhuma chave do Gemini configurada.";
+    $("#profile-groq-hint").textContent = profile.hasGroqApiKey
+        ? "Chave configurada. Deixe em branco para manter a atual."
+        : "Nenhuma chave do Groq configurada.";
+    $("#profile-llm").value = profile.llmProvider ?? "GEMINI";
     $("#profile-curriculum-hint").textContent = profile.curriculumName
         ? `Atual: ${profile.curriculumName}. PDF de até 5 MB.`
         : "PDF de até 5 MB.";
@@ -1278,9 +1301,13 @@ $("#profile-form").addEventListener("submit", async (event) => {
     const data = new FormData();
     const name = $("#profile-name").value.trim();
     const gemini = $("#profile-gemini").value.trim();
+    const groq = $("#profile-groq").value.trim();
+    const llm = $("#profile-llm").value;
     const curriculum = $("#profile-curriculum").files[0];
     if (name && name !== state.profile.name) data.append("name", name);
     if (gemini) data.append("geminiApiKey", gemini);
+    if (groq) data.append("groqApiKey", groq);
+    if (llm !== state.profile.llmProvider) data.append("llmProvider", llm);
     if (curriculum) data.append("curriculum", curriculum);
 
     if ([...data.keys()].length === 0) {

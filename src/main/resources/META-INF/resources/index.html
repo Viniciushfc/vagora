@@ -60,7 +60,7 @@
             <li><strong>O LinkedIn envia um alerta</strong> de vagas para o seu email, como já acontece hoje.</li>
             <li><strong>O Vagora lê os alertas da última semana</strong>, dos mais novos para os mais antigos, sem mexer nos seus outros emails. Entre um acesso ao LinkedIn e outro, espera de 15 a 25 minutos para não chamar atenção.</li>
             <li><strong>Cada vaga é aberta</strong> num navegador nesta máquina para ler a descrição completa. Vagas encerradas são puladas.</li>
-            <li><strong>O Gemini compara</strong> a vaga com o seu currículo e dá uma nota de 0 a 100.</li>
+            <li><strong>A IA (Gemini ou Groq) compara</strong> a vaga com o seu currículo e dá uma nota de 0 a 100.</li>
             <li><strong>O resultado aparece aqui</strong>, com os motivos e um currículo adaptado quando a vaga combina.</li>
         </ol>
     </section>
@@ -68,7 +68,7 @@
     <ol class="steps" aria-label="Passos da configuração">
         <li class="step" data-step="profile">
             <h2>Seu perfil e currículo</h2>
-            <p class="step-why">O currículo é o que o Gemini compara com cada vaga. Tudo fica salvo só neste computador.</p>
+            <p class="step-why">O currículo é o que a IA compara com cada vaga. Tudo fica salvo só neste computador.</p>
             <form id="setup-profile-form" class="panel form" novalidate>
                 <div class="field">
                     <label for="setup-name">Nome</label>
@@ -85,8 +85,13 @@
                             </span>
                         </span>
                     </div>
-                    <input id="setup-gemini" name="geminiApiKey" type="password" autocomplete="off" required>
+                    <input id="setup-gemini" name="geminiApiKey" type="password" autocomplete="off">
                     <p class="hint">Gere em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+                </div>
+                <div class="field">
+                    <label for="setup-groq">Chave da API do Groq</label>
+                    <input id="setup-groq" name="groqApiKey" type="password" autocomplete="off">
+                    <p class="hint">Gere em <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Preencha pelo menos uma das duas chaves; com as duas, uma cobre a outra quando falhar.</p>
                 </div>
                 <div class="field">
                     <label for="setup-curriculum">Currículo em PDF</label>
@@ -236,7 +241,7 @@
                 <img class="empty-art" src="brand/mark.svg" alt="">
                 <h2>Nenhuma vaga na fila</h2>
                 <p>
-                    Cada vaga lida dos alertas entra aqui e espera a análise do Gemini. O Vagora analisa até 10 vagas a
+                    Cada vaga lida dos alertas entra aqui e espera a análise da IA. O Vagora analisa até 10 vagas (menos com o Groq, que aceita pedidos menores) a
                     cada 2 minutos, as priorizadas primeiro, e as analisadas passam para a aba Vagas.
                 </p>
             </div>
@@ -258,7 +263,7 @@
         <section data-panel="linkedin indeed" hidden>
             <header class="page-head">
                 <h1 class="display" id="reader-title">Leitor do LinkedIn</h1>
-                <p class="summary">Acompanhe a leitura das vagas no <span id="reader-source">LinkedIn</span> e a análise do Gemini, e entenda quando algo dá errado.</p>
+                <p class="summary">Acompanhe a leitura das vagas no <span id="reader-source">LinkedIn</span> e a análise da IA, e entenda quando algo dá errado.</p>
             </header>
 
             <div class="panel scraper-now" id="scraper-now" data-state="idle" aria-live="polite">
@@ -354,6 +359,19 @@
                                 <label for="profile-gemini">Chave da API do Gemini</label>
                                 <input id="profile-gemini" name="geminiApiKey" type="password" autocomplete="off">
                                 <p class="hint" id="profile-gemini-hint"></p>
+                            </div>
+                            <div class="field">
+                                <label for="profile-groq">Chave da API do Groq</label>
+                                <input id="profile-groq" name="groqApiKey" type="password" autocomplete="off">
+                                <p class="hint" id="profile-groq-hint"></p>
+                            </div>
+                            <div class="field">
+                                <label for="profile-llm">IA principal</label>
+                                <select id="profile-llm" name="llmProvider">
+                                    <option value="GEMINI">Gemini</option>
+                                    <option value="GROQ">Groq</option>
+                                </select>
+                                <p class="hint">A outra IA, se tiver chave, entra quando a principal falhar.</p>
                             </div>
                             <div class="field">
                                 <label for="profile-curriculum">Trocar currículo</label>

@@ -22,7 +22,9 @@ public class ProfileMapper {
                 toDomainAttachment(panacheProfileEntity.getCurriculum()),
                 toDomainLinkedAccounts(panacheProfileEntity.getLinkedAccounts()),
                 panacheProfileEntity.getShowBrowser(),
-                panacheProfileEntity.getMonitoringEnabled()
+                panacheProfileEntity.getMonitoringEnabled(),
+                panacheProfileEntity.getGroqApiKey(),
+                panacheProfileEntity.getLlmProvider()
         );
     }
 
@@ -34,13 +36,13 @@ public class ProfileMapper {
                 toPanacheAttachmentEmbeddable(profile.curriculum()),
                 toPanacheLinkedAccountEmbeddable(profile.linkedAccounts()),
                 profile.showBrowser(),
-                profile.monitoringEnabled()
+                profile.monitoringEnabled(),
+                profile.groqApiKey(),
+                profile.llmProvider()
         );
     }
 
-
     public static PanacheProfileEntity mergeForUpdate(PanacheProfileEntity entityPersist, Profile bo) {
-
         if (entityPersist == null || bo == null) {
             return entityPersist;
         }
@@ -49,23 +51,30 @@ public class ProfileMapper {
             entityPersist.setName(bo.name());
         }
 
-        if (bo.monitoringEnabled() != null){
+        if (bo.monitoringEnabled() != null) {
             entityPersist.setMonitoringEnabled(bo.monitoringEnabled());
         }
 
-        if (bo.showBrowser() != null){
+        if (bo.showBrowser() != null) {
             entityPersist.setShowBrowser(bo.showBrowser());
         }
 
-        if (bo.geminiApiKey() != null){
+        if (bo.geminiApiKey() != null) {
             entityPersist.setGeminiApiKey(bo.geminiApiKey());
         }
 
-        if (bo.curriculum() != null){
+        if (bo.groqApiKey() != null) {
+            entityPersist.setGroqApiKey(bo.groqApiKey());
+        }
+
+        if (bo.llmProvider() != null) {
+            entityPersist.setLlmProvider(bo.llmProvider());
+        }
+
+        if (bo.curriculum() != null) {
             entityPersist.setCurriculum(toPanacheAttachmentEmbeddable(bo.curriculum()));
         }
 
         return entityPersist;
     }
-
 }

@@ -64,8 +64,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
     @Override
     public void execute() {
         Profile profile = profileRepository.find();
-        if (profile == null || !profile.isMonitoringEnabled()
-                || profile.geminiApiKey() == null || profile.geminiApiKey().isBlank()) {
+        if (profile == null || !profile.isMonitoringEnabled() || profile.llmProviders().isEmpty()) {
             return;
         }
         ProcessingStatus status = statusRepository.findAnalysis(profile.id());
@@ -84,7 +83,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
 
         List<PendingJob> jobs = first.attempts() > 0
                 ? List.of(first)
-                : sameSource(batch, first.source());
+                : fitToProviders(sameSource(batch, first.source()), profile);
 
         List<PendingJob> analyzed = jobs.stream()
                 .filter(job -> jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), job.link()))
@@ -121,6 +120,33 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
                 .toList();
     }
 
+    private static List<PendingJob> fitToProviders(List<PendingJob> jobs, Profile profile) {
+        int limit = profile.llmProviders().stream()
+                .mapToInt(provider -> provider.maxJobChars)
+                .min()
+                .orElse(Integer.MAX_VALUE);
+
+        List<PendingJob> fit = new ArrayList<>();
+        long chars = 0;
+        for (PendingJob job : jobs) {
+            chars += textLength(job.job());
+            if (!fit.isEmpty() && chars > limit) {
+                break;
+            }
+            fit.add(job);
+        }
+        return fit;
+    }
+
+    private static int textLength(JobDetail job) {
+        int company = job.companyDetails() == null ? 0 : length(job.companyDetails().description());
+        return length(job.description()) + company;
+    }
+
+    private static int length(String text) {
+        return text == null ? 0 : text.length();
+    }
+
     private static List<UUID> ids(List<PendingJob> jobs) {
         return jobs.stream()
                 .map(PendingJob::id)
@@ -128,7 +154,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
     }
 
     private static boolean isInvalidResponse(Exception e) {
-        return e instanceof DomainException domain && domain.code() == ErrorCode.GEMINI_INVALID_RESPONSE;
+        return e instanceof DomainException domain && domain.code() == ErrorCode.LLM_INVALID_RESPONSE;
     }
 
     private static Duration waitAfter(Exception e) {
@@ -145,7 +171,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
         try {
             activity(source, a -> a.analyzing(jobs.size()));
             List<JobDetail> details = jobs.stream().map(PendingJob::job).toList();
-            List<CvMatchResult> results = analyzeJobsMatchCvGateway.analyze(details, curriculum, profile.geminiApiKey());
+            List<CvMatchResult> results = analyzeJobsMatchCvGateway.analyze(details, curriculum, profile);
             for (int i = 0; i < jobs.size(); i++) {
                 PendingJob job = jobs.get(i);
                 jobMatches.add(JobMatch.create(profile.id(), job.emailReceivedId(), job.job(), results.get(i)));
@@ -153,7 +179,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
             jobMatchRepository.saveAll(jobMatches);
             pendingJobRepository.delete(ids(jobs));
         } catch (RuntimeException e) {
-            String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado na análise do Gemini.";
+            String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado na análise.";
             activity(source, a -> a.failed(message, a.screenshot()));
             throw e;
         }
@@ -176,10 +202,10 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
             }
             activity(source, a -> a.adapting(jobMatch.jobTitle()));
             try {
-                String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(jobs.get(i).job(), curriculum, profile.geminiApiKey());
+                String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(jobs.get(i).job(), curriculum, profile);
                 jobMatchRepository.updateCurriculum(jobMatch.id(), adapted);
             } catch (RuntimeException e) {
-                String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado no Gemini.";
+                String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado na IA.";
                 String event = "Currículo não gerado (" + message + "). Use \"Gerar currículo\" na vaga.";
                 activity(source, a -> a.event(event, true));
                 return;

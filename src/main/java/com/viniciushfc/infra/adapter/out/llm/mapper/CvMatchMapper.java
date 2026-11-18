@@ -1,34 +1,31 @@
-package com.viniciushfc.infra.adapter.out.llm.gemini.mapper;
+package com.viniciushfc.infra.adapter.out.llm.mapper;
 
-import com.viniciushfc.domain.exceptions.ErrorCode;
-import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.genai.types.GenerateContentResponse;
+import com.viniciushfc.domain.exceptions.ErrorCode;
+import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import java.util.List;
 import java.util.Arrays;
+import java.util.List;
 
 @ApplicationScoped
-public class GeminiCvMatchMapper {
+public class CvMatchMapper {
 
     private final ObjectMapper objectMapper;
 
-    public GeminiCvMatchMapper(ObjectMapper objectMapper) {
+    public CvMatchMapper(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    public List<CvMatchResult> toDomain(GenerateContentResponse response, int expected) {
-        String text = response.text();
-
+    public List<CvMatchResult> toDomain(String provider, String text, int expected) {
         if (text == null || text.isBlank()) {
-            throw new ExternalServiceException("O Gemini não respondeu à análise. O alerta será tentado de novo.",
-                    ErrorCode.GEMINI_INVALID_RESPONSE);
+            String message = "O %s não respondeu à análise. O alerta será tentado de novo.".formatted(provider);
+            throw new ExternalServiceException(message, ErrorCode.LLM_INVALID_RESPONSE);
         }
 
         String json = removeMarkdownFences(text);
@@ -40,23 +37,25 @@ public class GeminiCvMatchMapper {
             for (JsonNode item : items) {
                 int id = item.path("id").asInt(expected == 1 ? 1 : 0);
                 if (id < 1 || id > expected || results[id - 1] != null) {
-                    throw invalid(json, null);
+                    throw invalid(provider, json, null);
                 }
-                results[id - 1] = objectMapper.treeToValue(((ObjectNode) item.deepCopy()).without("id"), CvMatchResult.class);
+                ObjectNode withoutId = ((ObjectNode) item.deepCopy()).without("id");
+                results[id - 1] = objectMapper.treeToValue(withoutId, CvMatchResult.class);
             }
             if (Arrays.asList(results).contains(null)) {
-                throw invalid(json, null);
+                throw invalid(provider, json, null);
             }
             return List.of(results);
         } catch (JsonProcessingException e) {
-            throw invalid(json, e);
+            throw invalid(provider, json, e);
         }
     }
 
-    private ExternalServiceException invalid(String json, Exception cause) {
-        Log.warnf(cause, "Resposta do Gemini fora do formato: %s", json);
-        return new ExternalServiceException("O Gemini devolveu uma resposta fora do formato esperado. O alerta será tentado de novo.",
-                ErrorCode.GEMINI_INVALID_RESPONSE, cause);
+    private ExternalServiceException invalid(String provider, String json, Exception cause) {
+        Log.warnf(cause, "Resposta do %s fora do formato: %s", provider, json);
+        String message = "O %s devolveu uma resposta fora do formato esperado. O alerta será tentado de novo."
+                .formatted(provider);
+        return new ExternalServiceException(message, ErrorCode.LLM_INVALID_RESPONSE, cause);
     }
 
     private String removeMarkdownFences(String text) {

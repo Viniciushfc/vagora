@@ -26,6 +26,12 @@ public class CreateProfileUseCaseImpl implements CreateProfileUseCase {
         }
         CurriculumValidator.validate(profile.curriculum(), pdfGateway);
 
-        return profileRepository.save(Profile.create(profile.name(), profile.geminiApiKey(), profile.curriculum()));
+        Profile created = Profile.create(
+                profile.name(),
+                profile.geminiApiKey(),
+                profile.groqApiKey(),
+                profile.llmProvider(),
+                profile.curriculum());
+        return profileRepository.save(created);
     }
 }

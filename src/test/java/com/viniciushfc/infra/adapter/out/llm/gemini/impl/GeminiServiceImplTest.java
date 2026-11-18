@@ -18,7 +18,7 @@ class GeminiServiceImplTest {
         RateLimitedException e = GeminiServiceImpl.quotaExceeded("Quota exceeded. Please retry in 7h23m28.46s.");
 
         assertEquals(Duration.ofHours(7).plusMinutes(23).plusSeconds(29), e.retryAfter());
-        assertEquals(ErrorCode.GEMINI_QUOTA_EXCEEDED, e.code());
+        assertEquals(ErrorCode.LLM_QUOTA_EXCEEDED, e.code());
     }
 
     @Test
@@ -32,8 +32,8 @@ class GeminiServiceImplTest {
 
     @Test
     void soChaveInvalidaViraChaveRecusada() {
-        assertEquals(ErrorCode.GEMINI_KEY_REJECTED, codeOf(400, "API key not valid. Please pass a valid API key."));
-        assertEquals(ErrorCode.GEMINI_KEY_REJECTED, codeOf(403, "Permission denied"));
+        assertEquals(ErrorCode.LLM_KEY_REJECTED, codeOf(400, "API key not valid. Please pass a valid API key."));
+        assertEquals(ErrorCode.LLM_KEY_REJECTED, codeOf(403, "Permission denied"));
         assertNull(codeOf(400, "Request contains an invalid argument."), "outro 400 não culpa a chave");
     }
 }

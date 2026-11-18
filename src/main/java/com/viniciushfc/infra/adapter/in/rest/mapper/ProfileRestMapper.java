@@ -2,6 +2,7 @@ package com.viniciushfc.infra.adapter.in.rest.mapper;
 
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
+import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountRequest;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountResponse;
@@ -16,7 +17,17 @@ import java.nio.file.Files;
 public class ProfileRestMapper {
 
     public static Profile toDomain(ProfileForm form) {
-        return new Profile(null, form.name, form.geminiApiKey, toAttachment(form.curriculum), null, form.showBrowser, form.monitoringEnabled);
+        return new Profile(
+                null,
+                form.name,
+                form.geminiApiKey,
+                toAttachment(form.curriculum),
+                null,
+                form.showBrowser,
+                form.monitoringEnabled,
+                form.groqApiKey,
+                form.llmProvider
+        );
     }
 
     public static LinkedAccount toDomain(LinkedAccountRequest request) {
@@ -27,7 +38,9 @@ public class ProfileRestMapper {
         return new ProfileResponse(
                 profile.id(),
                 profile.name(),
-                profile.geminiApiKey() != null && !profile.geminiApiKey().isBlank(),
+                profile.llmProviders().contains(LlmProvider.GEMINI),
+                profile.llmProviders().contains(LlmProvider.GROQ),
+                profile.primaryLlm(),
                 profile.isBrowserVisible(),
                 profile.isMonitoringEnabled(),
                 profile.curriculum() == null ? null : profile.curriculum().name(),

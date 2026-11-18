@@ -45,11 +45,11 @@ public record ScraperActivity(boolean running,
 
     public ScraperActivity analyzing(int total) {
         return new ScraperActivity(false, true, 0, total, events, null, screenshot)
-                .event("Gemini analisando " + total + (total == 1 ? " vaga" : " vagas") + " de uma vez", false);
+                .event("Analisando " + total + (total == 1 ? " vaga" : " vagas") + " de uma vez", false);
     }
 
     public ScraperActivity adapting(String title) {
-        return event("Vaga compatível: Gemini escrevendo o currículo adaptado para " + title, false);
+        return event("Vaga compatível: escrevendo o currículo adaptado para " + title, false);
     }
 
     public ScraperActivity analysisFinished(int matches, int total) {

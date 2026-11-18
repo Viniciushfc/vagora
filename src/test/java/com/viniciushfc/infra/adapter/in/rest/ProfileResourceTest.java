@@ -70,6 +70,8 @@ class ProfileResourceTest {
                 .body("id", notNullValue())
                 .body("name", is("Fulano"))
                 .body("hasGeminiApiKey", is(true))
+                .body("hasGroqApiKey", is(false))
+                .body("llmProvider", is("GEMINI"))
                 .body("curriculumName", is("cv.pdf"))
                 .body("linkedAccounts", empty())
                 .body("$", not(hasKey("password")))
@@ -129,6 +131,14 @@ class ProfileResourceTest {
                 .body("name", is("Novo Nome"))
                 .body("hasGeminiApiKey", is(true))
                 .body("curriculumName", is("cv.pdf"));
+
+        given().multiPart("groqApiKey", "gsk-chave").multiPart("llmProvider", "GROQ").when().patch("/profile")
+                .then()
+                .statusCode(200)
+                .body("hasGroqApiKey", is(true))
+                .body("llmProvider", is("GROQ"))
+                .body("hasGeminiApiKey", is(true))
+                .body("$", not(hasKey("groqApiKey")));
     }
 
     @Test

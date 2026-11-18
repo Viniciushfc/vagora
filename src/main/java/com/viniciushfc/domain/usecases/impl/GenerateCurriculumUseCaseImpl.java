@@ -40,12 +40,13 @@ public class GenerateCurriculumUseCaseImpl implements GenerateCurriculumUseCase 
         if (jobMatch.jobDescription() == null) {
             throw new BusinessException("Esta vaga foi analisada antes de o Vagora guardar a descrição, então não dá para gerar o currículo.");
         }
-        if (profile.geminiApiKey() == null || profile.geminiApiKey().isBlank()) {
-            throw new BusinessException("Configure a chave do Gemini no Perfil.", ErrorCode.GEMINI_KEY_MISSING);
+        if (profile.llmProviders().isEmpty()) {
+            throw new BusinessException(
+                    "Configure a chave do Gemini ou do Groq no Perfil.", ErrorCode.LLM_KEY_MISSING);
         }
 
         String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(jobMatch.jobDetail(),
-                pdfGateway.extractTextPdf(profile.curriculum()), profile.geminiApiKey());
+                pdfGateway.extractTextPdf(profile.curriculum()), profile);
         jobMatchRepository.updateCurriculum(jobMatch.id(), adapted);
         return jobMatch.withCurriculum(adapted);
     }

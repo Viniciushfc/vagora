@@ -27,7 +27,7 @@ class DomainEntitiesTest {
     @Test
     void findLinkedAccountPorProvider() {
         var email = LinkedAccount.create("e@x.com", "s", ExternalProvider.EMAIL, "INBOX");
-        var user = Profile.create("F", "k", null);
+        var user = Profile.create("F", "k", null, null, null);
         user.linkedAccounts().add(email);
 
         assertEquals(email, user.findLinkedAccount(ExternalProvider.EMAIL));
