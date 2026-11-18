@@ -80,9 +80,7 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
             try {
                 LOG.log(Level.INFO, "Processando alerta: {0}", subject);
                 boolean siteAccessed = processEmailReceiverUseCase.execute(profile, source, run);
-                for (EmailReceived alert : run) {
-                    mailboxGateway.markAsRead(emailAccount, source, alert.messageId());
-                }
+                mailboxGateway.markAsRead(emailAccount, source, run.stream().map(EmailReceived::messageId).toList());
                 save(profile, source, status(profile, source).succeeded());
                 if (siteAccessed) {
                     waitInterval(profile, source);

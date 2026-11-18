@@ -16,5 +16,5 @@ public interface MailboxGateway {
 
     List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, AlertSource source, LocalDate since);
 
-    void markAsRead(LinkedAccount emailAccount, AlertSource source, String messageId);
+    void markAsRead(LinkedAccount emailAccount, AlertSource source, List<String> messageIds);
 }

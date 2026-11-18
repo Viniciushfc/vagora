@@ -29,6 +29,7 @@ import static com.viniciushfc.domain.enums.AlertSource.INDEED;
 import static com.viniciushfc.domain.enums.AlertSource.LINKEDIN;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -89,7 +90,7 @@ class PollJobAlertsUseCaseImplTest {
 
         verify(processEmailReceiverUseCase, times(1)).execute(any(), any(), any());
         verify(processEmailReceiverUseCase).execute(user, LINKEDIN, List.of(primeiro));
-        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, "1");
+        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, List.of("1"));
 
         var status = statusRepository.find(user.id(), LINKEDIN);
         assertEquals(2, status.queuedAlerts());
@@ -109,8 +110,8 @@ class PollJobAlertsUseCaseImplTest {
 
         useCase.execute(LINKEDIN);
 
-        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, "1");
-        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, "2");
+        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, List.of("1"));
+        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, List.of("2"));
         verify(processEmailReceiverUseCase, times(2)).execute(any(), any(), any());
         assertTrue(statusRepository.find(user.id(), LINKEDIN).isWaiting(LocalDateTime.now()));
     }
@@ -149,8 +150,8 @@ class PollJobAlertsUseCaseImplTest {
         endInterval(user);
         useCase.execute(LINKEDIN);
 
-        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, "1");
-        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, "2");
+        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, List.of("1"));
+        verify(mailboxGateway).markAsRead(emailAccount, LINKEDIN, List.of("2"));
         assertEquals(0, statusRepository.find(user.id(), LINKEDIN).queuedAlerts());
     }
 
@@ -163,7 +164,7 @@ class PollJobAlertsUseCaseImplTest {
 
         useCase.execute(LINKEDIN);
 
-        verify(mailboxGateway, never()).markAsRead(any(), any(), any());
+        verify(mailboxGateway, never()).markAsRead(any(), any(), anyList());
         var status = statusRepository.find(user.id(), LINKEDIN);
         assertEquals("O LinkedIn pediu uma verificação", status.lastError());
         assertEquals(ErrorCode.LINKEDIN_CHECKPOINT, status.lastErrorCode());
@@ -225,9 +226,7 @@ class PollJobAlertsUseCaseImplTest {
         useCase.execute(INDEED);
 
         verify(processEmailReceiverUseCase, times(1)).execute(any(), any(), any());
-        verify(mailboxGateway).markAsRead(comIndeed, INDEED, "1");
-        verify(mailboxGateway).markAsRead(comIndeed, INDEED, "2");
-        verify(mailboxGateway).markAsRead(comIndeed, INDEED, "3");
+        verify(mailboxGateway).markAsRead(comIndeed, INDEED, List.of("1", "2", "3"));
         assertTrue(statusRepository.find(user.id(), INDEED).isWaiting(LocalDateTime.now()));
         assertFalse(statusRepository.find(user.id(), LINKEDIN).isWaiting(LocalDateTime.now()), "o intervalo do Indeed não trava o LinkedIn");
     }

@@ -106,13 +106,15 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
     }
 
     @Override
-    public void markAsRead(LinkedAccount emailAccount, AlertSource source, String messageId) {
+    public void markAsRead(LinkedAccount emailAccount, AlertSource source, List<String> messageIds) {
         try (Store store = connect(emailAccount)) {
             Folder folder = store.getFolder(emailAccount.folder(source));
             folder.open(Folder.READ_WRITE);
             try {
-                for (Message message : folder.search(new HeaderTerm("Message-ID", messageId))) {
-                    message.setFlag(Flags.Flag.SEEN, true);
+                for (String messageId : messageIds) {
+                    for (Message message : folder.search(new HeaderTerm("Message-ID", messageId))) {
+                        message.setFlag(Flags.Flag.SEEN, true);
+                    }
                 }
             } finally {
                 folder.close(false);
