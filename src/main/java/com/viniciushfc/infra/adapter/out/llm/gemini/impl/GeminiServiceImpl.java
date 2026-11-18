@@ -54,7 +54,7 @@ public class GeminiServiceImpl {
 
     private final String model;
 
-    public GeminiServiceImpl(GeminiCvMatchMapper cvMatchMapper, @ConfigProperty(name = "vagora.gemini.model", defaultValue = "gemini-3.8-flash") String model) {
+    public GeminiServiceImpl(GeminiCvMatchMapper cvMatchMapper, @ConfigProperty(name = "vagora.gemini.model", defaultValue = "gemini-3.8-flash-lite") String model) {
         this.cvMatchMapper = cvMatchMapper;
         this.model = model;
     }
@@ -134,12 +134,18 @@ public class GeminiServiceImpl {
         return hours + " h" + (minutes > 0 ? " " + minutes + " min" : "");
     }
 
-    private RuntimeException translate(Throwable cause) {
+    static RuntimeException translate(Throwable cause) {
         if (cause instanceof ApiException e) {
             Log.warnf(e, "Gemini recusou a chamada (HTTP %d)", e.code());
-            return switch (e.code()) {
-                case 400, 401, 403 -> new ExternalServiceException(
+            boolean keyRejected = e.code() == 401 || e.code() == 403
+                    || (e.code() == 400 && e.message() != null && e.message().contains("API key"));
+            if (keyRejected) {
+                return new ExternalServiceException(
                         "A chave do Gemini foi recusada. Confira a chave no Perfil.", ErrorCode.GEMINI_KEY_REJECTED);
+            }
+            return switch (e.code()) {
+                case 400 -> new ExternalServiceException(
+                        "O Gemini recusou o pedido (HTTP 400). Os detalhes estão no terminal do Vagora.");
                 case 429 -> quotaExceeded(e.message());
                 default -> new ExternalServiceException("O Gemini está indisponível agora. O alerta será tentado de novo.");
             };

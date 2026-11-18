@@ -13,4 +13,8 @@ public non-sealed class ExternalServiceException extends DomainException {
     public ExternalServiceException(String message, Throwable cause) {
         super(message, cause);
     }
+
+    public ExternalServiceException(String message, ErrorCode code, Throwable cause) {
+        super(message, code, cause);
+    }
 }

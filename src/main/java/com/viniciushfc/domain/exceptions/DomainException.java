@@ -15,8 +15,12 @@ public abstract sealed class DomainException extends RuntimeException
     }
 
     protected DomainException(String message, Throwable cause) {
+        this(message, null, cause);
+    }
+
+    protected DomainException(String message, ErrorCode code, Throwable cause) {
         super(message, cause);
-        this.code = null;
+        this.code = code;
     }
 
     public ErrorCode code() {

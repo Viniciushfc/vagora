@@ -1,5 +1,6 @@
 package com.viniciushfc.infra.adapter.out.llm.gemini.mapper;
 
+import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,7 +27,8 @@ public class GeminiCvMatchMapper {
         String text = response.text();
 
         if (text == null || text.isBlank()) {
-            throw new ExternalServiceException("O Gemini não respondeu à análise. O alerta será tentado de novo.");
+            throw new ExternalServiceException("O Gemini não respondeu à análise. O alerta será tentado de novo.",
+                    ErrorCode.GEMINI_INVALID_RESPONSE);
         }
 
         String json = removeMarkdownFences(text);
@@ -53,7 +55,8 @@ public class GeminiCvMatchMapper {
 
     private ExternalServiceException invalid(String json, Exception cause) {
         Log.warnf(cause, "Resposta do Gemini fora do formato: %s", json);
-        return new ExternalServiceException("O Gemini devolveu uma resposta fora do formato esperado. O alerta será tentado de novo.", cause);
+        return new ExternalServiceException("O Gemini devolveu uma resposta fora do formato esperado. O alerta será tentado de novo.",
+                ErrorCode.GEMINI_INVALID_RESPONSE, cause);
     }
 
     private String removeMarkdownFences(String text) {
