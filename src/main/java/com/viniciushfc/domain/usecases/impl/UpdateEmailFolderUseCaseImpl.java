@@ -34,13 +34,18 @@ public class UpdateEmailFolderUseCaseImpl implements UpdateEmailFolderUseCase {
             throw new BusinessException("Conecte um email em Contas para listar as pastas.");
         }
 
-        boolean exists = mailboxGateway.listFolders(emailAccount).stream().anyMatch(f -> f.name().equals(folder));
-        if (!exists) {
+        if (Utils.isNull(folder) || folder.isBlank()) {
+            if (source != AlertSource.INDEED) {
+                throw new ValidationException("Escolha a pasta dos alertas do " + source.label + ".");
+            }
+            folder = null;
+        } else if (!mailboxGateway.folderExists(emailAccount, folder)) {
             throw new ValidationException("Pasta não encontrada no email: " + folder);
         }
+        String chosen = folder;
 
         List<LinkedAccount> linkedAccounts = profile.linkedAccounts().stream()
-                .map(account -> account.id().equals(emailAccount.id()) ? account.withFolder(source, folder) : account)
+                .map(account -> account.id().equals(emailAccount.id()) ? account.withFolder(source, chosen) : account)
                 .toList();
 
         return profileRepository.updateLinkedAccounts(profile.id(), linkedAccounts);

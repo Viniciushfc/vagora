@@ -217,7 +217,7 @@ class ProfileUseCasesTest {
         var email = LinkedAccount.create("f@gmail.com", "app", ExternalProvider.EMAIL, "INBOX");
         var linkedin = LinkedAccount.create("login", "x", ExternalProvider.LINKEDIN, null);
         Profile current = existing(email, linkedin);
-        when(mailboxGateway.listFolders(email)).thenReturn(List.of(new MailFolder("INBOX", Map.of(LINKEDIN, 0)), new MailFolder("LinkedIn", Map.of(LINKEDIN, 5))));
+        when(mailboxGateway.folderExists(email, "LinkedIn")).thenReturn(true);
 
         new UpdateEmailFolderUseCaseImpl(profileRepository, mailboxGateway).execute(LINKEDIN, "LinkedIn");
 
@@ -232,10 +232,21 @@ class ProfileUseCasesTest {
     void updateEmailFolderRejeitaPastaInexistente() {
         var email = LinkedAccount.create("f@gmail.com", "app", ExternalProvider.EMAIL, "INBOX");
         existing(email);
-        when(mailboxGateway.listFolders(email)).thenReturn(List.of(new MailFolder("INBOX", Map.of(LINKEDIN, 0))));
 
         var useCase = new UpdateEmailFolderUseCaseImpl(profileRepository, mailboxGateway);
         assertThrows(ValidationException.class, () -> useCase.execute(LINKEDIN, "Nada"));
+        assertThrows(ValidationException.class, () -> useCase.execute(LINKEDIN, ""), "o LinkedIn sempre precisa de pasta");
+    }
+
+    @Test
+    void updateEmailFolderSemPastaDeixaDeLerOIndeed() {
+        var email = LinkedAccount.create("f@gmail.com", "app", ExternalProvider.EMAIL, "INBOX").withFolder(INDEED, "Indeed");
+        Profile current = existing(email);
+
+        new UpdateEmailFolderUseCaseImpl(profileRepository, mailboxGateway).execute(INDEED, "");
+
+        assertNull(savedAccounts(current).getFirst().indeedFolder());
+        assertEquals("INBOX", savedAccounts(current).getFirst().folder());
     }
 
     @Test

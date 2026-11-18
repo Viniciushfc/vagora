@@ -68,6 +68,15 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
     }
 
     @Override
+    public boolean folderExists(LinkedAccount emailAccount, String folder) {
+        try (Store store = connect(emailAccount)) {
+            return store.getFolder(folder).exists();
+        } catch (MessagingException e) {
+            throw translate(e);
+        }
+    }
+
+    @Override
     public List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, AlertSource source, LocalDate since) {
         try (Store store = connect(emailAccount)) {
             Folder folder = store.getFolder(emailAccount.folder(source));

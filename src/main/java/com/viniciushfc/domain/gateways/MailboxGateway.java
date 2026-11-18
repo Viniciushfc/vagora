@@ -12,6 +12,8 @@ public interface MailboxGateway {
 
     List<MailFolder> listFolders(LinkedAccount emailAccount);
 
+    boolean folderExists(LinkedAccount emailAccount, String folder);
+
     List<EmailReceived> fetchUnreadJobAlerts(LinkedAccount emailAccount, AlertSource source, LocalDate since);
 
     void markAsRead(LinkedAccount emailAccount, AlertSource source, String messageId);

@@ -1,5 +1,6 @@
 package com.viniciushfc.infra.adapter.in.rest;
 
+import static org.mockito.ArgumentMatchers.argThat;
 import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.gateways.MailboxGateway;
@@ -43,6 +44,7 @@ class ProfileResourceTest {
         QuarkusTransaction.requiringNew().run(() -> panacheProfileRepository.listAll().forEach(panacheProfileRepository::delete));
         when(mailboxGateway.listFolders(any())).thenReturn(List.of(
                 new MailFolder("INBOX", Map.of(AlertSource.LINKEDIN, 0)), new MailFolder("LinkedIn", Map.of(AlertSource.LINKEDIN, 7))));
+        when(mailboxGateway.folderExists(any(), argThat(f -> List.of("INBOX", "LinkedIn").contains(f)))).thenReturn(true);
     }
 
     private String createProfile() {

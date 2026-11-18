@@ -139,7 +139,7 @@ function folderOf(email, source) {
 function foldersText(email) {
     return [
         "Alertas do LinkedIn na pasta ", { strong: email.folder },
-        ...(email.indeedFolder ? [", do Indeed na pasta ", { strong: email.indeedFolder }] : [", do Indeed sem pasta escolhida"]),
+        ...(email.indeedFolder ? [", do Indeed na pasta ", { strong: email.indeedFolder }] : [". O Indeed não está sendo lido (nenhuma pasta escolhida)"]),
     ];
 }
 
@@ -899,23 +899,23 @@ function renderEmailAccount() {
 
 function folderPicker(email) {
     const wrapper = el("div", "folder-picker");
-    const load = el("button", "button quiet");
+    const label = email.indeedFolder ? "Trocar as pastas do LinkedIn e do Indeed" : "Escolher a pasta do Indeed";
+    const load = el("button", email.indeedFolder ? "button quiet" : "button primary");
     load.type = "button";
-    load.append(icon("folder"), "Escolher as pastas");
+    load.append(icon("folder"), label);
     const error = el("p", "form-error");
     error.hidden = true;
 
     load.addEventListener("click", async () => {
         load.disabled = true;
-        load.replaceChildren(el("span", "spinner"), "Procurando alertas em todas as pastas…");
+        load.replaceChildren(el("span", "spinner"), "Contando os alertas em cada pasta (pode levar até 1 minuto)…");
         error.hidden = true;
         try {
-            const folders = await api.listFolders();
-            wrapper.replaceChildren(folderSelect(email, folders, "LINKEDIN"), folderSelect(email, folders, "INDEED"), error);
+            wrapper.replaceChildren(folderForm(email, await api.listFolders()));
         } catch (e) {
             showError(e, error);
             load.disabled = false;
-            load.replaceChildren(icon("folder"), "Escolher as pastas");
+            load.replaceChildren(icon("folder"), label);
         }
     });
 
@@ -923,35 +923,52 @@ function folderPicker(email) {
     return wrapper;
 }
 
-function folderSelect(email, folders, source) {
-    const form = el("form", "folder-picker");
-    const field = el("div", "field");
-    const label = el("label", "", `Pasta dos alertas do ${SOURCE_LABELS[source]}`);
-    const select = el("select");
-    select.id = `f-${++uid}`;
-    label.htmlFor = select.id;
+function folderForm(email, folders) {
+    const form = el("form", "form folder-form");
+    const selects = {};
+    for (const source of ["LINKEDIN", "INDEED"]) {
+        const field = el("div", "field");
+        const label = el("label", "", `Alertas do ${SOURCE_LABELS[source]}`);
+        const select = el("select");
+        select.id = `f-${++uid}`;
+        label.htmlFor = select.id;
 
-    const alerts = (f) => f.jobAlerts[source] ?? 0;
-    const sorted = [...folders].sort((a, b) => alerts(b) - alerts(a) || a.name.localeCompare(b.name));
-    select.append(...sorted.map((f) => new Option(
-        alerts(f) === 0 ? `${f.name} (nenhum alerta)` : `${f.name} (${alerts(f)} ${alerts(f) === 1 ? "alerta" : "alertas"})`,
-        f.name, false, f.name === folderOf(email, source))));
+        const alerts = (f) => f.jobAlerts[source] ?? 0;
+        const current = folderOf(email, source);
+        // pastas com alertas primeiro; empate fica na ordem do servidor de email (INBOX antes de [Gmail]/...)
+        const sorted = [...folders].sort((a, b) => alerts(b) - alerts(a));
+        if (source === "INDEED") select.append(new Option("Não ler alertas do Indeed", "", false, !current));
+        select.append(...sorted.map((f) => new Option(
+            `${f.name} · ${alerts(f) === 0 ? "nenhum alerta" : `${alerts(f)} ${alerts(f) === 1 ? "alerta" : "alertas"}`}${f.name === current ? " (atual)" : ""}`,
+            f.name, false, f.name === current)));
 
-    const row = el("div", "folder-picker-row");
-    row.append(select, el("button", "button primary", "Usar esta pasta"));
-    field.append(label, row);
+        const hint = el("p", "hint", source === "LINKEDIN"
+            ? "Só emails de jobalerts-noreply@linkedin.com são lidos."
+            : "Só emails de donotreply@match.indeed.com são lidos. Pode ser a mesma pasta do LinkedIn.");
+        field.append(label, select, hint);
+        form.append(field);
+        selects[source] = select;
+    }
 
     const error = el("p", "form-error");
     error.hidden = true;
-    form.append(field, error);
+    const save = el("button", "button primary", "Salvar pastas");
+    const cancel = el("button", "button quiet", "Cancelar");
+    cancel.type = "button";
+    cancel.addEventListener("click", renderAccounts);
+    const actions = el("div", "folder-actions");
+    actions.append(save, cancel);
+    form.append(error, actions);
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const folder = select.value;
+        const changed = Object.entries(selects).filter(([source, select]) => select.value !== (folderOf(email, source) ?? ""));
+        if (!changed.length) return renderAccounts();
         setBusy(form, true);
+        error.hidden = true;
         try {
-            state.profile = await api.updateFolder(folder, source);
-            toast(`Os alertas do ${SOURCE_LABELS[source]} serão lidos da pasta ${folder}.`);
+            for (const [source, select] of changed) state.profile = await api.updateFolder(select.value, source);
+            toast("Pastas salvas.");
             renderAccounts();
         } catch (e) {
             showError(e, error);
