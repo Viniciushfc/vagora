@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.out.database.panache.models;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +24,7 @@ public class PanacheJobMatchEntity {
     private int score;
 
     @ElementCollection
+    @BatchSize(size = 100)
     @CollectionTable(
             name = "job_match_motivo",
             joinColumns = @JoinColumn(name = "id_job_match", referencedColumnName = "id")
