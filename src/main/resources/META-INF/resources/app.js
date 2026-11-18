@@ -309,13 +309,13 @@ function showApp() {
 let pageTimer;
 function route() {
     if ($("#app").hidden) return;
-    const tab = ["vagas", "contas", "linkedin", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "vagas";
+    const tab = ["vagas", "contas", "linkedin", "indeed", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "vagas";
 
     $$("[data-tab]").forEach((link) => {
         if (link.dataset.tab === tab) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
     });
-    $$("[data-panel]").forEach((panel) => { panel.hidden = panel.dataset.panel !== tab; });
+    $$("[data-panel]").forEach((panel) => { panel.hidden = !panel.dataset.panel.split(" ").includes(tab); });
 
     clearInterval(pageTimer);
     if (tab === "vagas") {
@@ -324,7 +324,10 @@ function route() {
         pageTimer = setInterval(() => loadMatches(false), 60_000);
     }
     if (tab === "contas") renderAccounts();
-    if (tab === "linkedin") {
+    if (tab === "linkedin" || tab === "indeed") {
+        state.readerSource = tab.toUpperCase();
+        $("#reader-title").textContent = `Leitor do ${SOURCE_LABELS[state.readerSource]}`;
+        $("#reader-source").textContent = SOURCE_LABELS[state.readerSource];
         loadScraper();
         // enquanto a página está aberta, acompanha o leitor quase em tempo real
         pageTimer = setInterval(loadScraper, 5_000);
@@ -342,8 +345,10 @@ window.addEventListener("hashchange", route);
 async function loadStatus() {
     if (!state.profile) return;
     try {
-        state.status = mergeStatus(await api.status());
+        state.statuses = await api.status();
+        state.status = mergeStatus(state.statuses);
     } catch {
+        state.statuses = null;
         state.status = null;
     }
     renderMonitor();
@@ -351,7 +356,7 @@ async function loadStatus() {
 }
 
 function mergeStatus(statuses) {
-    const entries = Object.entries(statuses).map(([source, s]) => ({ ...s, label: SOURCE_LABELS[source] }));
+    const entries = Object.entries(statuses).map(([source, s]) => ({ ...s, source, label: SOURCE_LABELS[source] }));
     const busy = entries.find((s) => s.currentAlert);
     const failed = entries.find((s) => s.lastError);
     const now = new Date();
@@ -361,6 +366,7 @@ function mergeStatus(statuses) {
         currentAlert: busy ? `${busy.label}: ${busy.currentAlert}` : null,
         lastError: failed ? `${failed.label}: ${failed.lastError}` : null,
         lastErrorCode: failed?.lastErrorCode ?? null,
+        lastErrorSource: failed?.source ?? null,
         nextAlertAt: waits[0] ?? null,
         queuedAlerts: entries.reduce((total, s) => total + s.queuedAlerts, 0),
         lastCheckAt: checks.at(-1) ?? null,
@@ -440,8 +446,8 @@ const ERROR_ACTIONS = {
     LINKEDIN_CHECKPOINT: ["Entrar no LinkedIn", "#contas"],
     LINKEDIN_LOGIN_FAILED: ["Abrir contas", "#contas"],
     LINKEDIN_NOT_CONNECTED: ["Abrir contas", "#contas"],
-    LINKEDIN_PAGE_UNREADABLE: ["Ver o leitor do LinkedIn", "#linkedin"],
-    SCRAPER_FAILED: ["Ver o leitor do LinkedIn", "#linkedin"],
+    LINKEDIN_PAGE_UNREADABLE: ["Ver o leitor", "#leitor"],
+    SCRAPER_FAILED: ["Ver o leitor", "#leitor"],
     GEMINI_KEY_MISSING: ["Abrir perfil", "#perfil"],
     GEMINI_KEY_REJECTED: ["Abrir perfil", "#perfil"],
 };
@@ -457,7 +463,7 @@ function renderProcessingAlert() {
     const action = ERROR_ACTIONS[state.status.lastErrorCode];
     if (action) {
         const link = el("a", "", action[0]);
-        link.href = action[1];
+        link.href = action[1] === "#leitor" ? `#${state.status.lastErrorSource.toLowerCase()}` : action[1];
         box.append(link);
     } else {
         box.append("O alerta continua no email e será tentado de novo.");
@@ -763,7 +769,7 @@ const clockFormat = new Intl.DateTimeFormat("pt-BR", { timeStyle: "medium" });
 
 async function loadScraper() {
     try {
-        renderScraper(await api.scraper());
+        renderScraper((await api.scraper())[state.readerSource]);
     } catch (error) {
         showError(error, $("#scraper-failure-text"));
         $("#scraper-failure").hidden = false;
@@ -772,7 +778,7 @@ async function loadScraper() {
 
 function renderScraper(activity) {
     const box = $("#scraper-now");
-    const status = state.status;
+    const status = state.statuses?.[state.readerSource];
     const next = status?.nextAlertAt && new Date(status.nextAlertAt) > new Date() ? timeFormat.format(new Date(status.nextAlertAt)) : null;
     let view;
     if (activity.running && !activity.jobTotal) {

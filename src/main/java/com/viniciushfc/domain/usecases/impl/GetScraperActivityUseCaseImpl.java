@@ -1,11 +1,15 @@
 package com.viniciushfc.domain.usecases.impl;
 
 import com.viniciushfc.domain.annotations.UseCase;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.domain.gateways.JobDetailsGateway;
 import com.viniciushfc.domain.repositories.ScraperActivityRepository;
 import com.viniciushfc.domain.usecases.contracts.GetScraperActivityUseCase;
 import com.viniciushfc.domain.vo.ScraperActivity;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 @UseCase
 public class GetScraperActivityUseCaseImpl implements GetScraperActivityUseCase {
@@ -19,8 +23,12 @@ public class GetScraperActivityUseCaseImpl implements GetScraperActivityUseCase 
     }
 
     @Override
-    public ScraperActivity execute() {
-        return scraperActivityRepository.get();
+    public Map<AlertSource, ScraperActivity> execute() {
+        Map<AlertSource, ScraperActivity> activities = new EnumMap<>(AlertSource.class);
+        for (AlertSource source : AlertSource.values()) {
+            activities.put(source, scraperActivityRepository.get(source));
+        }
+        return activities;
     }
 
     @Override

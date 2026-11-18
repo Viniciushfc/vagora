@@ -1,23 +1,25 @@
 package com.viniciushfc.infra.adapter.out.memory;
 
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.repositories.ScraperActivityRepository;
 import com.viniciushfc.domain.vo.ScraperActivity;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class InMemoryScraperActivityRepository implements ScraperActivityRepository {
 
-    private final AtomicReference<ScraperActivity> activity = new AtomicReference<>(ScraperActivity.idle());
+    private final Map<AlertSource, ScraperActivity> activities = new ConcurrentHashMap<>();
 
     @Override
-    public ScraperActivity get() {
-        return activity.get();
+    public ScraperActivity get(AlertSource source) {
+        return activities.getOrDefault(source, ScraperActivity.idle());
     }
 
     @Override
-    public void save(ScraperActivity activity) {
-        this.activity.set(activity);
+    public void save(AlertSource source, ScraperActivity activity) {
+        activities.put(source, activity);
     }
 }

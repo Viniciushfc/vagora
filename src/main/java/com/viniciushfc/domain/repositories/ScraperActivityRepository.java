@@ -1,10 +1,11 @@
 package com.viniciushfc.domain.repositories;
 
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.vo.ScraperActivity;
 
 public interface ScraperActivityRepository {
 
-    ScraperActivity get();
+    ScraperActivity get(AlertSource source);
 
-    void save(ScraperActivity activity);
+    void save(AlertSource source, ScraperActivity activity);
 }

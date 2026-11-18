@@ -288,7 +288,7 @@ class ProfileResourceTest {
                 .body("LINKEDIN.lastCheckAt", nullValue())
                 .body("INDEED.lastError", nullValue());
 
-        given().when().get("/profile/scraper").then().statusCode(200).body("running", is(false));
+        given().when().get("/profile/scraper").then().statusCode(200).body("LINKEDIN.running", is(false)).body("INDEED.running", is(false));
     }
 
     @Test

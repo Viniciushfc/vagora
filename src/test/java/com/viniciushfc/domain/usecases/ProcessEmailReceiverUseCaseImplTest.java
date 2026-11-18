@@ -92,9 +92,9 @@ class ProcessEmailReceiverUseCaseImplTest {
     @SuppressWarnings("unchecked")
     private void scrapes(Set<String> links, JobDetail... jobs) {
         doAnswer(inv -> {
-            List.of(jobs).forEach(job -> inv.<Consumer<JobDetail>>getArgument(3).accept(readFrom(links, job)));
+            List.of(jobs).forEach(job -> inv.<Consumer<JobDetail>>getArgument(4).accept(readFrom(links, job)));
             return null;
-        }).when(jobDetailsGateway).extractJobsDetails(eq(links), any(), anyBoolean(), any(Consumer.class));
+        }).when(jobDetailsGateway).extractJobsDetails(eq(LINKEDIN), eq(links), any(), anyBoolean(), any(Consumer.class));
     }
 
     private static String indeedLink(String target) throws Exception {
@@ -161,7 +161,7 @@ class ProcessEmailReceiverUseCaseImplTest {
 
         useCase.execute(user, LINKEDIN, List.of(email));
 
-        verify(jobDetailsGateway).extractJobsDetails(eq(new LinkedHashSet<>(List.of(
+        verify(jobDetailsGateway).extractJobsDetails(eq(LINKEDIN), eq(new LinkedHashSet<>(List.of(
                 "https://www.linkedin.com/comm/jobs/view/111/?trk=a&b=1",
                 LINK_2))), eq(linkedin), eq(false), any());
         verify(emailReceivedRepository).markSuccessProcessed(email.id());
@@ -191,11 +191,11 @@ class ProcessEmailReceiverUseCaseImplTest {
         assertEquals("cv ats", saved.curriculoAts(), "currículo adaptado vem da segunda chamada");
         verify(emailReceivedRepository).markSuccessProcessed(email.id());
 
-        var events = scraperActivityRepository.get().events().stream().map(e -> e.message()).toList();
+        var events = scraperActivityRepository.get(LINKEDIN).events().stream().map(e -> e.message()).toList();
         assertEquals("Análise concluída: 1 compatível de 1", events.get(0));
         assertEquals("Vaga compatível: Gemini escrevendo o currículo adaptado para Dev 222", events.get(1));
         assertEquals("Gemini analisando 1 vaga de uma vez", events.get(2));
-        assertFalse(scraperActivityRepository.get().analyzing());
+        assertFalse(scraperActivityRepository.get(LINKEDIN).analyzing());
     }
 
     @Test
@@ -215,7 +215,7 @@ class ProcessEmailReceiverUseCaseImplTest {
 
         useCase.execute(visivel, LINKEDIN, List.of(alertEmail(LINK_1)));
 
-        verify(jobDetailsGateway).extractJobsDetails(any(), eq(linkedin), eq(true), any());
+        verify(jobDetailsGateway).extractJobsDetails(any(), any(), eq(linkedin), eq(true), any());
     }
 
     @Test
@@ -276,9 +276,9 @@ class ProcessEmailReceiverUseCaseImplTest {
         var email = alertEmail(LINK_1 + " " + LINK_2);
         var lida = job("111");
         doAnswer(inv -> {
-            inv.<Consumer<JobDetail>>getArgument(3).accept(readFrom(inv.getArgument(0), lida));
+            inv.<Consumer<JobDetail>>getArgument(4).accept(readFrom(inv.getArgument(1), lida));
             throw new RuntimeException("navegador fechado");
-        }).when(jobDetailsGateway).extractJobsDetails(any(), any(), anyBoolean(), any());
+        }).when(jobDetailsGateway).extractJobsDetails(any(), any(), any(), anyBoolean(), any());
 
         assertThrows(RuntimeException.class, () -> useCase.execute(user, LINKEDIN, List.of(email)));
 
@@ -299,11 +299,11 @@ class ProcessEmailReceiverUseCaseImplTest {
         var lida1 = new JobDetail(vaga1, "Dev 1", "desc", new CompanyDetails("A", null));
         var lida2 = new JobDetail(vaga2, "Dev 2", "desc", new CompanyDetails("B", null));
         doAnswer(inv -> {
-            Consumer<JobDetail> onJobRead = inv.getArgument(3);
+            Consumer<JobDetail> onJobRead = inv.getArgument(4);
             onJobRead.accept(lida1);
             onJobRead.accept(lida2);
             return null;
-        }).when(jobDetailsGateway).extractJobsDetails(eq(new LinkedHashSet<>(List.of(vaga1, vaga2))), isNull(), eq(false), any());
+        }).when(jobDetailsGateway).extractJobsDetails(eq(AlertSource.INDEED), eq(new LinkedHashSet<>(List.of(vaga1, vaga2))), isNull(), eq(false), any());
         when(pdfGateway.extractTextPdf(any())).thenReturn("texto cv");
         when(analyzeJobsMatchCvGateway.analyze(anyList(), eq("texto cv"), eq("chave-gemini")))
                 .thenReturn(List.of(result(false, 40), result(false, 30)));
@@ -321,5 +321,7 @@ class ProcessEmailReceiverUseCaseImplTest {
         assertEquals(email2.id(), salvas.get(1).emailReceivedId());
         verify(emailReceivedRepository).markSuccessProcessed(email1.id());
         verify(emailReceivedRepository).markSuccessProcessed(email2.id());
+        assertEquals("Análise concluída: 0 compatíveis de 2", scraperActivityRepository.get(AlertSource.INDEED).events().getFirst().message());
+        assertTrue(scraperActivityRepository.get(LINKEDIN).events().isEmpty(), "a análise do Indeed não aparece no leitor do LinkedIn");
     }
 }

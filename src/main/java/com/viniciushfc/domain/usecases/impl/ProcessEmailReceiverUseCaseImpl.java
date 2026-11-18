@@ -91,7 +91,7 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         }
 
         if (!toScrape.isEmpty()) {
-            jobDetailsGateway.extractJobsDetails(toScrape.keySet(), linkedinAccount, profile.isBrowserVisible(), read -> {
+            jobDetailsGateway.extractJobsDetails(source, toScrape.keySet(), linkedinAccount, profile.isBrowserVisible(), read -> {
                 String jobUrl = toScrape.get(read.link());
                 JobDetail job = new JobDetail(jobUrl, read.title(), read.description(), read.companyDetails());
                 emailReceivedRepository.addScrapedJob(emailOf.get(jobUrl), job);
@@ -99,7 +99,7 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             });
         }
         if (!jobs.isEmpty()) {
-            analyze(profile, emailOf, jobs, pdfGateway.extractTextPdf(profile.curriculum()));
+            analyze(profile, source, emailOf, jobs, pdfGateway.extractTextPdf(profile.curriculum()));
         }
         emailIds.forEach(emailReceivedRepository::markSuccessProcessed);
         return !toScrape.isEmpty();
@@ -109,16 +109,16 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         return jobMatchRepository.existsByProfileIdAndJobLink(profile.id(), jobUrl);
     }
 
-    private List<JobMatch> analyze(Profile profile, Map<String, UUID> emailOf, List<JobDetail> jobs, String curriculum) {
+    private List<JobMatch> analyze(Profile profile, AlertSource source, Map<String, UUID> emailOf, List<JobDetail> jobs, String curriculum) {
         List<JobMatch> jobMatches = new ArrayList<>();
         try {
-            activity(a -> a.analyzing(jobs.size()));
+            activity(source, a -> a.analyzing(jobs.size()));
             List<CvMatchResult> results = analyzeJobsMatchCvGateway.analyze(jobs, curriculum, profile.geminiApiKey());
             for (int i = 0; i < jobs.size(); i++) {
                 JobDetail job = jobs.get(i);
                 CvMatchResult result = results.get(i);
                 if (result.match()) {
-                    activity(a -> a.adapting(job.title()));
+                    activity(source, a -> a.adapting(job.title()));
                     String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(job, curriculum, profile.geminiApiKey());
                     result = new CvMatchResult(true, result.score(), result.motivos(), adapted);
                 }
@@ -128,15 +128,15 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             }
         } catch (RuntimeException e) {
             String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado na análise do Gemini.";
-            activity(a -> a.failed(message, a.screenshot()));
+            activity(source, a -> a.failed(message, a.screenshot()));
             throw e;
         }
         long matches = jobMatches.stream().filter(JobMatch::match).count();
-        activity(a -> a.analysisFinished((int) matches, jobs.size()));
+        activity(source, a -> a.analysisFinished((int) matches, jobs.size()));
         return jobMatches;
     }
 
-    private void activity(UnaryOperator<ScraperActivity> change) {
-        scraperActivityRepository.save(change.apply(scraperActivityRepository.get()));
+    private void activity(AlertSource source, UnaryOperator<ScraperActivity> change) {
+        scraperActivityRepository.save(source, change.apply(scraperActivityRepository.get(source)));
     }
 }

@@ -154,7 +154,7 @@ public class ProfileResource {
 
     @GET
     @Path("/scraper")
-    public ScraperActivity scraper() {
+    public Map<AlertSource, ScraperActivity> scraper() {
         return getScraperActivityUseCase.execute();
     }
 

@@ -131,6 +131,7 @@
             <a href="#vagas" data-tab="vagas"><svg class="icon"><use href="#i-jobs"/></svg><span>Vagas</span></a>
             <a href="#contas" data-tab="contas"><svg class="icon"><use href="#i-plug"/></svg><span>Contas</span></a>
             <a href="#linkedin" data-tab="linkedin"><svg class="icon"><use href="#i-globe"/></svg><span>LinkedIn</span></a>
+            <a href="#indeed" data-tab="indeed"><svg class="icon"><use href="#i-search"/></svg><span>Indeed</span></a>
             <a href="#perfil" data-tab="perfil"><svg class="icon"><use href="#i-user"/></svg><span>Perfil</span></a>
         </nav>
 
@@ -231,11 +232,11 @@
             </div>
         </section>
 
-        <!-- Leitor do LinkedIn -->
-        <section data-panel="linkedin" hidden>
+        <!-- Leitor do LinkedIn e do Indeed -->
+        <section data-panel="linkedin indeed" hidden>
             <header class="page-head">
-                <h1 class="display">Leitor do LinkedIn</h1>
-                <p class="summary">Acompanhe a leitura das vagas no LinkedIn e a análise do Gemini, e entenda quando algo dá errado.</p>
+                <h1 class="display" id="reader-title">Leitor do LinkedIn</h1>
+                <p class="summary">Acompanhe a leitura das vagas no <span id="reader-source">LinkedIn</span> e a análise do Gemini, e entenda quando algo dá errado.</p>
             </header>
 
             <div class="panel scraper-now" id="scraper-now" data-state="idle" aria-live="polite">

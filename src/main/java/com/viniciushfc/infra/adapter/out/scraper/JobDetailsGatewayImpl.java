@@ -3,6 +3,7 @@ package com.viniciushfc.infra.adapter.out.scraper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viniciushfc.domain.entities.LinkedAccount;
+import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.exceptions.ConflictException;
 import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
@@ -48,6 +49,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     private final ObjectMapper mapper;
     private final ScraperActivityRepository activity;
     private final Semaphore browserInUse = new Semaphore(1);
+    private volatile AlertSource reading = AlertSource.LINKEDIN;
 
     public JobDetailsGatewayImpl(ObjectMapper mapper, ScraperActivityRepository activity) {
         this.mapper = mapper;
@@ -55,9 +57,10 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     }
 
     @Override
-    public void extractJobsDetails(Set<String> jobLinks, LinkedAccount linkedinAccount, boolean showBrowser,
+    public void extractJobsDetails(AlertSource source, Set<String> jobLinks, LinkedAccount linkedinAccount, boolean showBrowser,
                                    Consumer<JobDetail> onJobRead) {
         browserInUse.acquireUninterruptibly();
+        reading = source;
         try {
             readJobs(jobLinks, linkedinAccount, showBrowser, onJobRead);
         } finally {
@@ -70,6 +73,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         if (!browserInUse.tryAcquire()) {
             throw new ConflictException("O leitor do LinkedIn está usando o navegador agora. Espere ele terminar e tente de novo.");
         }
+        reading = AlertSource.LINKEDIN;
         update(ScraperActivity::loggingIn);
         Thread.ofVirtual().start(() -> {
             try {
@@ -163,6 +167,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         process.destroyForcibly();
     }
 
+    // shortcut: uma captura só para as duas fontes, a falha mais recente sobrescreve a outra; separar por fonte se confundir
     @Override
     public byte[] lastFailureScreenshot() {
         try {
@@ -206,7 +211,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     }
 
     private void update(UnaryOperator<ScraperActivity> change) {
-        activity.save(change.apply(activity.get()));
+        activity.save(reading, change.apply(activity.get(reading)));
     }
 
     private ExternalServiceException fail(ExternalServiceException e) {
