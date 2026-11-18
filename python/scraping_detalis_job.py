@@ -237,6 +237,7 @@ def main():
         links = json.load(sys.stdin)
         emit("start", total=len(links))
         read = 0
+        closed = 0
         unreadable = 0
         for i, url in enumerate(links, 1):
             if i > 1:
@@ -249,6 +250,7 @@ def main():
                 page = browser.new_page()   # aba nova, como o clique no email
                 job = scrape(page, url)
                 if job is None:
+                    closed += 1
                     emit("closed", index=i)
                 else:
                     print(json.dumps(job, ensure_ascii=False), flush=True)
@@ -277,7 +279,7 @@ def main():
                     page.close()
 
         browser.close()
-    if unreadable and not read:
+    if unreadable and not read and not closed:
         # nenhuma vaga carregou: provavelmente login ou LinkedIn fora do ar; o alerta é tentado de novo
         log("nenhuma vaga carregou neste alerta")
         emit("fail", screenshot=SCREENSHOT.exists())
