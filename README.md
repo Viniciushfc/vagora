@@ -32,8 +32,8 @@ maioria não combina com o próprio perfil. O Vagora faz essa triagem por você:
 Tudo roda **no seu computador**: seus dados, senhas e currículo não saem da sua máquina (exceto o texto enviado ao
 Gemini para a análise).
 
-> **Plataformas suportadas:** hoje, **LinkedIn**. O Vagora foi desenhado para receber outras plataformas de vagas
-> (como Indeed, Gupy e Catho) — veja o [roadmap](#roadmap).
+> **Plataformas suportadas:** hoje, **LinkedIn** e **Indeed**. O Vagora foi desenhado para receber outras plataformas
+> de vagas (como Gupy e Catho) — veja o [roadmap](#roadmap).
 
 ## Como funciona
 
@@ -191,9 +191,10 @@ Erros têm sempre o mesmo formato:
 ## Roadmap
 
 - [x] LinkedIn: leitura dos alertas, abertura das vagas e análise
+- [x] Indeed: leitura dos alertas, abertura das vagas e análise
 - [x] Interface web com acompanhamento do leitor e currículo adaptado
 - [ ] Suporte a Windows no `run.sh` (`run.ps1`)
-- [ ] **Novas plataformas de vagas:** Indeed, Gupy, Catho e outras
+- [ ] **Novas plataformas de vagas:** Gupy, Catho e outras
 - [ ] Notificação quando surgir uma vaga compatível
 
 ## Licença
