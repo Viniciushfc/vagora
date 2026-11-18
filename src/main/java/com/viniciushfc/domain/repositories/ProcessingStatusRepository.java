@@ -10,4 +10,8 @@ public interface ProcessingStatusRepository {
     ProcessingStatus find(UUID profileId, AlertSource source);
 
     void save(UUID profileId, AlertSource source, ProcessingStatus status);
+
+    ProcessingStatus findAnalysis(UUID profileId);
+
+    void saveAnalysis(UUID profileId, ProcessingStatus status);
 }

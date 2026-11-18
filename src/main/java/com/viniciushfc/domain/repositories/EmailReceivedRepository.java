@@ -14,6 +14,4 @@ public interface EmailReceivedRepository {
     void markSuccessProcessed(UUID id);
 
     List<JobDetail> findScrapedJobs(UUID id);
-
-    void addScrapedJob(UUID id, JobDetail job);
 }

@@ -59,6 +59,8 @@ const api = {
     updateFolder: (folder, source) => request("PUT", "/profile/email/folder", { folder, source }),
     listMatches: () => request("GET", "/profile/job-matches"),
     generateCurriculum: (id) => request("POST", `/profile/job-matches/${id}/curriculum`),
+    listPending: () => request("GET", "/profile/pending-jobs"),
+    prioritize: (id) => request("POST", `/profile/pending-jobs/${id}/priority`),
     status: () => request("GET", "/profile/status"),
     scraper: () => request("GET", "/profile/scraper"),
 };
@@ -310,7 +312,7 @@ function showApp() {
 let pageTimer;
 function route() {
     if ($("#app").hidden) return;
-    const tab = ["vagas", "contas", "linkedin", "indeed", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "vagas";
+    const tab = ["vagas", "pendentes", "contas", "linkedin", "indeed", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "vagas";
 
     $$("[data-tab]").forEach((link) => {
         if (link.dataset.tab === tab) link.setAttribute("aria-current", "page");
@@ -323,6 +325,10 @@ function route() {
         loadMatches(true);
         // o servidor verifica o email a cada minuto; a lista acompanha
         pageTimer = setInterval(() => loadMatches(false), 60_000);
+    }
+    if (tab === "pendentes") {
+        loadPending();
+        pageTimer = setInterval(loadPending, 30_000);
     }
     if (tab === "contas") renderAccounts();
     if (tab === "linkedin" || tab === "indeed") {
@@ -734,6 +740,91 @@ function matchItem(match) {
     }
 
     return item;
+}
+
+async function loadPending() {
+    let queue;
+    try {
+        queue = await api.listPending();
+    } catch (error) {
+        const box = $("#pending-status");
+        box.className = "notice warn";
+        box.textContent = messageFor(error);
+        box.hidden = false;
+        return;
+    }
+    renderPending(queue);
+}
+
+function renderPending(queue) {
+    const jobs = queue.jobs;
+    $("#pending-summary").textContent = jobs.length === 0
+        ? "As vagas lidas dos alertas esperam aqui pela análise do Gemini."
+        : `${jobs.length} ${jobs.length === 1 ? "vaga aguardando" : "vagas aguardando"} análise. As priorizadas vão primeiro.`;
+    $("#pending-empty").hidden = jobs.length > 0;
+    $("#pending").replaceChildren(...jobs.map((job) => pendingItem(job, queue.maxAttempts)));
+    renderAnalysisStatus(queue.analysis, jobs.length);
+}
+
+function renderAnalysisStatus(analysis, total) {
+    const box = $("#pending-status");
+    let text = null;
+    let warn = false;
+    if (total === 0) {
+        text = null;
+    } else if (!state.profile.monitoringEnabled) {
+        text = "Monitoramento pausado: a análise volta quando você retomar.";
+        warn = true;
+    } else if (!state.profile.hasGeminiApiKey) {
+        text = "Configure a chave do Gemini no Perfil para analisar as vagas.";
+        warn = true;
+    } else if (analysis?.currentAlert) {
+        text = `Gemini analisando ${analysis.currentAlert} agora.`;
+    } else if (analysis?.lastError) {
+        const retry = analysis.nextAlertAt && new Date(analysis.nextAlertAt) > new Date()
+            ? ` Nova tentativa às ${timeFormat.format(new Date(analysis.nextAlertAt))}.`
+            : " Nova tentativa em até 2 minutos.";
+        text = `A última análise falhou: ${analysis.lastError}${retry}`;
+        warn = true;
+    } else {
+        text = "A próxima análise acontece em até 2 minutos.";
+    }
+    box.className = warn ? "notice warn" : "notice info";
+    box.textContent = text ?? "";
+    box.hidden = text === null;
+}
+
+function pendingItem(job, maxAttempts) {
+    const item = cloneTemplate("pending-template");
+    const stuck = job.attempts >= maxAttempts;
+    item.dataset.priority = job.prioritized ? "yes" : "no";
+
+    $(".job-title", item).textContent = job.jobTitle || "Vaga sem título";
+    $(".job-company", item).textContent = job.companyName ?? "";
+    $(".job-source", item).textContent = SOURCE_LABELS[job.source] ?? "";
+    if (job.createdAt) $(".analysed-at", item).textContent = `Lida em ${dateFormat.format(new Date(job.createdAt))}`;
+    $(".verdict", item).textContent = job.prioritized
+        ? "Prioridade"
+        : stuck ? `Falhou ${job.attempts} vezes` : job.attempts > 0 ? "Falhou, nova tentativa" : "Na fila";
+    $(".job-link", item).href = job.jobLink;
+
+    const button = $(".prioritize", item);
+    button.hidden = job.prioritized;
+    if (stuck) button.textContent = "Tentar de novo";
+    button.addEventListener("click", () => prioritize(job.id, button));
+    return item;
+}
+
+async function prioritize(id, button) {
+    button.disabled = true;
+    try {
+        await api.prioritize(id);
+        toast("Vaga priorizada: entra na próxima análise.");
+    } catch (error) {
+        toast(messageFor(error));
+    } finally {
+        await loadPending();
+    }
 }
 
 // a lista se redesenha a cada minuto; o conjunto mantém o botão ocupado enquanto o Gemini escreve

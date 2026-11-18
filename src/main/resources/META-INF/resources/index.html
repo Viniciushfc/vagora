@@ -29,6 +29,7 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 </svg>
 
@@ -129,6 +130,7 @@
 
         <nav class="nav" aria-label="Seções">
             <a href="#vagas" data-tab="vagas"><svg class="icon"><use href="#i-jobs"/></svg><span>Vagas</span></a>
+            <a href="#pendentes" data-tab="pendentes"><svg class="icon"><use href="#i-clock"/></svg><span>Pendentes</span></a>
             <a href="#contas" data-tab="contas"><svg class="icon"><use href="#i-plug"/></svg><span>Contas</span></a>
             <a href="#linkedin" data-tab="linkedin"><svg class="icon"><use href="#i-globe"/></svg><span>LinkedIn</span></a>
             <a href="#indeed" data-tab="indeed"><svg class="icon"><use href="#i-search"/></svg><span>Indeed</span></a>
@@ -217,6 +219,26 @@
             <div id="matches-filtered-empty" class="panel empty" hidden>
                 <h2 id="filtered-empty-title">Nenhuma vaga encontrada</h2>
                 <p id="filtered-empty-text"></p>
+            </div>
+        </section>
+
+        <section data-panel="pendentes" hidden>
+            <header class="page-head">
+                <h1 class="display">Aguardando análise</h1>
+                <p id="pending-summary" class="summary"></p>
+            </header>
+
+            <div id="pending-status" class="notice info" aria-live="polite" hidden></div>
+
+            <ul id="pending" class="matches"></ul>
+
+            <div id="pending-empty" class="panel empty" hidden>
+                <img class="empty-art" src="brand/mark.svg" alt="">
+                <h2>Nenhuma vaga na fila</h2>
+                <p>
+                    Cada vaga lida dos alertas entra aqui e espera a análise do Gemini. O Vagora analisa até 10 vagas a
+                    cada 2 minutos, as priorizadas primeiro, e as analisadas passam para a aba Vagas.
+                </p>
             </div>
         </section>
 
@@ -368,6 +390,27 @@
 <!-- ============================================================
      Templates
      ============================================================ -->
+<template id="pending-template">
+    <li class="match pending">
+        <div class="match-body">
+            <div class="match-head">
+                <div>
+                    <h2 class="job-title"></h2>
+                    <p class="job-meta"><span class="job-company"></span><span class="job-source"></span><span class="analysed-at"></span></p>
+                </div>
+                <p class="verdict"></p>
+            </div>
+
+            <div class="match-actions">
+                <a class="button quiet job-link" target="_blank" rel="noopener">
+                    <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Abrir vaga
+                </a>
+                <button class="button quiet prioritize" type="button">Priorizar</button>
+            </div>
+        </div>
+    </li>
+</template>
+
 <template id="match-template">
     <li class="match">
         <div class="match-score">

@@ -16,6 +16,7 @@ public class InMemoryProcessingStatusRepository implements ProcessingStatusRepos
     }
 
     private final Map<Key, ProcessingStatus> statuses = new ConcurrentHashMap<>();
+    private final Map<UUID, ProcessingStatus> analysis = new ConcurrentHashMap<>();
 
     @Override
     public ProcessingStatus find(UUID profileId, AlertSource source) {
@@ -25,5 +26,15 @@ public class InMemoryProcessingStatusRepository implements ProcessingStatusRepos
     @Override
     public void save(UUID profileId, AlertSource source, ProcessingStatus status) {
         statuses.put(new Key(profileId, source), status);
+    }
+
+    @Override
+    public ProcessingStatus findAnalysis(UUID profileId) {
+        return analysis.getOrDefault(profileId, ProcessingStatus.empty());
+    }
+
+    @Override
+    public void saveAnalysis(UUID profileId, ProcessingStatus status) {
+        analysis.put(profileId, status);
     }
 }

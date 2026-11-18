@@ -15,7 +15,6 @@ import jakarta.transaction.Transactional;
 import static com.viniciushfc.infra.adapter.out.database.panache.mapper.EmailReceivedMapper.toPanacheEmailReceived;
 
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -59,22 +58,6 @@ public class PanacheEmailReceivedRepositoryImpl implements EmailReceivedReposito
     public List<JobDetail> findScrapedJobs(UUID id) {
         var entity = panacheEmailReceivedRepository.findById(id);
         return entity == null ? List.of() : scrapedJobs(entity.getScrapedJobs());
-    }
-
-    @Override
-    @Transactional
-    public void addScrapedJob(UUID id, JobDetail job) {
-        var entity = panacheEmailReceivedRepository.findById(id);
-        if (entity == null) {
-            return;
-        }
-        List<JobDetail> jobs = new ArrayList<>(scrapedJobs(entity.getScrapedJobs()));
-        jobs.add(job);
-        try {
-            entity.setScrapedJobs(mapper.writeValueAsString(jobs));
-        } catch (JsonProcessingException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     private List<JobDetail> scrapedJobs(String json) {

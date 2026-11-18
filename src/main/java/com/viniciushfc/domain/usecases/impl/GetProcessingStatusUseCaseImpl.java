@@ -31,4 +31,9 @@ public class GetProcessingStatusUseCaseImpl implements GetProcessingStatusUseCas
         }
         return statuses;
     }
+
+    @Override
+    public ProcessingStatus analysis() {
+        return processingStatusRepository.findAnalysis(profileRepository.require().id());
+    }
 }

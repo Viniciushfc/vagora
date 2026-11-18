@@ -2,6 +2,10 @@ package com.viniciushfc.infra.adapter.in.rest;
 
 import static org.mockito.ArgumentMatchers.argThat;
 import com.viniciushfc.domain.entities.JobMatch;
+import com.viniciushfc.domain.entities.PendingJob;
+import com.viniciushfc.domain.repositories.PendingJobRepository;
+import com.viniciushfc.domain.vo.CompanyDetails;
+import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.gateways.PdfGateway;
@@ -32,6 +36,9 @@ class ProfileResourceTest {
 
     @Inject
     JobMatchRepository jobMatchRepository;
+
+    @Inject
+    PendingJobRepository pendingJobRepository;
 
     @Inject
     PanacheProfileRepository panacheProfileRepository;
@@ -156,6 +163,29 @@ class ProfileResourceTest {
         given().multiPart("name", "F").multiPart("curriculum", "cv.pdf", new byte[10], "application/pdf")
                 .when().post("/profile")
                 .then().statusCode(400).body("message_error", containsString("texto selecionável"));
+    }
+
+    @Test
+    void listaEPriorizaAsVagasPendentes() {
+        UUID profileId = UUID.fromString(createProfile());
+        var job = new JobDetail("https://www.linkedin.com/jobs/view/7/", "Dev Java", "desc", new CompanyDetails("ACME", null));
+        var pendente = PendingJob.create(profileId, UUID.randomUUID(), AlertSource.LINKEDIN, job);
+        pendingJobRepository.save(pendente);
+
+        given().when().get("/profile/pending-jobs")
+                .then()
+                .statusCode(200)
+                .body("jobs", hasSize(1))
+                .body("jobs[0].jobTitle", is("Dev Java"))
+                .body("jobs[0].jobLink", is("https://www.linkedin.com/jobs/view/7/"))
+                .body("jobs[0].source", is("LINKEDIN"))
+                .body("jobs[0].prioritized", is(false))
+                .body("maxAttempts", is(3));
+
+        given().when().post("/profile/pending-jobs/" + pendente.id() + "/priority")
+                .then().statusCode(200).body("prioritized", is(true));
+        given().when().post("/profile/pending-jobs/" + UUID.randomUUID() + "/priority")
+                .then().statusCode(404);
     }
 
     @Test

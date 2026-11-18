@@ -3,6 +3,7 @@ package com.viniciushfc.infra.adapter.in.rest.resource;
 import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.NotFoundException;
+import com.viniciushfc.domain.usecases.impl.AnalyzePendingJobsUseCaseImpl;
 import com.viniciushfc.domain.usecases.contracts.*;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.MailFolder;
@@ -38,6 +39,8 @@ public class ProfileResource {
     private final GetScraperActivityUseCase getScraperActivityUseCase;
     private final OpenLinkedinLoginUseCase openLinkedinLoginUseCase;
     private final GenerateCurriculumUseCase generateCurriculumUseCase;
+    private final ListPendingJobsUseCase listPendingJobsUseCase;
+    private final PrioritizePendingJobUseCase prioritizePendingJobUseCase;
 
     public ProfileResource(CreateProfileUseCase createProfileUseCase,
                            GetProfileUseCase getProfileUseCase,
@@ -51,7 +54,9 @@ public class ProfileResource {
                            GetProcessingStatusUseCase getProcessingStatusUseCase,
                            GetScraperActivityUseCase getScraperActivityUseCase,
                            OpenLinkedinLoginUseCase openLinkedinLoginUseCase,
-                           GenerateCurriculumUseCase generateCurriculumUseCase) {
+                           GenerateCurriculumUseCase generateCurriculumUseCase,
+                           ListPendingJobsUseCase listPendingJobsUseCase,
+                           PrioritizePendingJobUseCase prioritizePendingJobUseCase) {
         this.createProfileUseCase = createProfileUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
@@ -65,6 +70,8 @@ public class ProfileResource {
         this.getScraperActivityUseCase = getScraperActivityUseCase;
         this.openLinkedinLoginUseCase = openLinkedinLoginUseCase;
         this.generateCurriculumUseCase = generateCurriculumUseCase;
+        this.listPendingJobsUseCase = listPendingJobsUseCase;
+        this.prioritizePendingJobUseCase = prioritizePendingJobUseCase;
     }
 
     @GET
@@ -153,6 +160,21 @@ public class ProfileResource {
     @Path("/job-matches/{id}/curriculum")
     public JobMatchResponse generateCurriculum(@PathParam("id") UUID id) {
         return JobMatchRestMapper.toResponse(generateCurriculumUseCase.execute(id));
+    }
+
+    @GET
+    @Path("/pending-jobs")
+    public PendingJobsResponse listPendingJobs() {
+        return new PendingJobsResponse(
+                listPendingJobsUseCase.execute().stream().map(JobMatchRestMapper::toResponse).toList(),
+                getProcessingStatusUseCase.analysis(),
+                AnalyzePendingJobsUseCaseImpl.MAX_ATTEMPTS);
+    }
+
+    @POST
+    @Path("/pending-jobs/{id}/priority")
+    public PendingJobResponse prioritizePendingJob(@PathParam("id") UUID id) {
+        return JobMatchRestMapper.toResponse(prioritizePendingJobUseCase.execute(id));
     }
 
     @GET

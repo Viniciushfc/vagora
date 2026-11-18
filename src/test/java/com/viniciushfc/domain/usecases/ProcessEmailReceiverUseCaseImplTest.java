@@ -1,30 +1,25 @@
 package com.viniciushfc.domain.usecases;
 
-import com.viniciushfc.domain.exceptions.ExternalServiceException;
-import static org.mockito.ArgumentMatchers.argThat;
 import com.viniciushfc.domain.exceptions.BusinessException;
 import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.entities.EmailReceived;
-import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.entities.LinkedAccount;
+import com.viniciushfc.domain.entities.PendingJob;
 import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
-import com.viniciushfc.domain.gateways.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.gateways.JobDetailsGateway;
-import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.repositories.EmailReceivedRepository;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
+import com.viniciushfc.domain.repositories.PendingJobRepository;
 import com.viniciushfc.domain.usecases.impl.ProcessEmailReceiverUseCaseImpl;
 import com.viniciushfc.domain.vo.*;
-import com.viniciushfc.infra.adapter.out.memory.InMemoryScraperActivityRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayOutputStream;
@@ -51,13 +46,9 @@ class ProcessEmailReceiverUseCaseImplTest {
     @Mock
     JobDetailsGateway jobDetailsGateway;
     @Mock
-    AnalyzeJobsMatchCvGateway analyzeJobsMatchCvGateway;
-    @Mock
-    PdfGateway pdfGateway;
-    @Mock
     JobMatchRepository jobMatchRepository;
-    @Spy
-    InMemoryScraperActivityRepository scraperActivityRepository = new InMemoryScraperActivityRepository();
+    @Mock
+    PendingJobRepository pendingJobRepository;
 
     @InjectMocks
     ProcessEmailReceiverUseCaseImpl useCase;
@@ -111,8 +102,10 @@ class ProcessEmailReceiverUseCaseImplTest {
         return EmailReceived.create(messageId, new Email("Indeed <donotreply@match.indeed.com>", TO, "Vaga", body, List.of()));
     }
 
-    private CvMatchResult result(boolean match, int score) {
-        return new CvMatchResult(match, score, List.of("motivo"), null);
+    private List<PendingJob> savedPending() {
+        ArgumentCaptor<PendingJob> captor = ArgumentCaptor.forClass(PendingJob.class);
+        verify(pendingJobRepository, atLeast(0)).save(captor.capture());
+        return captor.getAllValues();
     }
 
     @Test
@@ -121,7 +114,7 @@ class ProcessEmailReceiverUseCaseImplTest {
 
         useCase.execute(user, LINKEDIN, List.of(email));
 
-        verifyNoInteractions(emailReceivedRepository, jobDetailsGateway, analyzeJobsMatchCvGateway, jobMatchRepository);
+        verifyNoInteractions(emailReceivedRepository, jobDetailsGateway, jobMatchRepository, pendingJobRepository);
     }
 
     @Test
@@ -132,7 +125,7 @@ class ProcessEmailReceiverUseCaseImplTest {
         useCase.execute(user, LINKEDIN, List.of(email));
 
         verify(emailReceivedRepository, never()).save(any());
-        verifyNoInteractions(jobDetailsGateway, analyzeJobsMatchCvGateway, jobMatchRepository);
+        verifyNoInteractions(jobDetailsGateway, jobMatchRepository, pendingJobRepository);
     }
 
     @Test
@@ -143,18 +136,17 @@ class ProcessEmailReceiverUseCaseImplTest {
         assertEquals(ErrorCode.LINKEDIN_NOT_CONNECTED, e.code());
 
         verify(emailReceivedRepository, never()).save(any());
-        verifyNoInteractions(jobDetailsGateway, analyzeJobsMatchCvGateway);
+        verifyNoInteractions(jobDetailsGateway);
     }
 
     @Test
-    void falhaAntesDoScrapingSemChaveDoGemini() {
+    void semChaveDoGeminiLeAsVagasMesmoAssim() throws Exception {
         var semChave = userWith(" ", linkedin);
+        scrapes(Set.of(LINK_2), job("222"));
 
-        var e = assertThrows(BusinessException.class, () -> useCase.execute(semChave, LINKEDIN, List.of(alertEmail(LINK_1))));
-        assertEquals(ErrorCode.GEMINI_KEY_MISSING, e.code());
+        assertTrue(useCase.execute(semChave, LINKEDIN, List.of(alertEmail(LINK_2))));
 
-        verify(emailReceivedRepository, never()).save(any());
-        verifyNoInteractions(jobDetailsGateway, analyzeJobsMatchCvGateway);
+        assertEquals(1, savedPending().size(), "a análise espera a chave na fila");
     }
 
     @Test
@@ -170,34 +162,35 @@ class ProcessEmailReceiverUseCaseImplTest {
     }
 
     @Test
-    void naoAbreNoLinkedinVagaJaAnalisadaEAnalisaAsNovas() throws Exception {
+    void guardaAsVagasLidasComoPendentesSemChamarOGemini() throws Exception {
         var email = alertEmail(LINK_1 + " " + LINK_2);
         var nova = job("222");
         when(jobMatchRepository.existsByProfileIdAndJobLink(user.id(), "https://www.linkedin.com/jobs/view/111/")).thenReturn(true);
         scrapes(Set.of(LINK_2), nova);
-        when(pdfGateway.extractTextPdf(user.curriculum())).thenReturn("texto cv");
-        when(analyzeJobsMatchCvGateway.analyze(List.of(nova), "texto cv", "chave-gemini")).thenReturn(List.of(result(true, 85)));
-        when(analyzeJobsMatchCvGateway.adaptCurriculum(any(), eq("texto cv"), eq("chave-gemini"))).thenReturn("cv ats");
 
         assertTrue(useCase.execute(user, LINKEDIN, List.of(email)), "acessou o LinkedIn");
 
         verify(emailReceivedRepository).save(email);
-        verify(emailReceivedRepository).addScrapedJob(email.id(), nova);
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<JobMatch>> captor = ArgumentCaptor.forClass(List.class);
-        verify(jobMatchRepository).saveAll(captor.capture());
-        JobMatch saved = captor.getValue().getFirst();
-        assertEquals(1, captor.getValue().size());
-        assertEquals(email.id(), saved.emailReceivedId());
-        assertEquals(nova.link(), saved.jobLink());
-        verify(jobMatchRepository).updateCurriculum(saved.id(), "cv ats");
+        var pendentes = savedPending();
+        assertEquals(1, pendentes.size());
+        PendingJob pendente = pendentes.getFirst();
+        assertEquals(nova, pendente.job());
+        assertEquals(user.id(), pendente.profileId());
+        assertEquals(email.id(), pendente.emailReceivedId());
+        assertEquals(LINKEDIN, pendente.source());
+        assertFalse(pendente.prioritized());
         verify(emailReceivedRepository).markSuccessProcessed(email.id());
+    }
 
-        var events = scraperActivityRepository.get(LINKEDIN).events().stream().map(e -> e.message()).toList();
-        assertEquals("Análise concluída: 1 compatível de 1", events.get(0));
-        assertEquals("Vaga compatível: Gemini escrevendo o currículo adaptado para Dev 222", events.get(1));
-        assertEquals("Gemini analisando 1 vaga de uma vez", events.get(2));
-        assertFalse(scraperActivityRepository.get(LINKEDIN).analyzing());
+    @Test
+    void vagaJaNaFilaNaoAbreDeNovo() throws Exception {
+        var email = alertEmail(LINK_2);
+        when(pendingJobRepository.existsByProfileIdAndLink(user.id(), "https://www.linkedin.com/jobs/view/222/")).thenReturn(true);
+
+        assertFalse(useCase.execute(user, LINKEDIN, List.of(email)));
+
+        verifyNoInteractions(jobDetailsGateway);
+        verify(emailReceivedRepository).markSuccessProcessed(email.id());
     }
 
     @Test
@@ -207,7 +200,8 @@ class ProcessEmailReceiverUseCaseImplTest {
 
         assertFalse(useCase.execute(user, LINKEDIN, List.of(email)));
 
-        verifyNoInteractions(jobDetailsGateway, analyzeJobsMatchCvGateway);
+        verifyNoInteractions(jobDetailsGateway);
+        verify(pendingJobRepository, never()).save(any());
         verify(emailReceivedRepository).markSuccessProcessed(email.id());
     }
 
@@ -227,17 +221,16 @@ class ProcessEmailReceiverUseCaseImplTest {
         var falhou = new EmailReceived(UUID.randomUUID(), "msg-1", null, false);
         when(emailReceivedRepository.findByMessageId("msg-1")).thenReturn(falhou);
         scrapes(Set.of("https://www.linkedin.com/comm/jobs/view/111/?trk=a&b=1"), job("111"));
-        when(pdfGateway.extractTextPdf(any())).thenReturn("texto cv");
-        when(analyzeJobsMatchCvGateway.analyze(anyList(), anyString(), anyString())).thenReturn(List.of(result(false, 40)));
 
         useCase.execute(user, LINKEDIN, List.of(email));
 
         verify(emailReceivedRepository, never()).save(any());
+        assertEquals(falhou.id(), savedPending().getFirst().emailReceivedId());
         verify(emailReceivedRepository).markSuccessProcessed(falhou.id());
     }
 
     @Test
-    void vagaLidaNumaTentativaAnteriorNaoAbreDeNovoNoLinkedin() throws Exception {
+    void vagasGuardadasPorVersaoAntigaEntramNaFilaSemAbrirOLinkedin() throws Exception {
         var email = alertEmail(LINK_1 + " " + LINK_2);
         var falhou = new EmailReceived(UUID.randomUUID(), "msg-1", null, false);
         var guardada = job("111");
@@ -245,31 +238,10 @@ class ProcessEmailReceiverUseCaseImplTest {
         when(emailReceivedRepository.findByMessageId("msg-1")).thenReturn(falhou);
         when(emailReceivedRepository.findScrapedJobs(falhou.id())).thenReturn(List.of(guardada));
         scrapes(Set.of(LINK_2), nova);
-        when(pdfGateway.extractTextPdf(any())).thenReturn("texto cv");
-        when(analyzeJobsMatchCvGateway.analyze(List.of(guardada, nova), "texto cv", "chave-gemini"))
-                .thenReturn(List.of(result(false, 40), result(false, 30)));
 
         assertTrue(useCase.execute(user, LINKEDIN, List.of(email)));
 
-        verify(emailReceivedRepository).addScrapedJob(falhou.id(), nova);
-        verify(emailReceivedRepository, never()).addScrapedJob(falhou.id(), guardada);
-        verify(jobMatchRepository).saveAll(argThat(saved -> saved.size() == 2));
-        verify(emailReceivedRepository).markSuccessProcessed(falhou.id());
-    }
-
-    @Test
-    void soVagasGuardadasVaoDiretoAoGeminiSemAbrirOLinkedin() throws Exception {
-        var email = alertEmail(LINK_1);
-        var falhou = new EmailReceived(UUID.randomUUID(), "msg-1", null, false);
-        var guardada = job("111");
-        when(emailReceivedRepository.findByMessageId("msg-1")).thenReturn(falhou);
-        when(emailReceivedRepository.findScrapedJobs(falhou.id())).thenReturn(List.of(guardada));
-        when(pdfGateway.extractTextPdf(any())).thenReturn("texto cv");
-        when(analyzeJobsMatchCvGateway.analyze(List.of(guardada), "texto cv", "chave-gemini")).thenReturn(List.of(result(false, 40)));
-
-        assertFalse(useCase.execute(user, LINKEDIN, List.of(email)), "não acessou o LinkedIn");
-
-        verifyNoInteractions(jobDetailsGateway);
+        assertEquals(List.of(guardada, nova), savedPending().stream().map(PendingJob::job).toList());
         verify(emailReceivedRepository).markSuccessProcessed(falhou.id());
     }
 
@@ -284,32 +256,12 @@ class ProcessEmailReceiverUseCaseImplTest {
 
         assertThrows(RuntimeException.class, () -> useCase.execute(user, LINKEDIN, List.of(email)));
 
-        verify(emailReceivedRepository).addScrapedJob(email.id(), lida);
+        assertEquals(List.of(lida), savedPending().stream().map(PendingJob::job).toList());
         verify(emailReceivedRepository, never()).markSuccessProcessed(any());
-        verifyNoInteractions(analyzeJobsMatchCvGateway);
-    }
-
-
-    @Test
-    void falhaNoCurriculoGuardaAAnaliseENaoDerrubaOAlerta() throws Exception {
-        var email = alertEmail(LINK_2);
-        var vaga = job("222");
-        scrapes(Set.of(LINK_2), vaga);
-        when(pdfGateway.extractTextPdf(user.curriculum())).thenReturn("texto cv");
-        when(analyzeJobsMatchCvGateway.analyze(List.of(vaga), "texto cv", "chave-gemini")).thenReturn(List.of(result(true, 90)));
-        when(analyzeJobsMatchCvGateway.adaptCurriculum(any(), any(), any()))
-                .thenThrow(new ExternalServiceException("O Gemini demorou demais para responder."));
-
-        assertTrue(useCase.execute(user, LINKEDIN, List.of(email)));
-
-        verify(jobMatchRepository).saveAll(argThat(saved -> saved.size() == 1 && saved.getFirst().match()
-                && saved.getFirst().jobDescription() != null));
-        verify(jobMatchRepository, never()).updateCurriculum(any(), any());
-        verify(emailReceivedRepository).markSuccessProcessed(email.id());
     }
 
     @Test
-    void indeedLeOsEmailsDaFilaJuntosNumaChamadaSoAoGeminiSemContaDoLinkedin() throws Exception {
+    void indeedLeOsEmailsDaFilaJuntosSemContaDoLinkedin() throws Exception {
         var semLinkedin = userWith("chave-gemini");
         String vaga1 = indeedLink("https://br.indeed.com/rc/clk?jk=aa11&from=email");
         String naoCombina = indeedLink("https://br.indeed.com/feedback?jk=aa11&tipo=ruim");
@@ -324,24 +276,16 @@ class ProcessEmailReceiverUseCaseImplTest {
             onJobRead.accept(lida2);
             return null;
         }).when(jobDetailsGateway).extractJobsDetails(eq(AlertSource.INDEED), eq(new LinkedHashSet<>(List.of(vaga1, vaga2))), isNull(), eq(false), any());
-        when(pdfGateway.extractTextPdf(any())).thenReturn("texto cv");
-        when(analyzeJobsMatchCvGateway.analyze(anyList(), eq("texto cv"), eq("chave-gemini")))
-                .thenReturn(List.of(result(false, 40), result(false, 30)));
 
         assertTrue(useCase.execute(semLinkedin, AlertSource.INDEED, List.of(email1, email2)));
 
-        verify(analyzeJobsMatchCvGateway, times(1)).analyze(anyList(), anyString(), anyString());
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<JobMatch>> captor = ArgumentCaptor.forClass(List.class);
-        verify(jobMatchRepository).saveAll(captor.capture());
-        var salvas = captor.getValue();
-        assertEquals("https://br.indeed.com/viewjob?jk=aa11", salvas.get(0).jobLink());
+        var salvas = savedPending();
+        assertEquals("https://br.indeed.com/viewjob?jk=aa11", salvas.get(0).link());
         assertEquals(email1.id(), salvas.get(0).emailReceivedId());
-        assertEquals("https://br.indeed.com/viewjob?jk=bb22", salvas.get(1).jobLink());
+        assertEquals("https://br.indeed.com/viewjob?jk=bb22", salvas.get(1).link());
         assertEquals(email2.id(), salvas.get(1).emailReceivedId());
+        assertEquals(AlertSource.INDEED, salvas.get(1).source());
         verify(emailReceivedRepository).markSuccessProcessed(email1.id());
         verify(emailReceivedRepository).markSuccessProcessed(email2.id());
-        assertEquals("Análise concluída: 0 compatíveis de 2", scraperActivityRepository.get(AlertSource.INDEED).events().getFirst().message());
-        assertTrue(scraperActivityRepository.get(LINKEDIN).events().isEmpty(), "a análise do Indeed não aparece no leitor do LinkedIn");
     }
 }

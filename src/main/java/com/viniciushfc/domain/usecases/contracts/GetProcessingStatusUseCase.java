@@ -7,4 +7,6 @@ import java.util.Map;
 
 public interface GetProcessingStatusUseCase {
     Map<AlertSource, ProcessingStatus> execute();
+
+    ProcessingStatus analysis();
 }
