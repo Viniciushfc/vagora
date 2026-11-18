@@ -1254,6 +1254,7 @@ function renderProfile() {
     $("#profile-handle").textContent = email ? `Alertas de ${email.username}` : "Nenhum email conectado ainda";
     $("#show-browser").checked = Boolean(profile.showBrowser);
     $("#monitoring").checked = Boolean(profile.monitoringEnabled);
+    $("#auto-curriculum").checked = Boolean(profile.autoCurriculum);
     renderReadiness();
 
     const form = $("#profile-form");
@@ -1284,6 +1285,24 @@ $("#show-browser").addEventListener("change", async (event) => {
             ? "O navegador vai aparecer na próxima análise."
             : "O navegador vai rodar escondido.");
         renderProcessingAlert();
+    } catch (error) {
+        toggle.checked = !toggle.checked;
+        toast(messageFor(error));
+    } finally {
+        toggle.disabled = false;
+    }
+});
+
+$("#auto-curriculum").addEventListener("change", async (event) => {
+    const toggle = event.target;
+    const data = new FormData();
+    data.append("autoCurriculum", String(toggle.checked));
+    toggle.disabled = true;
+    try {
+        state.profile = await api.updateProfile(data);
+        toast(toggle.checked
+            ? "O currículo adaptado vai ser gerado junto com a análise."
+            : "Só a análise roda sozinha. Gere o currículo pelo botão na vaga.");
     } catch (error) {
         toggle.checked = !toggle.checked;
         toast(messageFor(error));

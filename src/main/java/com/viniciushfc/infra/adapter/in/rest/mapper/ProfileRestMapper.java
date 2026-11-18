@@ -26,7 +26,8 @@ public class ProfileRestMapper {
                 form.showBrowser,
                 form.monitoringEnabled,
                 form.groqApiKey,
-                form.llmProvider
+                form.llmProvider,
+                form.autoCurriculum
         );
     }
 
@@ -43,6 +44,7 @@ public class ProfileRestMapper {
                 profile.primaryLlm(),
                 profile.isBrowserVisible(),
                 profile.isMonitoringEnabled(),
+                profile.isAutoCurriculum(),
                 profile.curriculum() == null ? null : profile.curriculum().name(),
                 profile.curriculum() == null || profile.curriculum().content() == null
                         ? null : profile.curriculum().content().length,

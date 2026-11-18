@@ -71,7 +71,7 @@ class AnalyzePendingJobsUseCaseImplTest {
 
     private Profile profile(String key, Boolean monitoring) {
         return new Profile(UUID.randomUUID(), "F", key, new Attachment("cv.pdf", "application/pdf", new byte[]{1}),
-                new ArrayList<>(), null, monitoring, null, null);
+                new ArrayList<>(), null, monitoring, null, null, true);
     }
 
     private PendingJob pending(String id, AlertSource source, int attempts) {
@@ -152,9 +152,26 @@ class AnalyzePendingJobsUseCaseImplTest {
     }
 
     @Test
+    void comCurriculoAutomaticoDesligadoSoAnalisa() {
+        user = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(),
+                null, null, null, null, false);
+        when(profileRepository.find()).thenReturn(user);
+        var compativel = pending("1", LINKEDIN, 0);
+        queue(compativel);
+        when(analyzeJobsMatchCvGateway.analyze(anyList(), any(), any())).thenReturn(List.of(result(true, 90)));
+
+        useCase.execute();
+
+        verify(jobMatchRepository).saveAll(anyList());
+        verify(analyzeJobsMatchCvGateway, never()).adaptCurriculum(any(), any(), any());
+        verify(jobMatchRepository, never()).updateCurriculum(any(), any());
+        assertEquals("Análise concluída: 1 compatível de 1", activityRepository.get(LINKEDIN).events().getFirst().message());
+    }
+
+    @Test
     void comChaveDoGroqOLoteCabeNoLimiteDeTexto() {
         user = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(),
-                null, null, "gsk", LlmProvider.GROQ);
+                null, null, "gsk", LlmProvider.GROQ, null);
         when(profileRepository.find()).thenReturn(user);
         String metadeDoLimite = "x".repeat(LlmProvider.GROQ.maxJobChars / 2);
         var primeira = pendingWithDescription("1", metadeDoLimite);

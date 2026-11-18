@@ -18,7 +18,8 @@ public record Profile(UUID id,
                       Boolean showBrowser,
                       Boolean monitoringEnabled,
                       String groqApiKey,
-                      LlmProvider llmProvider) {
+                      LlmProvider llmProvider,
+                      Boolean autoCurriculum) {
 
     public static Profile create(String name,
                                  String geminiApiKey,
@@ -26,7 +27,7 @@ public record Profile(UUID id,
                                  LlmProvider llmProvider,
                                  Attachment curriculum) {
         return new Profile(UUID.randomUUID(), name, geminiApiKey, curriculum, new ArrayList<>(),
-                false, true, groqApiKey, llmProvider);
+                false, true, groqApiKey, llmProvider, false);
     }
 
     public boolean isBrowserVisible() {
@@ -35,6 +36,10 @@ public record Profile(UUID id,
 
     public boolean isMonitoringEnabled() {
         return !Boolean.FALSE.equals(monitoringEnabled);
+    }
+
+    public boolean isAutoCurriculum() {
+        return Boolean.TRUE.equals(autoCurriculum);
     }
 
     public LlmProvider primaryLlm() {

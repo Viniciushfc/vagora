@@ -61,7 +61,7 @@
             <li><strong>O Vagora lê os alertas da última semana</strong>, dos mais novos para os mais antigos, sem mexer nos seus outros emails. Entre um acesso ao LinkedIn e outro, espera de 15 a 25 minutos para não chamar atenção.</li>
             <li><strong>Cada vaga é aberta</strong> num navegador nesta máquina para ler a descrição completa. Vagas encerradas são puladas.</li>
             <li><strong>A IA (Gemini ou Groq) compara</strong> a vaga com o seu currículo e dá uma nota de 0 a 100.</li>
-            <li><strong>O resultado aparece aqui</strong>, com os motivos e um currículo adaptado quando a vaga combina.</li>
+            <li><strong>O resultado aparece aqui</strong>, com os motivos. Quando a vaga combina, o currículo adaptado sai automático ou pelo botão "Gerar currículo", conforme o Perfil.</li>
         </ol>
     </section>
 
@@ -327,6 +327,23 @@
                                 <input type="checkbox" id="monitoring" aria-describedby="monitoring-hint">
                                 <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
                                 <span class="visually-hidden">Verificar o email automaticamente</span>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="panel" aria-labelledby="auto-curriculum-title">
+                        <div class="toggle-row">
+                            <div>
+                                <h2 id="auto-curriculum-title" class="panel-title">Gerar currículo adaptado automaticamente</h2>
+                                <p class="hint" id="auto-curriculum-hint">
+                                    Desligado, a análise continua automática, mas o currículo adaptado só é gerado quando
+                                    você clica em "Gerar currículo" na vaga. Economiza a cota da IA.
+                                </p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="auto-curriculum" aria-describedby="auto-curriculum-hint">
+                                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+                                <span class="visually-hidden">Gerar currículo adaptado automaticamente</span>
                             </label>
                         </div>
                     </section>

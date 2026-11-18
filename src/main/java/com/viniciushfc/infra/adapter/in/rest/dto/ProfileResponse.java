@@ -12,6 +12,7 @@ public record ProfileResponse(UUID id,
                               LlmProvider llmProvider,
                               boolean showBrowser,
                               boolean monitoringEnabled,
+                              boolean autoCurriculum,
                               String curriculumName,
                               Integer curriculumSizeBytes,
                               List<LinkedAccountResponse> linkedAccounts) {

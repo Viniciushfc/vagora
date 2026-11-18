@@ -184,7 +184,9 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
             throw e;
         }
 
-        adaptCurricula(profile, source, jobs, jobMatches, curriculum);
+        if (profile.isAutoCurriculum()) {
+            adaptCurricula(profile, source, jobs, jobMatches, curriculum);
+        }
 
         long matches = jobMatches.stream().filter(JobMatch::match).count();
         activity(source, a -> a.analysisFinished((int) matches, jobs.size()));

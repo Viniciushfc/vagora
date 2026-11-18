@@ -157,6 +157,15 @@ class ProfileResourceTest {
     }
 
     @Test
+    void curriculoAutomaticoComecaDesligadoEPodeLigar() {
+        createProfile();
+        given().when().get("/profile").then().body("autoCurriculum", is(false));
+
+        given().multiPart("autoCurriculum", "true").when().patch("/profile")
+                .then().statusCode(200).body("autoCurriculum", is(true));
+    }
+
+    @Test
     void devolveOCurriculoEOTamanho() {
         createProfile();
 
@@ -166,6 +175,8 @@ class ProfileResourceTest {
                 .statusCode(200)
                 .contentType("application/pdf")
                 .header("Content-Disposition", is("inline; filename*=UTF-8''cv.pdf"));
+    }
+
     @Test
     void rejeitaPdfSemTexto() {
         when(pdfGateway.extractTextPdf(any())).thenReturn("");

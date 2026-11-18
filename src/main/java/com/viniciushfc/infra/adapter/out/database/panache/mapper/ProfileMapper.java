@@ -24,7 +24,8 @@ public class ProfileMapper {
                 panacheProfileEntity.getShowBrowser(),
                 panacheProfileEntity.getMonitoringEnabled(),
                 panacheProfileEntity.getGroqApiKey(),
-                panacheProfileEntity.getLlmProvider()
+                panacheProfileEntity.getLlmProvider(),
+                panacheProfileEntity.getAutoCurriculum()
         );
     }
 
@@ -38,7 +39,8 @@ public class ProfileMapper {
                 profile.showBrowser(),
                 profile.monitoringEnabled(),
                 profile.groqApiKey(),
-                profile.llmProvider()
+                profile.llmProvider(),
+                profile.autoCurriculum()
         );
     }
 
@@ -69,6 +71,10 @@ public class ProfileMapper {
 
         if (bo.llmProvider() != null) {
             entityPersist.setLlmProvider(bo.llmProvider());
+        }
+
+        if (bo.autoCurriculum() != null) {
+            entityPersist.setAutoCurriculum(bo.autoCurriculum());
         }
 
         if (bo.curriculum() != null) {

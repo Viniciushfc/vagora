@@ -39,7 +39,7 @@ class AnalyzeJobsMatchCvGatewayImplTest {
     }
 
     private Profile profile(String geminiKey, String groqKey, LlmProvider primary) {
-        return new Profile(null, "F", geminiKey, null, null, null, null, groqKey, primary);
+        return new Profile(null, "F", geminiKey, null, null, null, null, groqKey, primary, null);
     }
 
     @Test

@@ -27,4 +27,6 @@ public class ProfileForm {
     @RestForm
     public Boolean monitoringEnabled;
 
+    @RestForm
+    public Boolean autoCurriculum;
 }

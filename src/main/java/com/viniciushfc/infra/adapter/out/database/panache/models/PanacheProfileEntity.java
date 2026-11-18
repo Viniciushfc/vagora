@@ -18,6 +18,7 @@ public class PanacheProfileEntity {
     private String geminiApiKey;
     private String groqApiKey;
     private String llmProvider;
+    private Boolean autoCurriculum;
     private Boolean showBrowser;
     private Boolean monitoringEnabled;
 
@@ -44,7 +45,8 @@ public class PanacheProfileEntity {
                                 Boolean showBrowser,
                                 Boolean monitoringEnabled,
                                 String groqApiKey,
-                                LlmProvider llmProvider) {
+                                LlmProvider llmProvider,
+                                Boolean autoCurriculum) {
         this.id = id;
         this.name = name;
         this.geminiApiKey = geminiApiKey;
@@ -54,6 +56,7 @@ public class PanacheProfileEntity {
         this.monitoringEnabled = monitoringEnabled;
         this.groqApiKey = groqApiKey;
         setLlmProvider(llmProvider);
+        this.autoCurriculum = autoCurriculum;
     }
 
     public PanacheProfileEntity() {
@@ -94,6 +97,14 @@ public class PanacheProfileEntity {
 
     public void setGeminiApiKey(String geminiApiKey) {
         this.geminiApiKey = geminiApiKey;
+    }
+
+    public Boolean getAutoCurriculum() {
+        return autoCurriculum;
+    }
+
+    public void setAutoCurriculum(Boolean autoCurriculum) {
+        this.autoCurriculum = autoCurriculum;
     }
 
     public String getGroqApiKey() {
