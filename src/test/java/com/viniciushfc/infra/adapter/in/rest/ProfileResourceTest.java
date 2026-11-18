@@ -158,6 +158,16 @@ class ProfileResourceTest {
                 .then().statusCode(400).body("message_error", containsString("texto selecionável"));
     }
 
+    @Test
+    void recusaPedidoDeOutroSiteOuDeOutroHost() {
+        createProfile();
+
+        given().header("Origin", "https://site-malicioso.com").when().delete("/profile")
+                .then().statusCode(403);
+        given().header("Host", "site-malicioso.com").when().get("/profile")
+                .then().statusCode(403);
+        given().header("Origin", "http://localhost:8080").when().get("/profile")
+                .then().statusCode(200);
     }
 
     @Test
