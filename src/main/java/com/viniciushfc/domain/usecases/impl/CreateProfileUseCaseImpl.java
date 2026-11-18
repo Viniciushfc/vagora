@@ -3,6 +3,7 @@ package com.viniciushfc.domain.usecases.impl;
 import com.viniciushfc.domain.annotations.UseCase;
 import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.exceptions.ConflictException;
+import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.CreateProfileUseCase;
 import com.viniciushfc.domain.validators.CurriculumValidator;
@@ -11,9 +12,11 @@ import com.viniciushfc.domain.validators.CurriculumValidator;
 public class CreateProfileUseCaseImpl implements CreateProfileUseCase {
 
     private final ProfileRepository profileRepository;
+    private final PdfGateway pdfGateway;
 
-    public CreateProfileUseCaseImpl(ProfileRepository profileRepository) {
+    public CreateProfileUseCaseImpl(ProfileRepository profileRepository, PdfGateway pdfGateway) {
         this.profileRepository = profileRepository;
+        this.pdfGateway = pdfGateway;
     }
 
     @Override
@@ -21,7 +24,7 @@ public class CreateProfileUseCaseImpl implements CreateProfileUseCase {
         if (profileRepository.find() != null) {
             throw new ConflictException("Já existe um perfil nesta instalação.");
         }
-        CurriculumValidator.validate(profile.curriculum());
+        CurriculumValidator.validate(profile.curriculum(), pdfGateway);
 
         return profileRepository.save(Profile.create(profile.name(), profile.geminiApiKey(), profile.curriculum()));
     }

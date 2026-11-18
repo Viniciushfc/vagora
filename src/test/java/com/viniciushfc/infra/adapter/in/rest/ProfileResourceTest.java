@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.gateways.MailboxGateway;
+import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
 import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.vo.MailFolder;
@@ -38,6 +39,9 @@ class ProfileResourceTest {
     @InjectMock
     MailboxGateway mailboxGateway;
 
+    @InjectMock
+    PdfGateway pdfGateway;
+
     @BeforeEach
     void setUp() {
         // um perfil por instalação: cada teste começa sem nenhum
@@ -45,6 +49,7 @@ class ProfileResourceTest {
         when(mailboxGateway.listFolders(any())).thenReturn(List.of(
                 new MailFolder("INBOX", Map.of(AlertSource.LINKEDIN, 0)), new MailFolder("LinkedIn", Map.of(AlertSource.LINKEDIN, 7))));
         when(mailboxGateway.folderExists(any(), argThat(f -> List.of("INBOX", "LinkedIn").contains(f)))).thenReturn(true);
+        when(pdfGateway.extractTextPdf(any())).thenReturn("Desenvolvedor Java");
     }
 
     private String createProfile() {
@@ -144,6 +149,15 @@ class ProfileResourceTest {
                 .statusCode(200)
                 .contentType("application/pdf")
                 .header("Content-Disposition", is("inline; filename*=UTF-8''cv.pdf"));
+    @Test
+    void rejeitaPdfSemTexto() {
+        when(pdfGateway.extractTextPdf(any())).thenReturn("");
+
+        given().multiPart("name", "F").multiPart("curriculum", "cv.pdf", new byte[10], "application/pdf")
+                .when().post("/profile")
+                .then().statusCode(400).body("message_error", containsString("texto selecionável"));
+    }
+
     }
 
     @Test

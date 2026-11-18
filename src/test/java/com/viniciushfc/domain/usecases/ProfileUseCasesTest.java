@@ -6,6 +6,7 @@ import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.*;
 import com.viniciushfc.domain.gateways.JobDetailsGateway;
 import com.viniciushfc.domain.gateways.MailboxGateway;
+import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.repositories.ProcessingStatusRepository;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.impl.*;
@@ -39,6 +40,8 @@ class ProfileUseCasesTest {
     ProfileRepository profileRepository;
     @Mock
     MailboxGateway mailboxGateway;
+    @Mock
+    PdfGateway pdfGateway;
 
     private final Attachment cv = new Attachment("cv.pdf", "application/pdf", new byte[]{1});
 
@@ -65,9 +68,10 @@ class ProfileUseCasesTest {
 
     @Test
     void createGeraIdEMantemChaveDoGemini() {
+        when(pdfGateway.extractTextPdf(cv)).thenReturn("Desenvolvedor Java");
         when(profileRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        Profile created = new CreateProfileUseCaseImpl(profileRepository)
+        Profile created = new CreateProfileUseCaseImpl(profileRepository, pdfGateway)
                 .execute(new Profile(null, "Fulano", "chave", cv, null, null, null));
 
         assertNotNull(created.id());
@@ -80,14 +84,14 @@ class ProfileUseCasesTest {
     void createRecusaUmSegundoPerfil() {
         when(profileRepository.find()).thenReturn(profile());
 
-        var useCase = new CreateProfileUseCaseImpl(profileRepository);
+        var useCase = new CreateProfileUseCaseImpl(profileRepository, pdfGateway);
         assertThrows(ConflictException.class, () -> useCase.execute(new Profile(null, "Outro", "k", cv, null, null, null)));
         verify(profileRepository, never()).save(any());
     }
 
     @Test
     void createRejeitaCurriculoInvalido() {
-        var useCase = new CreateProfileUseCaseImpl(profileRepository);
+        var useCase = new CreateProfileUseCaseImpl(profileRepository, pdfGateway);
         var semCv = new Profile(null, "F", "k", null, null, null, null);
         var naoPdf = new Profile(null, "F", "k", new Attachment("cv.docx", "application/msword", new byte[]{1}), null, null, null);
         var grande = new Profile(null, "F", "k",
@@ -101,9 +105,19 @@ class ProfileUseCasesTest {
     }
 
     @Test
+    void createRejeitaPdfSemTexto() {
+        when(pdfGateway.extractTextPdf(cv)).thenReturn("  \n ");
+
+        var e = assertThrows(ValidationException.class,
+                () -> new CreateProfileUseCaseImpl(profileRepository, pdfGateway).execute(new Profile(null, "F", "k", cv, null, null, null)));
+        assertTrue(e.getMessage().contains("texto selecionável"), e.getMessage());
+        verify(profileRepository, never()).save(any());
+    }
+
+    @Test
     void updateAplicaNoPerfilDaInstalacaoEValidaCurriculo() {
         Profile current = existing();
-        var useCase = new UpdateProfileUseCaseImpl(profileRepository);
+        var useCase = new UpdateProfileUseCaseImpl(profileRepository, pdfGateway);
 
         var naoPdf = new Profile(null, null, null, new Attachment("cv.txt", "text/plain", new byte[]{1}), null, null, null);
         assertThrows(ValidationException.class, () -> useCase.execute(naoPdf));
