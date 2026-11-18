@@ -12,5 +12,6 @@ public record JobMatchResponse(UUID id,
                                int score,
                                List<String> motivos,
                                String curriculoAts,
-                               LocalDateTime createdAt) {
+                               LocalDateTime createdAt,
+                               boolean canGenerateCurriculum) {
 }

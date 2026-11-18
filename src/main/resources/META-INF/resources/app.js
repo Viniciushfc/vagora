@@ -58,6 +58,7 @@ const api = {
     listFolders: () => request("GET", "/profile/email/folders"),
     updateFolder: (folder, source) => request("PUT", "/profile/email/folder", { folder, source }),
     listMatches: () => request("GET", "/profile/job-matches"),
+    generateCurriculum: (id) => request("POST", `/profile/job-matches/${id}/curriculum`),
     status: () => request("GET", "/profile/status"),
     scraper: () => request("GET", "/profile/scraper"),
 };
@@ -725,9 +726,37 @@ function matchItem(match) {
         });
         $(".ats", item).hidden = false;
         $(".ats-text", item).textContent = match.curriculoAts;
+    } else if (match.canGenerateCurriculum) {
+        const generate = $(".generate-ats", item);
+        generate.hidden = false;
+        if (generating.has(match.id)) showGenerating(generate);
+        generate.addEventListener("click", () => generateCurriculum(match.id, generate));
     }
 
     return item;
+}
+
+// a lista se redesenha a cada minuto; o conjunto mantém o botão ocupado enquanto o Gemini escreve
+const generating = new Set();
+
+function showGenerating(button) {
+    button.disabled = true;
+    button.replaceChildren(el("span", "spinner"), "Gerando currículo (pode levar alguns minutos)…");
+}
+
+async function generateCurriculum(id, button) {
+    generating.add(id);
+    showGenerating(button);
+    try {
+        const updated = await api.generateCurriculum(id);
+        state.matches = state.matches.map((m) => (m.id === id ? updated : m));
+        toast("Currículo adaptado gerado.");
+    } catch (error) {
+        toast(error.message);
+    } finally {
+        generating.delete(id);
+        renderMatches(false);
+    }
 }
 
 function setFilter(filter) {

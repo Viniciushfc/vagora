@@ -20,6 +20,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Path("/profile")
 @Produces(MediaType.APPLICATION_JSON)
@@ -37,6 +38,7 @@ public class ProfileResource {
     private final GetProcessingStatusUseCase getProcessingStatusUseCase;
     private final GetScraperActivityUseCase getScraperActivityUseCase;
     private final OpenLinkedinLoginUseCase openLinkedinLoginUseCase;
+    private final GenerateCurriculumUseCase generateCurriculumUseCase;
 
     public ProfileResource(CreateProfileUseCase createProfileUseCase,
                            GetProfileUseCase getProfileUseCase,
@@ -49,7 +51,8 @@ public class ProfileResource {
                            ListJobMatchesUseCase listJobMatchesUseCase,
                            GetProcessingStatusUseCase getProcessingStatusUseCase,
                            GetScraperActivityUseCase getScraperActivityUseCase,
-                           OpenLinkedinLoginUseCase openLinkedinLoginUseCase) {
+                           OpenLinkedinLoginUseCase openLinkedinLoginUseCase,
+                           GenerateCurriculumUseCase generateCurriculumUseCase) {
         this.createProfileUseCase = createProfileUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
@@ -62,6 +65,7 @@ public class ProfileResource {
         this.getProcessingStatusUseCase = getProcessingStatusUseCase;
         this.getScraperActivityUseCase = getScraperActivityUseCase;
         this.openLinkedinLoginUseCase = openLinkedinLoginUseCase;
+        this.generateCurriculumUseCase = generateCurriculumUseCase;
     }
 
     @GET
@@ -144,6 +148,12 @@ public class ProfileResource {
         return listJobMatchesUseCase.execute().stream()
                 .map(JobMatchRestMapper::toResponse)
                 .toList();
+    }
+
+    @POST
+    @Path("/job-matches/{id}/curriculum")
+    public JobMatchResponse generateCurriculum(@PathParam("id") UUID id) {
+        return JobMatchRestMapper.toResponse(generateCurriculumUseCase.execute(id));
     }
 
     @GET

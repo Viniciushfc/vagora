@@ -15,7 +15,8 @@ public class JobMatchRestMapper {
                 jobMatch.score(),
                 jobMatch.motivos(),
                 jobMatch.curriculoAts(),
-                jobMatch.createdAt()
+                jobMatch.createdAt(),
+                jobMatch.jobDescription() != null
         );
     }
 }

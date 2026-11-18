@@ -19,7 +19,8 @@ public class JobMatchMapper {
                 entity.getScore(),
                 List.copyOf(entity.getMotivos()),
                 entity.getCurriculoAts(),
-                entity.getCreatedAt()
+                entity.getCreatedAt(),
+                entity.getJobDescription()
         );
     }
 
@@ -35,7 +36,8 @@ public class JobMatchMapper {
                 jobMatch.score(),
                 jobMatch.motivos(),
                 jobMatch.curriculoAts(),
-                jobMatch.createdAt()
+                jobMatch.createdAt(),
+                jobMatch.jobDescription()
         );
     }
 }

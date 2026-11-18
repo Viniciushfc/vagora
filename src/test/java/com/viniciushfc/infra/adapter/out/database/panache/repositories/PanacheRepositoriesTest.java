@@ -144,11 +144,11 @@ class PanacheRepositoriesTest {
         var userId = UUID.randomUUID();
         var outroUserId = UUID.randomUUID();
         var match1 = new JobMatch(UUID.randomUUID(), userId, UUID.randomUUID(), "https://www.linkedin.com/jobs/view/1/",
-                "Dev", "ACME", true, 80, List.of("a", "b"), "cv ats", LocalDateTime.now());
+                "Dev", "ACME", true, 80, List.of("a", "b"), "cv ats", LocalDateTime.now(), null);
         var match2 = new JobMatch(UUID.randomUUID(), userId, UUID.randomUUID(), "https://www.linkedin.com/jobs/view/2/",
-                "QA", "ACME", false, 30, List.of("c"), null, LocalDateTime.now());
+                "QA", "ACME", false, 30, List.of("c"), null, LocalDateTime.now(), null);
         var deOutro = new JobMatch(UUID.randomUUID(), outroUserId, UUID.randomUUID(), "https://www.linkedin.com/jobs/view/1/",
-                "Dev", "ACME", true, 80, List.of("a"), "cv", LocalDateTime.now());
+                "Dev", "ACME", true, 80, List.of("a"), "cv", LocalDateTime.now(), null);
 
         jobMatchRepository.saveAll(List.of(match1, match2, deOutro));
 

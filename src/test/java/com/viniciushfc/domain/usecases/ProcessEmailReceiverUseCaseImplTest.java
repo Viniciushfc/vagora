@@ -1,5 +1,7 @@
 package com.viniciushfc.domain.usecases;
 
+import com.viniciushfc.domain.exceptions.ExternalServiceException;
+import static org.mockito.ArgumentMatchers.argThat;
 import com.viniciushfc.domain.exceptions.BusinessException;
 import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.entities.EmailReceived;
@@ -175,7 +177,7 @@ class ProcessEmailReceiverUseCaseImplTest {
         scrapes(Set.of(LINK_2), nova);
         when(pdfGateway.extractTextPdf(user.curriculum())).thenReturn("texto cv");
         when(analyzeJobsMatchCvGateway.analyze(List.of(nova), "texto cv", "chave-gemini")).thenReturn(List.of(result(true, 85)));
-        when(analyzeJobsMatchCvGateway.adaptCurriculum(nova, "texto cv", "chave-gemini")).thenReturn("cv ats");
+        when(analyzeJobsMatchCvGateway.adaptCurriculum(any(), eq("texto cv"), eq("chave-gemini"))).thenReturn("cv ats");
 
         assertTrue(useCase.execute(user, LINKEDIN, List.of(email)), "acessou o LinkedIn");
 
@@ -188,7 +190,7 @@ class ProcessEmailReceiverUseCaseImplTest {
         assertEquals(1, captor.getValue().size());
         assertEquals(email.id(), saved.emailReceivedId());
         assertEquals(nova.link(), saved.jobLink());
-        assertEquals("cv ats", saved.curriculoAts(), "currículo adaptado vem da segunda chamada");
+        verify(jobMatchRepository).updateCurriculum(saved.id(), "cv ats");
         verify(emailReceivedRepository).markSuccessProcessed(email.id());
 
         var events = scraperActivityRepository.get(LINKEDIN).events().stream().map(e -> e.message()).toList();
@@ -251,7 +253,7 @@ class ProcessEmailReceiverUseCaseImplTest {
 
         verify(emailReceivedRepository).addScrapedJob(falhou.id(), nova);
         verify(emailReceivedRepository, never()).addScrapedJob(falhou.id(), guardada);
-        verify(jobMatchRepository, times(2)).saveAll(anyList());
+        verify(jobMatchRepository).saveAll(argThat(saved -> saved.size() == 2));
         verify(emailReceivedRepository).markSuccessProcessed(falhou.id());
     }
 
@@ -289,6 +291,24 @@ class ProcessEmailReceiverUseCaseImplTest {
 
 
     @Test
+    void falhaNoCurriculoGuardaAAnaliseENaoDerrubaOAlerta() throws Exception {
+        var email = alertEmail(LINK_2);
+        var vaga = job("222");
+        scrapes(Set.of(LINK_2), vaga);
+        when(pdfGateway.extractTextPdf(user.curriculum())).thenReturn("texto cv");
+        when(analyzeJobsMatchCvGateway.analyze(List.of(vaga), "texto cv", "chave-gemini")).thenReturn(List.of(result(true, 90)));
+        when(analyzeJobsMatchCvGateway.adaptCurriculum(any(), any(), any()))
+                .thenThrow(new ExternalServiceException("O Gemini demorou demais para responder."));
+
+        assertTrue(useCase.execute(user, LINKEDIN, List.of(email)));
+
+        verify(jobMatchRepository).saveAll(argThat(saved -> saved.size() == 1 && saved.getFirst().match()
+                && saved.getFirst().jobDescription() != null));
+        verify(jobMatchRepository, never()).updateCurriculum(any(), any());
+        verify(emailReceivedRepository).markSuccessProcessed(email.id());
+    }
+
+    @Test
     void indeedLeOsEmailsDaFilaJuntosNumaChamadaSoAoGeminiSemContaDoLinkedin() throws Exception {
         var semLinkedin = userWith("chave-gemini");
         String vaga1 = indeedLink("https://br.indeed.com/rc/clk?jk=aa11&from=email");
@@ -313,8 +333,8 @@ class ProcessEmailReceiverUseCaseImplTest {
         verify(analyzeJobsMatchCvGateway, times(1)).analyze(anyList(), anyString(), anyString());
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<JobMatch>> captor = ArgumentCaptor.forClass(List.class);
-        verify(jobMatchRepository, times(2)).saveAll(captor.capture());
-        var salvas = captor.getAllValues().stream().map(List::getFirst).toList();
+        verify(jobMatchRepository).saveAll(captor.capture());
+        var salvas = captor.getValue();
         assertEquals("https://br.indeed.com/viewjob?jk=aa11", salvas.get(0).jobLink());
         assertEquals(email1.id(), salvas.get(0).emailReceivedId());
         assertEquals("https://br.indeed.com/viewjob?jk=bb22", salvas.get(1).jobLink());

@@ -12,4 +12,8 @@ public interface JobMatchRepository {
     List<JobMatch> findByProfileId(UUID profileId);
 
     boolean existsByProfileIdAndJobLink(UUID profileId, String jobLink);
+
+    JobMatch findById(UUID id);
+
+    void updateCurriculum(UUID id, String curriculoAts);
 }

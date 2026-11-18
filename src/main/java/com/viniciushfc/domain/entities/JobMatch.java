@@ -1,5 +1,6 @@
 package com.viniciushfc.domain.entities;
 
+import com.viniciushfc.domain.vo.CompanyDetails;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
 
@@ -17,7 +18,8 @@ public record JobMatch(UUID id,
                        int score,
                        List<String> motivos,
                        String curriculoAts,
-                       LocalDateTime createdAt) {
+                       LocalDateTime createdAt,
+                       String jobDescription) {
 
     public static JobMatch create(UUID profileId, UUID emailReceivedId, JobDetail jobDetail, CvMatchResult result) {
         return new JobMatch(
@@ -31,8 +33,18 @@ public record JobMatch(UUID id,
                 result.score(),
                 result.motivos(),
                 result.curriculoAts(),
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                jobDetail.description()
         );
+    }
+
+    public JobMatch withCurriculum(String curriculoAts) {
+        return new JobMatch(id, profileId, emailReceivedId, jobLink, jobTitle, companyName, match, score, motivos,
+                curriculoAts, createdAt, jobDescription);
+    }
+
+    public JobDetail jobDetail() {
+        return new JobDetail(jobLink, jobTitle, jobDescription, new CompanyDetails(companyName, null));
     }
 
     @Override

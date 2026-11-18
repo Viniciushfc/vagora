@@ -40,4 +40,20 @@ public class PanacheJobMatchRepositoryImpl implements JobMatchRepository {
                 .count("profileId = :profileId and jobLink = :jobLink",
                         Map.of("profileId", profileId, "jobLink", jobLink)) > 0;
     }
+
+    @Override
+    @Transactional
+    public JobMatch findById(UUID id) {
+        var entity = panacheJobMatchRepository.findById(id);
+        return entity == null ? null : JobMatchMapper.toDomain(entity);
+    }
+
+    @Override
+    @Transactional
+    public void updateCurriculum(UUID id, String curriculoAts) {
+        var entity = panacheJobMatchRepository.findById(id);
+        if (entity != null) {
+            entity.setCurriculoAts(curriculoAts);
+        }
+    }
 }

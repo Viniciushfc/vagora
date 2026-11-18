@@ -35,7 +35,10 @@ public class PanacheJobMatchEntity {
 
     private LocalDateTime createdAt;
 
-    public PanacheJobMatchEntity(UUID id, UUID profileId, UUID emailReceivedId, String jobLink, String jobTitle, String companyName, boolean match, int score, List<String> motivos, String curriculoAts, LocalDateTime createdAt) {
+    @Column(columnDefinition = "TEXT")
+    private String jobDescription;
+
+    public PanacheJobMatchEntity(UUID id, UUID profileId, UUID emailReceivedId, String jobLink, String jobTitle, String companyName, boolean match, int score, List<String> motivos, String curriculoAts, LocalDateTime createdAt, String jobDescription) {
         this.id = id;
         this.profileId = profileId;
         this.emailReceivedId = emailReceivedId;
@@ -47,6 +50,7 @@ public class PanacheJobMatchEntity {
         this.motivos = motivos;
         this.curriculoAts = curriculoAts;
         this.createdAt = createdAt;
+        this.jobDescription = jobDescription;
     }
 
     public PanacheJobMatchEntity() {
@@ -93,7 +97,15 @@ public class PanacheJobMatchEntity {
         return curriculoAts;
     }
 
+    public void setCurriculoAts(String curriculoAts) {
+        this.curriculoAts = curriculoAts;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public String getJobDescription() {
+        return jobDescription;
     }
 }

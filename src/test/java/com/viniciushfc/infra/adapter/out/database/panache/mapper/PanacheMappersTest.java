@@ -75,7 +75,7 @@ class PanacheMappersTest {
     @Test
     void jobMatchIdaEVolta() {
         var match = new JobMatch(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "link", "Dev", "ACME",
-                true, 77, List.of("a", "b"), "cv ats", LocalDateTime.now());
+                true, 77, List.of("a", "b"), "cv ats", LocalDateTime.now(), null);
 
         assertEquals(match.toString(), JobMatchMapper.toDomain(JobMatchMapper.toPanacheJobMatch(match)).toString());
     }

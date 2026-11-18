@@ -274,7 +274,7 @@ class ProfileResourceTest {
         UUID id = UUID.fromString(createProfile());
         jobMatchRepository.saveAll(List.of(new JobMatch(UUID.randomUUID(), id, UUID.randomUUID(),
                 "https://www.linkedin.com/jobs/view/1/", "Dev Java", "ACME", true, 88,
-                List.of("bom match"), "cv ats", LocalDateTime.now())));
+                List.of("bom match"), "cv ats", LocalDateTime.now(), null)));
 
         given().when().get("/profile/job-matches")
                 .then()

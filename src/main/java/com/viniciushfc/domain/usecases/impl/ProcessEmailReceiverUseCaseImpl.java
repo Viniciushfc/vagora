@@ -116,20 +116,29 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
             List<CvMatchResult> results = analyzeJobsMatchCvGateway.analyze(jobs, curriculum, profile.geminiApiKey());
             for (int i = 0; i < jobs.size(); i++) {
                 JobDetail job = jobs.get(i);
-                CvMatchResult result = results.get(i);
-                if (result.match()) {
-                    activity(source, a -> a.adapting(job.title()));
-                    String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(job, curriculum, profile.geminiApiKey());
-                    result = new CvMatchResult(true, result.score(), result.motivos(), adapted);
-                }
-                JobMatch jobMatch = JobMatch.create(profile.id(), emailOf.get(job.link()), job, result);
-                jobMatchRepository.saveAll(List.of(jobMatch));
-                jobMatches.add(jobMatch);
+                jobMatches.add(JobMatch.create(profile.id(), emailOf.get(job.link()), job, results.get(i)));
             }
+            jobMatchRepository.saveAll(jobMatches);
         } catch (RuntimeException e) {
             String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado na análise do Gemini.";
             activity(source, a -> a.failed(message, a.screenshot()));
             throw e;
+        }
+        for (int i = 0; i < jobMatches.size(); i++) {
+            JobMatch jobMatch = jobMatches.get(i);
+            if (!jobMatch.match()) {
+                continue;
+            }
+            activity(source, a -> a.adapting(jobMatch.jobTitle()));
+            try {
+                String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(jobs.get(i), curriculum, profile.geminiApiKey());
+                jobMatchRepository.updateCurriculum(jobMatch.id(), adapted);
+            } catch (RuntimeException e) {
+                // a análise já está salva; os currículos que faltam saem pelo botão "Gerar currículo"
+                String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado no Gemini.";
+                activity(source, a -> a.event("Currículo não gerado (" + message + "). Use \"Gerar currículo\" na vaga.", true));
+                break;
+            }
         }
         long matches = jobMatches.stream().filter(JobMatch::match).count();
         activity(source, a -> a.analysisFinished((int) matches, jobs.size()));
