@@ -17,7 +17,6 @@ import com.viniciushfc.domain.repositories.EmailReceivedRepository;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
 import com.viniciushfc.domain.repositories.ScraperActivityRepository;
 import com.viniciushfc.domain.usecases.contracts.ProcessEmailReceiverUseCase;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.domain.vo.ScraperActivity;
@@ -52,11 +51,11 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
         }
 
         LinkedAccount linkedinAccount = profile.findLinkedAccount(ExternalProvider.LINKEDIN);
-        if (source == AlertSource.LINKEDIN && Utils.isNull(linkedinAccount)) {
+        if (source == AlertSource.LINKEDIN && linkedinAccount == null) {
             throw new BusinessException("Conecte uma conta do LinkedIn em Contas.", ErrorCode.LINKEDIN_NOT_CONNECTED);
         }
 
-        if (Utils.isNull(profile.geminiApiKey()) || profile.geminiApiKey().isBlank()) {
+        if (profile.geminiApiKey() == null || profile.geminiApiKey().isBlank()) {
             throw new BusinessException("Configure a chave do Gemini no Perfil.", ErrorCode.GEMINI_KEY_MISSING);
         }
 

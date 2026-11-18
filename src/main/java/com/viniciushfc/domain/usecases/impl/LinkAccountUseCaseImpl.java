@@ -10,7 +10,6 @@ import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.LinkAccountUseCase;
 import com.viniciushfc.domain.exceptions.ConflictException;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.MailFolder;
 
 import java.util.ArrayList;
@@ -61,7 +60,7 @@ public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
     }
 
     private void validate(LinkedAccount linkedAccount) {
-        if (Utils.isNull(linkedAccount) || Utils.isNull(linkedAccount.externalProvider())) {
+        if (linkedAccount == null || linkedAccount.externalProvider() == null) {
             throw new ValidationException("Informe qual conta vincular: EMAIL ou LINKEDIN.");
         }
         if (isBlank(linkedAccount.username())) {
@@ -73,11 +72,11 @@ public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
     }
 
     private boolean isBlank(String value) {
-        return Utils.isNull(value) || value.isBlank();
+        return value == null || value.isBlank();
     }
 
     private String resolveFolder(List<MailFolder> folders, String requestedFolder) {
-        if (!Utils.isNull(requestedFolder) && !requestedFolder.isBlank()) {
+        if (requestedFolder != null && !requestedFolder.isBlank()) {
             if (folders.stream().noneMatch(f -> f.name().equals(requestedFolder))) {
                 throw new ValidationException("Pasta não encontrada no email: " + requestedFolder);
             }

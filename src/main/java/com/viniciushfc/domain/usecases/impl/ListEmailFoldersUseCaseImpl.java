@@ -8,7 +8,6 @@ import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.ListEmailFoldersUseCase;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.MailFolder;
 
 import java.util.List;
@@ -29,7 +28,7 @@ public class ListEmailFoldersUseCaseImpl implements ListEmailFoldersUseCase {
         Profile profile = profileRepository.require();
 
         LinkedAccount emailAccount = profile.findLinkedAccount(ExternalProvider.EMAIL);
-        if (Utils.isNull(emailAccount)) {
+        if (emailAccount == null) {
             throw new BusinessException("Conecte um email em Contas para listar as pastas.");
         }
 

@@ -12,7 +12,6 @@ import com.viniciushfc.domain.repositories.ProcessingStatusRepository;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.PollJobAlertsUseCase;
 import com.viniciushfc.domain.usecases.contracts.ProcessEmailReceiverUseCase;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.ProcessingStatus;
 
 import java.lang.System.Logger.Level;
@@ -48,11 +47,11 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
     @Override
     public void execute(AlertSource source) {
         Profile profile = profileRepository.find();
-        if (Utils.isNull(profile) || !profile.isMonitoringEnabled()) {
+        if (profile == null || !profile.isMonitoringEnabled()) {
             return;
         }
         LinkedAccount emailAccount = profile.findLinkedAccount(ExternalProvider.EMAIL);
-        if (Utils.isNull(emailAccount) || Utils.isNull(emailAccount.folder(source))) {
+        if (emailAccount == null || emailAccount.folder(source) == null) {
             return;
         }
 

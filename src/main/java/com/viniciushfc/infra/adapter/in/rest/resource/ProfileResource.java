@@ -4,7 +4,6 @@ import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.domain.usecases.contracts.*;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.domain.vo.ProcessingStatus;
@@ -139,7 +138,7 @@ public class ProfileResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public ProfileResponse updateEmailFolder(EmailFolderRequest request) {
         return ProfileRestMapper.toResponse(updateEmailFolderUseCase.execute(
-                Utils.isNull(request.source()) ? AlertSource.LINKEDIN : request.source(), request.folder()));
+                request.source() == null ? AlertSource.LINKEDIN : request.source(), request.folder()));
     }
 
     @GET

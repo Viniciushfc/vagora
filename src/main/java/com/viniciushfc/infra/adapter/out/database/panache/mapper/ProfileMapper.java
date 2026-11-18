@@ -1,7 +1,6 @@
 package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 
 import com.viniciushfc.domain.entities.Profile;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheProfileEntity;
 
 import static com.viniciushfc.infra.adapter.out.database.panache.mapper.AttachmentMapper.toDomainAttachment;
@@ -12,7 +11,7 @@ import static com.viniciushfc.infra.adapter.out.database.panache.mapper.LinkedAc
 public class ProfileMapper {
 
     public static Profile toDomain(PanacheProfileEntity panacheProfileEntity) {
-        if (Utils.isNull(panacheProfileEntity)) {
+        if (panacheProfileEntity == null) {
             return null;
         }
 
@@ -42,27 +41,27 @@ public class ProfileMapper {
 
     public static PanacheProfileEntity mergeForUpdate(PanacheProfileEntity entityPersist, Profile bo) {
 
-        if (Utils.isNull(entityPersist) || Utils.isNull(bo)) {
+        if (entityPersist == null || bo == null) {
             return entityPersist;
         }
 
-        if (!Utils.isNull(bo.name())) {
+        if (bo.name() != null) {
             entityPersist.setName(bo.name());
         }
 
-        if (!Utils.isNull(bo.monitoringEnabled())){
+        if (bo.monitoringEnabled() != null){
             entityPersist.setMonitoringEnabled(bo.monitoringEnabled());
         }
 
-        if (!Utils.isNull(bo.showBrowser())){
+        if (bo.showBrowser() != null){
             entityPersist.setShowBrowser(bo.showBrowser());
         }
 
-        if (!Utils.isNull(bo.geminiApiKey())){
+        if (bo.geminiApiKey() != null){
             entityPersist.setGeminiApiKey(bo.geminiApiKey());
         }
 
-        if (!Utils.isNull(bo.curriculum())){
+        if (bo.curriculum() != null){
             entityPersist.setCurriculum(toPanacheAttachmentEmbeddable(bo.curriculum()));
         }
 

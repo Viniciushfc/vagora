@@ -2,7 +2,6 @@ package com.viniciushfc.infra.adapter.in.rest.mapper;
 
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountRequest;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountResponse;
@@ -28,11 +27,11 @@ public class ProfileRestMapper {
         return new ProfileResponse(
                 profile.id(),
                 profile.name(),
-                !Utils.isNull(profile.geminiApiKey()) && !profile.geminiApiKey().isBlank(),
+                profile.geminiApiKey() != null && !profile.geminiApiKey().isBlank(),
                 profile.isBrowserVisible(),
                 profile.isMonitoringEnabled(),
-                Utils.isNull(profile.curriculum()) ? null : profile.curriculum().name(),
-                Utils.isNull(profile.curriculum()) || Utils.isNull(profile.curriculum().content())
+                profile.curriculum() == null ? null : profile.curriculum().name(),
+                profile.curriculum() == null || profile.curriculum().content() == null
                         ? null : profile.curriculum().content().length,
                 profile.linkedAccounts().stream()
                         .map(l -> new LinkedAccountResponse(l.id(), l.username(), l.externalProvider(), l.folder(), l.indeedFolder()))
@@ -41,7 +40,7 @@ public class ProfileRestMapper {
     }
 
     private static Attachment toAttachment(FileUpload file) {
-        if (Utils.isNull(file)) {
+        if (file == null) {
             return null;
         }
 

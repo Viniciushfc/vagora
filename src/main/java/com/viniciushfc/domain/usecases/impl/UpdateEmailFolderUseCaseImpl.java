@@ -10,7 +10,6 @@ import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.gateways.MailboxGateway;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.UpdateEmailFolderUseCase;
-import com.viniciushfc.domain.utils.Utils;
 
 import java.util.List;
 
@@ -30,11 +29,11 @@ public class UpdateEmailFolderUseCaseImpl implements UpdateEmailFolderUseCase {
         Profile profile = profileRepository.require();
 
         LinkedAccount emailAccount = profile.findLinkedAccount(ExternalProvider.EMAIL);
-        if (Utils.isNull(emailAccount)) {
+        if (emailAccount == null) {
             throw new BusinessException("Conecte um email em Contas para listar as pastas.");
         }
 
-        if (Utils.isNull(folder) || folder.isBlank()) {
+        if (folder == null || folder.isBlank()) {
             if (source != AlertSource.INDEED) {
                 throw new ValidationException("Escolha a pasta dos alertas do " + source.label + ".");
             }

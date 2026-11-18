@@ -1,7 +1,6 @@
 package com.viniciushfc.domain.validators;
 
 import com.viniciushfc.domain.exceptions.ValidationException;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.Attachment;
 
 public class CurriculumValidator {
@@ -13,7 +12,7 @@ public class CurriculumValidator {
     }
 
     public static void validate(Attachment curriculum) {
-        if (Utils.isNull(curriculum) || Utils.isNull(curriculum.content()) || curriculum.content().length == 0) {
+        if (curriculum == null || curriculum.content() == null || curriculum.content().length == 0) {
             throw new ValidationException("Envie o currículo em PDF.");
         }
 

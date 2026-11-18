@@ -11,7 +11,6 @@ import com.viniciushfc.domain.gateways.JobDetailsGateway;
 import com.viniciushfc.domain.repositories.ProcessingStatusRepository;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.OpenLinkedinLoginUseCase;
-import com.viniciushfc.domain.utils.Utils;
 
 @UseCase
 public class OpenLinkedinLoginUseCaseImpl implements OpenLinkedinLoginUseCase {
@@ -31,7 +30,7 @@ public class OpenLinkedinLoginUseCaseImpl implements OpenLinkedinLoginUseCase {
     public void execute() {
         Profile profile = profileRepository.require();
         LinkedAccount linkedin = profile.findLinkedAccount(ExternalProvider.LINKEDIN);
-        if (Utils.isNull(linkedin)) {
+        if (linkedin == null) {
             throw new BusinessException("Conecte uma conta do LinkedIn em Contas.", ErrorCode.LINKEDIN_NOT_CONNECTED);
         }
         jobDetailsGateway.openLoginWindow(linkedin,

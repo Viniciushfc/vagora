@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.repositories.EmailReceivedRepository;
-import com.viniciushfc.domain.utils.Utils;
 import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.infra.adapter.out.database.panache.mapper.EmailReceivedMapper;
 import com.viniciushfc.infra.adapter.out.database.panache.repositories.contracts.PanacheEmailReceivedRepository;
@@ -39,7 +38,7 @@ public class PanacheEmailReceivedRepositoryImpl implements EmailReceivedReposito
     @Transactional
     public EmailReceived findByMessageId(String messageId) {
         var entity = panacheEmailReceivedRepository.find("messageId", messageId).firstResult();
-        return Utils.isNull(entity) ? null : EmailReceivedMapper.toDomain(entity);
+        return entity == null ? null : EmailReceivedMapper.toDomain(entity);
     }
 
     @Override
@@ -47,7 +46,7 @@ public class PanacheEmailReceivedRepositoryImpl implements EmailReceivedReposito
     public void markSuccessProcessed(UUID id) {
         var entity = panacheEmailReceivedRepository.findById(id);
 
-        if (Utils.isNull(entity)) {
+        if (entity == null) {
             return;
         }
 
@@ -59,14 +58,14 @@ public class PanacheEmailReceivedRepositoryImpl implements EmailReceivedReposito
     @Transactional
     public List<JobDetail> findScrapedJobs(UUID id) {
         var entity = panacheEmailReceivedRepository.findById(id);
-        return Utils.isNull(entity) ? List.of() : scrapedJobs(entity.getScrapedJobs());
+        return entity == null ? List.of() : scrapedJobs(entity.getScrapedJobs());
     }
 
     @Override
     @Transactional
     public void addScrapedJob(UUID id, JobDetail job) {
         var entity = panacheEmailReceivedRepository.findById(id);
-        if (Utils.isNull(entity)) {
+        if (entity == null) {
             return;
         }
         List<JobDetail> jobs = new ArrayList<>(scrapedJobs(entity.getScrapedJobs()));
@@ -79,7 +78,7 @@ public class PanacheEmailReceivedRepositoryImpl implements EmailReceivedReposito
     }
 
     private List<JobDetail> scrapedJobs(String json) {
-        if (Utils.isNull(json)) {
+        if (json == null) {
             return List.of();
         }
         try {
