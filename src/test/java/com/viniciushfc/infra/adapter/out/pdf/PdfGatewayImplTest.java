@@ -48,4 +48,19 @@ class PdfGatewayImplTest {
 
         assertThrows(ValidationException.class, () -> gateway.extractTextPdf(attachment));
     }
+
+    @Test
+    void geraPdfDoCurriculoComAcentosEVariasPaginas() throws IOException {
+        String curriculo = "EXPERIÊNCIA PROFISSIONAL\n" + "- Ação em produção com Java e Quarkus 🚀\n".repeat(120);
+
+        byte[] pdf = gateway.createPdf(curriculo);
+        String text = gateway.extractTextPdf(new Attachment("cv.pdf", "application/pdf", pdf));
+
+        assertTrue(text.contains("EXPERIÊNCIA PROFISSIONAL"));
+        assertTrue(text.contains("• Ação em produção com Java e Quarkus"));
+        assertFalse(text.contains("🚀"));
+        try (var document = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+            assertTrue(document.getNumberOfPages() > 1);
+        }
+    }
 }

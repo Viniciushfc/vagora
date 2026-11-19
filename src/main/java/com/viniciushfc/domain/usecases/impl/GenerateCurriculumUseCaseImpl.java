@@ -11,6 +11,7 @@ import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.GenerateCurriculumUseCase;
+import com.viniciushfc.domain.vo.Attachment;
 
 import java.util.UUID;
 
@@ -33,21 +34,36 @@ public class GenerateCurriculumUseCaseImpl implements GenerateCurriculumUseCase 
     @Override
     public JobMatch execute(UUID jobMatchId) {
         Profile profile = profileRepository.require();
-        JobMatch jobMatch = jobMatchRepository.findById(jobMatchId);
-        if (jobMatch == null || !jobMatch.profileId().equals(profile.id())) {
-            throw new NotFoundException("Vaga não encontrada.");
-        }
+        JobMatch jobMatch = find(profile, jobMatchId);
         if (jobMatch.jobDescription() == null) {
             throw new BusinessException("Esta vaga foi analisada antes de o Vagora guardar a descrição, então não dá para gerar o currículo.");
         }
         if (profile.llmProviders().isEmpty()) {
             throw new BusinessException(
-                    "Configure a chave do Gemini ou do Groq no Perfil.", ErrorCode.LLM_KEY_MISSING);
+                    "Configure uma IA em Configurações: a chave do Gemini ou do Groq, ou conecte o Claude.", ErrorCode.LLM_KEY_MISSING);
         }
 
         String adapted = analyzeJobsMatchCvGateway.adaptCurriculum(jobMatch.jobDetail(),
                 pdfGateway.extractTextPdf(profile.curriculum()), profile);
         jobMatchRepository.updateCurriculum(jobMatch.id(), adapted);
         return jobMatch.withCurriculum(adapted);
+    }
+
+    @Override
+    public Attachment pdf(UUID jobMatchId) {
+        JobMatch jobMatch = find(profileRepository.require(), jobMatchId);
+        if (jobMatch.curriculoAts() == null || jobMatch.curriculoAts().isBlank()) {
+            throw new NotFoundException("Esta vaga ainda não tem currículo adaptado.");
+        }
+        return new Attachment("Currículo - " + jobMatch.jobTitle() + ".pdf", "application/pdf",
+                pdfGateway.createPdf(jobMatch.curriculoAts()));
+    }
+
+    private JobMatch find(Profile profile, UUID jobMatchId) {
+        JobMatch jobMatch = jobMatchRepository.findById(jobMatchId);
+        if (jobMatch == null || !jobMatch.profileId().equals(profile.id())) {
+            throw new NotFoundException("Vaga não encontrada.");
+        }
+        return jobMatch;
     }
 }

@@ -112,8 +112,12 @@ public class ProfileResource {
         if (curriculum == null) {
             throw new NotFoundException("Este perfil não tem currículo.");
         }
-        String fileName = URLEncoder.encode(curriculum.name(), StandardCharsets.UTF_8).replace("+", "%20");
-        return Response.ok(curriculum.content(), curriculum.contentType())
+        return inline(curriculum);
+    }
+
+    private static Response inline(Attachment file) {
+        String fileName = URLEncoder.encode(file.name(), StandardCharsets.UTF_8).replace("+", "%20");
+        return Response.ok(file.content(), file.contentType())
                 .header("Content-Disposition", "inline; filename*=UTF-8''" + fileName)
                 .build();
     }
@@ -179,6 +183,13 @@ public class ProfileResource {
         return listJobMatchesUseCase.execute().stream()
                 .map(JobMatchRestMapper::toResponse)
                 .toList();
+    }
+
+    @GET
+    @Path("/job-matches/{id}/curriculum")
+    @Produces("application/pdf")
+    public Response curriculumPdf(@PathParam("id") UUID id) {
+        return inline(generateCurriculumUseCase.pdf(id));
     }
 
     @POST
