@@ -55,6 +55,9 @@ const api = {
     linkAccount: (account) => request("POST", "/profile/accounts", account),
     unlinkAccount: (provider) => request("DELETE", `/profile/accounts/${provider}`),
     openLinkedinLogin: () => request("POST", "/profile/accounts/LINKEDIN/session"),
+    claudeStatus: () => request("GET", "/profile/accounts/CLAUDE/session"),
+    connectClaude: (method) => request("POST", "/profile/accounts/CLAUDE/session", { method }),
+    sendClaudeCode: (code) => request("POST", "/profile/accounts/CLAUDE/code", { code }),
     listFolders: () => request("GET", "/profile/email/folders"),
     updateFolder: (folder, source) => request("PUT", "/profile/email/folder", { folder, source }),
     listMatches: () => request("GET", "/profile/job-matches"),
@@ -137,13 +140,6 @@ const SOURCE_LABELS = { LINKEDIN: "LinkedIn", INDEED: "Indeed" };
 
 function folderOf(email, source) {
     return source === "INDEED" ? email.indeedFolder : email.folder;
-}
-
-function foldersText(email) {
-    return [
-        "Alertas do LinkedIn na pasta ", { strong: email.folder },
-        ...(email.indeedFolder ? [", do Indeed na pasta ", { strong: email.indeedFolder }] : [". O Indeed não está sendo lido (nenhuma pasta escolhida)"]),
-    ];
 }
 
 let toastTimer;
@@ -246,9 +242,9 @@ function showError(error, target) {
     const box = target ?? $("#setup-warning");
     box.replaceChildren(messageFor(error));
 
-    if (error.type === "BUSINESS_RULE" && !box.closest("[data-panel='contas']")) {
-        const link = el("a", "", "Abrir contas");
-        link.href = "#contas";
+    if (error.type === "BUSINESS_RULE" && !box.closest("[data-panel='config']")) {
+        const link = el("a", "", "Abrir configurações");
+        link.href = "#config";
         box.append(" ", link);
     }
     if (error.errorId) {
@@ -309,16 +305,26 @@ function showApp() {
     route();
 }
 
+const KEY_MASK = "••••••••••••••••";
+
+const SUBPAGES = {
+    vagas: [["vagas", "Analisadas"], ["pendentes", "Na fila"]],
+    atividade: [["linkedin", "LinkedIn"], ["indeed", "Indeed"]],
+};
+const PAGE_SECTION = { vagas: "vagas", pendentes: "vagas", linkedin: "atividade", indeed: "atividade", config: "config" };
+
 let pageTimer;
 function route() {
     if ($("#app").hidden) return;
-    const tab = ["vagas", "pendentes", "contas", "linkedin", "indeed", "perfil"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "vagas";
+    const tab = PAGE_SECTION[location.hash.slice(1)] ? location.hash.slice(1) : "vagas";
+    const section = PAGE_SECTION[tab];
 
     $$("[data-tab]").forEach((link) => {
-        if (link.dataset.tab === tab) link.setAttribute("aria-current", "page");
+        if (link.dataset.tab === section) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
     });
     $$("[data-panel]").forEach((panel) => { panel.hidden = !panel.dataset.panel.split(" ").includes(tab); });
+    renderSubnav(SUBPAGES[section], tab);
 
     clearInterval(pageTimer);
     if (tab === "vagas") {
@@ -330,7 +336,6 @@ function route() {
         loadPending();
         pageTimer = setInterval(loadPending, 30_000);
     }
-    if (tab === "contas") renderAccounts();
     if (tab === "linkedin" || tab === "indeed") {
         state.readerSource = tab.toUpperCase();
         $("#reader-title").textContent = `Leitor do ${SOURCE_LABELS[state.readerSource]}`;
@@ -339,8 +344,22 @@ function route() {
         // enquanto a página está aberta, acompanha o leitor quase em tempo real
         pageTimer = setInterval(loadScraper, 5_000);
     }
-    if (tab === "perfil") renderProfile();
+    if (tab === "config") {
+        renderProfile();
+        renderAccounts();
+    }
     window.scrollTo({ top: 0 });
+}
+
+function renderSubnav(pages, current) {
+    const nav = $("#subnav");
+    nav.hidden = !pages;
+    nav.replaceChildren(...(pages ?? []).map(([page, label]) => {
+        const link = el("a", "", label);
+        link.href = `#${page}`;
+        if (page === current) link.setAttribute("aria-current", "page");
+        return link;
+    }));
 }
 
 window.addEventListener("hashchange", route);
@@ -381,14 +400,14 @@ function mergeStatus(statuses) {
 }
 
 function hasAiKey() {
-    return state.profile.hasGeminiApiKey || state.profile.hasGroqApiKey;
+    return state.profile.hasGeminiApiKey || state.profile.hasGroqApiKey || Boolean(account("CLAUDE"));
 }
 
 function missingSetup() {
     const missing = [];
     if (!account("EMAIL")) missing.push("o email");
     if (!account("LINKEDIN")) missing.push("o LinkedIn");
-    if (!hasAiKey()) missing.push("a chave do Gemini ou do Groq");
+    if (!hasAiKey()) missing.push("uma IA (Gemini, Groq ou Claude)");
     if (!state.profile.curriculumName) missing.push("o currículo");
     return missing;
 }
@@ -454,13 +473,15 @@ $("#monitoring").addEventListener("change", (event) => setMonitoring(event.targe
 
 // o atalho de cada falha vem do código do erro (ErrorCode no backend), nunca do texto
 const ERROR_ACTIONS = {
-    LINKEDIN_CHECKPOINT: ["Entrar no LinkedIn", "#contas"],
-    LINKEDIN_LOGIN_FAILED: ["Abrir contas", "#contas"],
-    LINKEDIN_NOT_CONNECTED: ["Abrir contas", "#contas"],
+    LINKEDIN_CHECKPOINT: ["Entrar no LinkedIn", "#config"],
+    LINKEDIN_LOGIN_FAILED: ["Abrir configurações", "#config"],
+    LINKEDIN_NOT_CONNECTED: ["Abrir configurações", "#config"],
     LINKEDIN_PAGE_UNREADABLE: ["Ver o leitor", "#leitor"],
     SCRAPER_FAILED: ["Ver o leitor", "#leitor"],
-    LLM_KEY_MISSING: ["Abrir perfil", "#perfil"],
-    LLM_KEY_REJECTED: ["Abrir perfil", "#perfil"],
+    LLM_KEY_MISSING: ["Abrir configurações", "#config"],
+    LLM_KEY_REJECTED: ["Abrir configurações", "#config"],
+    CLAUDE_NOT_INSTALLED: ["Abrir configurações", "#config"],
+    CLAUDE_NOT_CONNECTED: ["Entrar no Claude", "#config"],
 };
 
 function renderProcessingAlert() {
@@ -519,10 +540,6 @@ $("#setup-profile-form").addEventListener("submit", async (event) => {
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     clearError(form);
-    if (!$("#setup-gemini").value.trim() && !$("#setup-groq").value.trim()) {
-        showError(new ApiError({ type_error: "VALIDATION_ERROR", message_error: "Preencha a chave do Gemini ou a do Groq." }), $(".form-error", form));
-        return;
-    }
     // lê os campos antes de desabilitar: campos desabilitados ficam fora do FormData
     const data = new FormData(form);
     setBusy(form, true);
@@ -547,7 +564,7 @@ async function onSetupLinkedinLinked() {
     const opened = await openLinkedinLogin();
     completeStep("linkedin", opened
         ? "LinkedIn conectado. Termine o login na janela do navegador que abriu: captcha, código ou aprovação no app do celular."
-        : "LinkedIn conectado. Abra a janela de login depois em Contas, no botão \"Entrar no LinkedIn\".");
+        : "LinkedIn conectado. Abra a janela de login depois em Configurações, no botão \"Entrar no LinkedIn\".");
     $("#setup-finish").hidden = false;
     $("#setup-finish").focus();
 }
@@ -614,9 +631,8 @@ function renderMissingSetup() {
     if (missing.length === 0) return;
 
     const box = $("#setup-warning");
-    const onlyProfile = missing.every((item) => item === "a chave do Gemini ou do Groq" || item === "o currículo");
-    const link = el("a", "", onlyProfile ? "Abrir perfil" : "Abrir contas");
-    link.href = onlyProfile ? "#perfil" : "#contas";
+    const link = el("a", "", "Abrir configurações");
+    link.href = "#config";
     box.replaceChildren(`Para analisar novas vagas, falta configurar ${joinList(missing)}. `, link);
     box.hidden = false;
 }
@@ -727,6 +743,9 @@ function matchItem(match) {
     $(".job-link", item).href = match.jobLink;
 
     if (match.curriculoAts) {
+        const pdf = $(".pdf-ats", item);
+        pdf.hidden = false;
+        pdf.href = `/profile/job-matches/${match.id}/curriculum`;
         const copy = $(".copy-ats", item);
         copy.hidden = false;
         copy.addEventListener("click", async () => {
@@ -784,7 +803,7 @@ function renderAnalysisStatus(analysis, total) {
         text = "Monitoramento pausado: a análise volta quando você retomar.";
         warn = true;
     } else if (!hasAiKey()) {
-        text = "Configure a chave do Gemini ou do Groq no Perfil para analisar as vagas.";
+        text = "Configure uma IA em Configurações para analisar as vagas.";
         warn = true;
     } else if (analysis?.currentAlert) {
         text = `Analisando ${analysis.currentAlert} agora.`;
@@ -887,9 +906,9 @@ $("#refresh-matches").addEventListener("click", () => {
 
 // o que fazer em cada falha do leitor, pelo código do erro
 const SCRAPER_HELP = {
-    LINKEDIN_PAGE_UNREADABLE: "Olhe a captura abaixo. Se aparece uma tela de login ou de verificação, ligue \"Mostrar o navegador\" no Perfil para resolver na próxima análise. Se a página parece normal, foi lentidão e a próxima tentativa costuma passar.",
-    LINKEDIN_CHECKPOINT: "Em Contas, clique em \"Entrar no LinkedIn\". O navegador abre na tela com login e senha preenchidos e espera até 5 minutos você resolver a verificação.",
-    LINKEDIN_LOGIN_FAILED: "Confira o login e a senha da conta do LinkedIn em Contas. Se mudou a senha, desconecte e conecte de novo.",
+    LINKEDIN_PAGE_UNREADABLE: "Olhe a captura abaixo. Se aparece uma tela de login ou de verificação, ligue \"Mostrar o navegador\" em Configurações para resolver na próxima análise. Se a página parece normal, foi lentidão e a próxima tentativa costuma passar.",
+    LINKEDIN_CHECKPOINT: "Em Configurações, clique em \"Entrar no LinkedIn\". O navegador abre na tela com login e senha preenchidos e espera até 5 minutos você resolver a verificação.",
+    LINKEDIN_LOGIN_FAILED: "Confira o login e a senha da conta do LinkedIn em Configurações. Se mudou a senha, desconecte e conecte de novo.",
     SCRAPER_FAILED: "Os detalhes técnicos estão no terminal onde o Vagora está rodando. Se o erro se repetir, pare o Vagora e rode ./run.sh --clean.",
 };
 
@@ -920,7 +939,7 @@ function renderScraper(activity) {
     } else if (activity.failure) {
         view = { state: "error", title: "Parou com um problema", detail: next ? `Vai tentar de novo às ${next}.` : "Vai tentar de novo no próximo ciclo." };
     } else if (!state.profile.monitoringEnabled) {
-        view = { state: "paused", title: "Monitoramento pausado", detail: "Nenhuma vaga é aberta até você retomar no Perfil." };
+        view = { state: "paused", title: "Monitoramento pausado", detail: "Nenhuma vaga é aberta até você retomar em Configurações." };
     } else {
         view = { state: activity.events.length ? "ok" : "idle", title: "Parado",
             detail: next ? `Próximo alerta às ${next}${status.queuedAlerts ? ` · ${status.queuedAlerts} na fila` : ""}.` : "Esperando um alerta de vaga chegar no email." };
@@ -942,7 +961,7 @@ function renderScraper(activity) {
             ?? "Uma vaga não carregou a tempo e foi pulada; as outras foram lidas normalmente.";
         $("#scraper-failure-help").textContent = activity.failure
             ? (SCRAPER_HELP[status?.lastErrorCode] ?? "O alerta continua no email e será tentado de novo.")
-            : "Veja abaixo o que o navegador mostrava. Se for uma tela de login ou de verificação, ligue \"Mostrar o navegador\" no Perfil.";
+            : "Veja abaixo o que o navegador mostrava. Se for uma tela de login ou de verificação, ligue \"Mostrar o navegador\" em Configurações.";
         $("#scraper-shot").hidden = !activity.screenshot;
         if (activity.screenshot) {
             // a URL muda a cada evento para o navegador não reaproveitar a imagem anterior
@@ -968,32 +987,36 @@ function renderScraper(activity) {
 function renderAccounts() {
     renderEmailAccount();
     renderLinkedinAccount();
+    renderIndeedAccount();
+    renderClaudeAccount();
 }
 
-function accountHead(iconName, title, connected) {
+function accountHead(iconName, title, connected, labels = ["Conectado", "Não conectado"]) {
     const head = el("div", "account-head");
     const badge = el("span", "account-icon");
     badge.append(icon(iconName));
-    head.append(badge, el("h2", "", title), el("span", `chip ${connected ? "on" : "off"}`, connected ? "Conectado" : "Não conectado"));
+    head.append(badge, el("h2", "", title), el("span", `chip ${connected ? "on" : "off"}`, connected ? labels[0] : labels[1]));
     return head;
 }
 
+const ACCOUNT_NAMES = { EMAIL: "email", LINKEDIN: "LinkedIn", CLAUDE: "Claude" };
+
 // uma conta por site: para trocar, desconecta e conecta de novo. Pede um segundo clique para confirmar.
 function unlinkButton(provider) {
-    const button = el("button", "button quiet", `Desconectar ${provider === "EMAIL" ? "email" : "LinkedIn"}`);
+    const button = el("button", "button quiet", `Desconectar ${ACCOUNT_NAMES[provider]}`);
     button.type = "button";
     let armed = false;
     button.addEventListener("click", async () => {
         if (!armed) {
             armed = true;
             button.textContent = "Clique de novo para desconectar";
-            setTimeout(() => { armed = false; button.textContent = `Desconectar ${provider === "EMAIL" ? "email" : "LinkedIn"}`; }, 4000);
+            setTimeout(() => { armed = false; button.textContent = `Desconectar ${ACCOUNT_NAMES[provider]}`; }, 4000);
             return;
         }
         button.disabled = true;
         try {
             state.profile = await api.unlinkAccount(provider);
-            toast(provider === "EMAIL" ? "Email desconectado." : "LinkedIn desconectado.");
+            toast(provider === "EMAIL" ? "Email desconectado." : `${ACCOUNT_NAMES[provider]} desconectado.`);
             renderAccounts();
             loadStatus();
         } catch (error) {
@@ -1016,19 +1039,30 @@ function renderEmailAccount() {
     }
 
     const status = el("p", "account-status");
-    status.append(...rich(["Lendo ", { strong: email.username }, ". ", ...foldersText(email), "."]));
-    card.replaceChildren(
-        accountHead("mail", "Email", true),
-        status,
-        folderPicker(email),
-        unlinkButton("EMAIL"),
+    status.append(...rich(["Lendo ", { strong: email.username }, ". A pasta de cada rede é escolhida no card dela."]));
+    card.replaceChildren(accountHead("mail", "Email", true), status, unlinkButton("EMAIL"));
+}
+
+function renderIndeedAccount() {
+    const email = account("EMAIL");
+    const reading = Boolean(email?.indeedFolder);
+    $("#account-indeed").replaceChildren(
+        accountHead("search", "Indeed", reading, ["Lendo alertas", "Desligado"]),
+        email
+            ? folderPicker(email, "INDEED")
+            : el("p", "account-status", "Conecte o email para escolher a pasta dos alertas do Indeed."),
     );
 }
 
-function folderPicker(email) {
+function folderPicker(email, source) {
     const wrapper = el("div", "folder-picker");
-    const label = email.indeedFolder ? "Trocar as pastas do LinkedIn e do Indeed" : "Escolher a pasta do Indeed";
-    const load = el("button", email.indeedFolder ? "button quiet" : "button primary");
+    const current = folderOf(email, source);
+    const text = el("p", "account-status");
+    text.append(...rich(current
+        ? ["Lê os alertas da pasta ", { strong: current }, " do email."]
+        : [`Os alertas do ${SOURCE_LABELS[source]} não estão sendo lidos. Escolha a pasta do email onde eles chegam.`]));
+    const label = current ? "Trocar pasta" : "Escolher pasta";
+    const load = el("button", current ? "button quiet" : "button primary");
     load.type = "button";
     load.append(icon("folder"), label);
     const error = el("p", "form-error");
@@ -1039,7 +1073,7 @@ function folderPicker(email) {
         load.replaceChildren(el("span", "spinner"), "Contando os alertas em cada pasta (pode levar até 1 minuto)…");
         error.hidden = true;
         try {
-            wrapper.replaceChildren(folderForm(email, await api.listFolders()));
+            wrapper.replaceChildren(folderForm(email, source, await api.listFolders()));
         } catch (e) {
             showError(e, error);
             load.disabled = false;
@@ -1047,56 +1081,49 @@ function folderPicker(email) {
         }
     });
 
-    wrapper.append(load, error);
+    wrapper.append(text, load, error);
     return wrapper;
 }
 
-function folderForm(email, folders) {
+function folderForm(email, source, folders) {
     const form = el("form", "form folder-form");
-    const selects = {};
-    for (const source of ["LINKEDIN", "INDEED"]) {
-        const field = el("div", "field");
-        const label = el("label", "", `Alertas do ${SOURCE_LABELS[source]}`);
-        const select = el("select");
-        select.id = `f-${++uid}`;
-        label.htmlFor = select.id;
+    const field = el("div", "field");
+    const label = el("label", "", `Pasta dos alertas do ${SOURCE_LABELS[source]}`);
+    const select = el("select");
+    select.id = `f-${++uid}`;
+    label.htmlFor = select.id;
 
-        const alerts = (f) => f.jobAlerts[source] ?? 0;
-        const current = folderOf(email, source);
-        // pastas com alertas primeiro; empate fica na ordem do servidor de email (INBOX antes de [Gmail]/...)
-        const sorted = [...folders].sort((a, b) => alerts(b) - alerts(a));
-        if (source === "INDEED") select.append(new Option("Não ler alertas do Indeed", "", false, !current));
-        select.append(...sorted.map((f) => new Option(
-            `${f.name} · ${alerts(f) === 0 ? "nenhum alerta" : `${alerts(f)} ${alerts(f) === 1 ? "alerta" : "alertas"}`}${f.name === current ? " (atual)" : ""}`,
-            f.name, false, f.name === current)));
+    const alerts = (f) => f.jobAlerts[source] ?? 0;
+    const current = folderOf(email, source);
+    const sorted = [...folders].sort((a, b) => alerts(b) - alerts(a));
+    if (source === "INDEED") select.append(new Option("Não ler alertas do Indeed", "", false, !current));
+    select.append(...sorted.map((f) => new Option(
+        `${f.name} · ${alerts(f) === 0 ? "nenhum alerta" : `${alerts(f)} ${alerts(f) === 1 ? "alerta" : "alertas"}`}${f.name === current ? " (atual)" : ""}`,
+        f.name, false, f.name === current)));
 
-        const hint = el("p", "hint", source === "LINKEDIN"
-            ? "Só emails de jobalerts-noreply@linkedin.com são lidos."
-            : "Só emails de donotreply@match.indeed.com são lidos. Pode ser a mesma pasta do LinkedIn.");
-        field.append(label, select, hint);
-        form.append(field);
-        selects[source] = select;
-    }
+    const hint = el("p", "hint", source === "LINKEDIN"
+        ? "Só emails de jobalerts-noreply@linkedin.com são lidos."
+        : "Só emails de donotreply@match.indeed.com são lidos. Pode ser a mesma pasta do LinkedIn.");
+    field.append(label, select, hint);
 
     const error = el("p", "form-error");
     error.hidden = true;
-    const save = el("button", "button primary", "Salvar pastas");
+    const save = el("button", "button primary", "Salvar pasta");
     const cancel = el("button", "button quiet", "Cancelar");
     cancel.type = "button";
     cancel.addEventListener("click", renderAccounts);
     const actions = el("div", "folder-actions");
     actions.append(save, cancel);
-    form.append(error, actions);
+    form.append(field, error, actions);
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const changed = Object.entries(selects).filter(([source, select]) => select.value !== (folderOf(email, source) ?? ""));
-        if (!changed.length) return renderAccounts();
+        if (select.value === (current ?? "")) return renderAccounts();
         setBusy(form, true);
         error.hidden = true;
         try {
-            for (const [source, select] of changed) state.profile = await api.updateFolder(select.value, source);
-            toast("Pastas salvas.");
+            state.profile = await api.updateFolder(select.value, source);
+            toast("Pasta salva.");
             renderAccounts();
         } catch (e) {
             showError(e, error);
@@ -1111,9 +1138,12 @@ function renderLinkedinAccount() {
     const linkedin = account("LINKEDIN");
     const onLinked = async () => { renderAccounts(); loadStatus(); await openLinkedinLogin(); };
 
+    const email = account("EMAIL");
+    const folder = email ? [folderPicker(email, "LINKEDIN")] : [];
+
     if (!linkedin) {
         const status = el("p", "account-status", "O Vagora abre cada vaga com a sua conta para ler a descrição completa.");
-        card.replaceChildren(accountHead("globe", "LinkedIn", false), status, linkedinForm(onLinked));
+        card.replaceChildren(accountHead("globe", "LinkedIn", false), status, ...folder, linkedinForm(onLinked));
         return;
     }
 
@@ -1122,6 +1152,7 @@ function renderLinkedinAccount() {
     card.replaceChildren(
         accountHead("globe", "LinkedIn", true),
         status,
+        ...folder,
         el("p", "hint", "Se o LinkedIn pedir verificação, entre por aqui: o navegador do Vagora abre na tela e guarda a sessão."),
         linkedinLoginButton(),
         unlinkButton("LINKEDIN"),
@@ -1148,6 +1179,157 @@ async function openLinkedinLogin() {
         toast(messageFor(error));
         return false;
     }
+}
+
+const CLAUDE_LOGIN_METHODS = [
+    ["CLAUDEAI", "Assinatura do Claude (Pro, Max, Team ou Enterprise)"],
+    ["CONSOLE", "Anthropic Console, cobrado pelo uso da API"],
+    ["SSO", "SSO da empresa"],
+];
+
+let claudePoll = null;
+
+async function renderClaudeAccount(refreshProfile = false) {
+    clearTimeout(claudePoll);
+    const card = $("#account-claude");
+    let status;
+    try {
+        if (refreshProfile) state.profile = await api.getProfile();
+        status = await api.claudeStatus();
+    } catch (error) {
+        card.replaceChildren(accountHead("spark", "Claude", false), el("p", "form-error", messageFor(error)));
+        return;
+    }
+
+    const claude = account("CLAUDE");
+    const head = accountHead("spark", "Claude", Boolean(claude && status.loggedIn));
+    const intro = el("p", "account-status", "O Claude analisa as vagas com a sua conta, pelo Claude Code instalado neste computador. Não precisa de chave.");
+
+    if (!status.installed) {
+        const command = el("code", "", "curl -fsSL https://claude.ai/install.sh | bash");
+        const hint = el("p", "hint");
+        hint.append("Instale rodando no terminal ", command, " e depois clique em Verificar de novo.");
+        card.replaceChildren(head, intro, hint, claudeButton("Verificar de novo", "quiet", () => renderClaudeAccount()));
+        if (claude) card.append(unlinkButton("CLAUDE"));
+        return;
+    }
+
+    if (status.loggingIn) {
+        card.replaceChildren(head, ...claudeLoginInProgress(status));
+        if (location.hash === "#config") claudePoll = setTimeout(() => renderClaudeAccount(true), 2000);
+        return;
+    }
+
+    const error = status.loginError ? [el("p", "form-error", status.loginError)] : [];
+
+    if (claude && status.loggedIn) {
+        const text = el("p", "account-status");
+        text.append(...rich(["Conectado como ", { strong: claude.username }, status.plan ? ` (plano ${status.plan}).` : "."]));
+        const hint = el("p", "hint");
+        hint.append("O Claude Code continua logado neste computador. Para sair dele também, rode ", el("code", "", "claude auth logout"), ".");
+        card.replaceChildren(head, text, hint, unlinkButton("CLAUDE"));
+        return;
+    }
+
+    if (claude) {
+        const text = el("p", "form-error", "O Claude Code saiu da conta neste computador. Entre de novo para o Claude voltar a analisar as vagas.");
+        card.replaceChildren(head, text, ...error, claudeLoginForm(), unlinkButton("CLAUDE"));
+        return;
+    }
+
+    if (status.loggedIn) {
+        const text = el("p", "account-status");
+        text.append(...rich(["O Claude Code deste computador já está logado como ", { strong: status.email ?? "uma conta" }, "."]));
+        card.replaceChildren(head, intro, text, claudeButton("Usar esta conta", "primary", () => connectClaude(null)));
+        return;
+    }
+
+    card.replaceChildren(head, intro, ...error, claudeLoginForm());
+}
+
+function claudeButton(text, kind, onClick) {
+    const button = el("button", `button ${kind}`, text);
+    button.type = "button";
+    button.addEventListener("click", async () => {
+        button.disabled = true;
+        await onClick();
+        button.disabled = false;
+    });
+    return button;
+}
+
+function claudeLoginForm() {
+    const form = el("form", "form");
+    const field = el("div", "field");
+    const label = el("label", "", "Como entrar");
+    const select = el("select");
+    select.id = `f-${++uid}`;
+    label.htmlFor = select.id;
+    select.append(...CLAUDE_LOGIN_METHODS.map(([value, text]) => new Option(text, value)));
+    field.append(label, select);
+    form.append(field, el("button", "button primary", "Entrar no Claude"));
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setBusy(form, true);
+        await connectClaude(select.value);
+        setBusy(form, false);
+    });
+    return form;
+}
+
+async function connectClaude(method) {
+    try {
+        state.profile = await api.connectClaude(method);
+        if (account("CLAUDE")) {
+            toast("Claude conectado.");
+            renderAccounts();
+            loadStatus();
+            return;
+        }
+        toast("O navegador abriu: entre na sua conta do Claude.");
+        renderClaudeAccount();
+    } catch (error) {
+        toast(messageFor(error));
+    }
+}
+
+function claudeLoginInProgress(status) {
+    const text = el("p", "account-status", "O navegador abriu para você entrar na conta do Claude. Assim que terminar, esta tela atualiza sozinha.");
+    const parts = [text];
+    if (!status.loginUrl) return parts;
+
+    const hint = el("p", "hint", "Não abriu? Abra o link, entre e cole aqui o código que aparecer no fim.");
+    const link = el("a", "button quiet", "Abrir o login do Claude");
+    link.href = status.loginUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+
+    const form = el("form", "form");
+    const field = el("div", "field");
+    const label = el("label", "", "Código do Claude");
+    const input = el("input");
+    input.id = `f-${++uid}`;
+    input.autocomplete = "off";
+    label.htmlFor = input.id;
+    field.append(label, input);
+    const error = el("p", "form-error");
+    error.hidden = true;
+    form.append(field, error, el("button", "button primary", "Enviar código"));
+    input.addEventListener("focus", () => clearTimeout(claudePoll));
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setBusy(form, true);
+        error.hidden = true;
+        try {
+            await api.sendClaudeCode(input.value);
+            renderClaudeAccount(true);
+        } catch (e) {
+            showError(e, error);
+            setBusy(form, false);
+        }
+    });
+    parts.push(hint, link, form);
+    return parts;
 }
 
 /* ============================================================
@@ -1192,86 +1374,86 @@ function checkItem({ ok, name, detail, actions }) {
 }
 
 function renderReadiness() {
-    const profile = state.profile;
-    const email = account("EMAIL");
-    const linkedin = account("LINKEDIN");
+    const missing = [
+        !state.profile.curriculumName && { name: "Currículo", detail: ["Sem ele não há com o que comparar as vagas."],
+            actions: [actionLink("Enviar", "#", { focus: "#profile-curriculum", primary: true })] },
+        !hasAiKey() && { name: "IA", detail: ["Falta a chave do Gemini ou do Groq, ou conectar o Claude."],
+            actions: [actionLink("Configurar", "#", { focus: "#profile-llm", primary: true })] },
+        !account("EMAIL") && { name: "Email", detail: ["É de onde vêm os alertas de vaga."],
+            actions: [actionLink("Conectar", "#", { focus: "#account-email", primary: true })] },
+        !account("LINKEDIN") && { name: "LinkedIn", detail: ["Sem ele o Vagora não lê a descrição das vagas."],
+            actions: [actionLink("Conectar", "#", { focus: "#account-linkedin", primary: true })] },
+    ].filter(Boolean);
 
-    const items = [
-        profile.curriculumName
-            ? { ok: true, name: "Currículo", detail: [{ strong: profile.curriculumName }, profile.curriculumSizeBytes ? `, ${formatSize(profile.curriculumSizeBytes)}` : ""],
-                actions: [actionLink("Abrir PDF", "/profile/curriculum", { newTab: true }), actionLink("Trocar", "#", { focus: "#profile-curriculum" })] }
-            : { ok: false, name: "Currículo", detail: ["Nenhum currículo enviado. Sem ele não há com o que comparar as vagas."],
-                actions: [actionLink("Enviar", "#", { focus: "#profile-curriculum", primary: true })] },
-        hasAiKey()
-            ? { ok: true, name: "Chave da IA", detail: [aiKeysText(profile)],
-                actions: [actionLink("Trocar", "#", { focus: profile.llmProvider === "GROQ" ? "#profile-groq" : "#profile-gemini" })] }
-            : { ok: false, name: "Chave da IA", detail: ["Falta a chave do Gemini ou do Groq, que permite à IA dar a nota."],
-                actions: [actionLink("Adicionar", "#", { focus: "#profile-gemini", primary: true })] },
-        email
-            ? { ok: true, name: "Email", detail: [{ strong: email.username }, ". ", ...foldersText(email)],
-                actions: [actionLink("Gerenciar", "#contas")] }
-            : { ok: false, name: "Email", detail: ["Nenhum email conectado. É de onde vêm os alertas de vaga."],
-                actions: [actionLink("Conectar", "#contas", { primary: true })] },
-        linkedin
-            ? { ok: true, name: "LinkedIn", detail: ["Conectado como ", { strong: linkedin.username }],
-                actions: [actionLink("Gerenciar", "#contas")] }
-            : { ok: false, name: "LinkedIn", detail: ["Não conectado. Sem ele o Vagora não lê a descrição das vagas."],
-                actions: [actionLink("Conectar", "#contas", { primary: true })] },
-    ];
-
-    const missing = items.filter((item) => !item.ok).length;
-    $(".readiness").dataset.ready = missing === 0 ? "yes" : "no";
-    $("#readiness-title").textContent = missing === 0
-        ? "Tudo pronto para analisar vagas"
-        : `Falta ${missing} ${missing === 1 ? "item" : "itens"} para analisar vagas`;
-    $("#readiness-lede").textContent = missing === 0
-        ? "O Vagora acompanha seu email, analisa os alertas da última semana e espera de 15 a 25 minutos entre um acesso ao LinkedIn e outro."
-        : "Enquanto algum item estiver pendente, os alertas ficam no email esperando, sem serem marcados como lidos.";
-    $("#checklist").replaceChildren(...items.map(checkItem));
+    $(".readiness").hidden = missing.length === 0;
+    $("#readiness-title").textContent = `Falta ${missing.length} ${missing.length === 1 ? "item" : "itens"} para analisar vagas`;
+    $("#checklist").replaceChildren(...missing.map((item) => checkItem({ ...item, ok: false })));
 }
 
 function aiKeysText(profile) {
-    const names = { GEMINI: "Gemini", GROQ: "Groq" };
-    const configured = Object.keys(names).filter((key) =>
-        key === "GEMINI" ? profile.hasGeminiApiKey : profile.hasGroqApiKey);
+    const names = { GEMINI: "Gemini", GROQ: "Groq", CLAUDE: "Claude" };
+    const available = { GEMINI: profile.hasGeminiApiKey, GROQ: profile.hasGroqApiKey, CLAUDE: Boolean(account("CLAUDE")) };
+    const configured = Object.keys(names).filter((key) => available[key]);
     const primary = configured.includes(profile.llmProvider) ? profile.llmProvider : configured[0];
-    const backup = configured.find((key) => key !== primary);
+    const backups = configured.filter((key) => key !== primary).map((key) => names[key]);
 
-    const backupText = backup ? `Reserva: ${names[backup]}.` : "Sem reserva.";
-    return `Principal: ${names[primary]}. ${backupText} As chaves não são exibidas por segurança.`;
+    const backupText = backups.length ? `Reserva: ${backups.join(" e ")}.` : "Sem reserva.";
+    return configured.length ? `Principal: ${names[primary]}. ${backupText}` : "Nenhuma IA configurada ainda.";
 }
+
+function showCurriculum(name, size, pending) {
+    $("#curriculum-file").hidden = !name;
+    $("#curriculum-empty").hidden = Boolean(name);
+    $("#curriculum-name").textContent = name ?? "";
+    $("#curriculum-meta").textContent = [formatSize(size), pending ? "ainda não salvo" : ""].filter(Boolean).join(", ");
+    $("#open-curriculum").hidden = pending;
+    $("#save-curriculum").hidden = !pending;
+}
+
+$("#profile-curriculum").addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (file) showCurriculum(file.name, file.size, true);
+    else showCurriculum(state.profile.curriculumName, state.profile.curriculumSizeBytes, false);
+});
 
 function initials(name) {
     const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
     return ((parts[0]?.[0] ?? "?") + (parts.length > 1 ? parts.at(-1)[0] : "")).toUpperCase();
 }
 
-function renderProfile() {
+function renderProfile(forms = $$(".profile-form")) {
     const profile = state.profile;
     $("#avatar").textContent = initials(profile.name);
     $("#profile-title").textContent = profile.name || "Seu perfil";
     const email = account("EMAIL");
     $("#profile-handle").textContent = email ? `Alertas de ${email.username}` : "Nenhum email conectado ainda";
+    $("#ai-summary").textContent = aiKeysText(profile);
+    $("#curriculum-pick-label").textContent = profile.curriculumName ? "Trocar currículo" : "Escolher PDF";
     $("#show-browser").checked = Boolean(profile.showBrowser);
     $("#monitoring").checked = Boolean(profile.monitoringEnabled);
     $("#auto-curriculum").checked = Boolean(profile.autoCurriculum);
     renderReadiness();
 
-    const form = $("#profile-form");
-    form.reset();
-    clearError(form);
-    setBusy(form, false);
+    if (forms.some((form) => form.contains($("#profile-curriculum")))) {
+        showCurriculum(profile.curriculumName, profile.curriculumSizeBytes, false);
+    }
+    forms.forEach((form) => {
+        form.reset();
+        clearError(form);
+        setBusy(form, false);
+        for (const [name, configured] of [["geminiApiKey", profile.hasGeminiApiKey], ["groqApiKey", profile.hasGroqApiKey]]) {
+            const input = form.elements.namedItem(name);
+            if (input) input.value = configured ? KEY_MASK : "";
+        }
+    });
     $("#profile-name").value = profile.name ?? "";
     $("#profile-gemini-hint").textContent = profile.hasGeminiApiKey
-        ? "Chave configurada. Deixe em branco para manter a atual."
+        ? "Chave configurada. Para trocar, clique e cole a nova."
         : "Nenhuma chave do Gemini configurada.";
     $("#profile-groq-hint").textContent = profile.hasGroqApiKey
-        ? "Chave configurada. Deixe em branco para manter a atual."
+        ? "Chave configurada. Para trocar, clique e cole a nova."
         : "Nenhuma chave do Groq configurada.";
     $("#profile-llm").value = profile.llmProvider ?? "GEMINI";
-    $("#profile-curriculum-hint").textContent = profile.curriculumName
-        ? `Atual: ${profile.curriculumName}. PDF de até 5 MB.`
-        : "PDF de até 5 MB.";
 }
 
 $("#show-browser").addEventListener("change", async (event) => {
@@ -1311,22 +1493,29 @@ $("#auto-curriculum").addEventListener("change", async (event) => {
     }
 });
 
-$("#profile-form").addEventListener("submit", async (event) => {
+for (const [id, configured] of [["#profile-gemini", "hasGeminiApiKey"], ["#profile-groq", "hasGroqApiKey"]]) {
+    const input = $(id);
+    input.addEventListener("focus", () => { if (input.value === KEY_MASK) input.value = ""; });
+    input.addEventListener("blur", () => { if (!input.value && state.profile[configured]) input.value = KEY_MASK; });
+}
+
+$$(".profile-form").forEach((form) => form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     clearError(form);
 
     // envia só o que mudou: campos vazios mantêm o valor atual
     const data = new FormData();
-    const name = $("#profile-name").value.trim();
-    const gemini = $("#profile-gemini").value.trim();
-    const groq = $("#profile-groq").value.trim();
-    const llm = $("#profile-llm").value;
-    const curriculum = $("#profile-curriculum").files[0];
+    const field = form.elements;
+    const name = field.namedItem("name")?.value.trim();
+    const gemini = field.namedItem("geminiApiKey")?.value.trim();
+    const groq = field.namedItem("groqApiKey")?.value.trim();
+    const llm = field.namedItem("llmProvider")?.value;
+    const curriculum = field.namedItem("curriculum")?.files[0];
     if (name && name !== state.profile.name) data.append("name", name);
-    if (gemini) data.append("geminiApiKey", gemini);
-    if (groq) data.append("groqApiKey", groq);
-    if (llm !== state.profile.llmProvider) data.append("llmProvider", llm);
+    if (gemini && gemini !== KEY_MASK) data.append("geminiApiKey", gemini);
+    if (groq && groq !== KEY_MASK) data.append("groqApiKey", groq);
+    if (llm && llm !== state.profile.llmProvider) data.append("llmProvider", llm);
     if (curriculum) data.append("curriculum", curriculum);
 
     if ([...data.keys()].length === 0) {
@@ -1337,13 +1526,13 @@ $("#profile-form").addEventListener("submit", async (event) => {
     setBusy(form, true);
     try {
         state.profile = await api.updateProfile(data);
-        renderProfile();
-        toast("Perfil salvo.");
+        renderProfile([form]);
+        toast("Alterações salvas.");
     } catch (error) {
         showError(error, $(".form-error", form));
         setBusy(form, false);
     }
-});
+}));
 
 $("#delete-profile").addEventListener("click", () => $("#confirm-delete").showModal());
 

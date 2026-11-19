@@ -134,7 +134,7 @@ public class GeminiServiceImpl implements LlmService {
                     || (e.code() == 400 && e.message() != null && e.message().contains("API key"));
             if (keyRejected) {
                 return new ExternalServiceException(
-                        "A chave do Gemini foi recusada. Confira a chave no Perfil.", ErrorCode.LLM_KEY_REJECTED);
+                        "A chave do Gemini foi recusada. Confira a chave em Configurações.", ErrorCode.LLM_KEY_REJECTED);
             }
             return switch (e.code()) {
                 case 400 -> new ExternalServiceException(

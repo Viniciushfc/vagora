@@ -29,7 +29,7 @@ public class ListEmailFoldersUseCaseImpl implements ListEmailFoldersUseCase {
 
         LinkedAccount emailAccount = profile.findLinkedAccount(ExternalProvider.EMAIL);
         if (emailAccount == null) {
-            throw new BusinessException("Conecte um email em Contas para listar as pastas.");
+            throw new BusinessException("Conecte um email em Configurações para listar as pastas.");
         }
 
         return mailboxGateway.listFolders(emailAccount);

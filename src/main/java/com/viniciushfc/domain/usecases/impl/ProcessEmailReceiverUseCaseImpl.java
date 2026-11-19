@@ -43,7 +43,7 @@ public class ProcessEmailReceiverUseCaseImpl implements ProcessEmailReceiverUseC
 
         LinkedAccount linkedinAccount = profile.findLinkedAccount(ExternalProvider.LINKEDIN);
         if (source == AlertSource.LINKEDIN && linkedinAccount == null) {
-            throw new BusinessException("Conecte uma conta do LinkedIn em Contas.", ErrorCode.LINKEDIN_NOT_CONNECTED);
+            throw new BusinessException("Conecte uma conta do LinkedIn em Configurações.", ErrorCode.LINKEDIN_NOT_CONNECTED);
         }
 
         List<UUID> emailIds = new ArrayList<>();

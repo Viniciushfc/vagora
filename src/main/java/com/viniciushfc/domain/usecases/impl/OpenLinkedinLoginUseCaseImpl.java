@@ -31,7 +31,7 @@ public class OpenLinkedinLoginUseCaseImpl implements OpenLinkedinLoginUseCase {
         Profile profile = profileRepository.require();
         LinkedAccount linkedin = profile.findLinkedAccount(ExternalProvider.LINKEDIN);
         if (linkedin == null) {
-            throw new BusinessException("Conecte uma conta do LinkedIn em Contas.", ErrorCode.LINKEDIN_NOT_CONNECTED);
+            throw new BusinessException("Conecte uma conta do LinkedIn em Configurações.", ErrorCode.LINKEDIN_NOT_CONNECTED);
         }
         jobDetailsGateway.openLoginWindow(linkedin,
                 () -> statusRepository.save(profile.id(), AlertSource.LINKEDIN,

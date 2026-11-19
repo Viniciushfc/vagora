@@ -22,10 +22,14 @@
     <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
     <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></symbol>
     <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></symbol>
     <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></symbol>
@@ -60,8 +64,8 @@
             <li><strong>O LinkedIn envia um alerta</strong> de vagas para o seu email, como já acontece hoje.</li>
             <li><strong>O Vagora lê os alertas da última semana</strong>, dos mais novos para os mais antigos, sem mexer nos seus outros emails. Entre um acesso ao LinkedIn e outro, espera de 15 a 25 minutos para não chamar atenção.</li>
             <li><strong>Cada vaga é aberta</strong> num navegador nesta máquina para ler a descrição completa. Vagas encerradas são puladas.</li>
-            <li><strong>A IA (Gemini ou Groq) compara</strong> a vaga com o seu currículo e dá uma nota de 0 a 100.</li>
-            <li><strong>O resultado aparece aqui</strong>, com os motivos. Quando a vaga combina, o currículo adaptado sai automático ou pelo botão "Gerar currículo", conforme o Perfil.</li>
+            <li><strong>A IA (Gemini, Groq ou Claude) compara</strong> a vaga com o seu currículo e dá uma nota de 0 a 100.</li>
+            <li><strong>O resultado aparece aqui</strong>, com os motivos. Quando a vaga combina, o currículo adaptado sai automático ou pelo botão "Gerar currículo", conforme as Configurações.</li>
         </ol>
     </section>
 
@@ -91,7 +95,7 @@
                 <div class="field">
                     <label for="setup-groq">Chave da API do Groq</label>
                     <input id="setup-groq" name="groqApiKey" type="password" autocomplete="off">
-                    <p class="hint">Gere em <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Preencha pelo menos uma das duas chaves; com as duas, uma cobre a outra quando falhar.</p>
+                    <p class="hint">Gere em <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Com mais de uma IA, uma cobre a outra quando falhar. Sem chave? Depois de criar o perfil, conecte o Claude em Configurações.</p>
                 </div>
                 <div class="field">
                     <label for="setup-curriculum">Currículo em PDF</label>
@@ -135,11 +139,8 @@
 
         <nav class="nav" aria-label="Seções">
             <a href="#vagas" data-tab="vagas"><svg class="icon"><use href="#i-jobs"/></svg><span>Vagas</span></a>
-            <a href="#pendentes" data-tab="pendentes"><svg class="icon"><use href="#i-clock"/></svg><span>Pendentes</span></a>
-            <a href="#contas" data-tab="contas"><svg class="icon"><use href="#i-plug"/></svg><span>Contas</span></a>
-            <a href="#linkedin" data-tab="linkedin"><svg class="icon"><use href="#i-globe"/></svg><span>LinkedIn</span></a>
-            <a href="#indeed" data-tab="indeed"><svg class="icon"><use href="#i-search"/></svg><span>Indeed</span></a>
-            <a href="#perfil" data-tab="perfil"><svg class="icon"><use href="#i-user"/></svg><span>Perfil</span></a>
+            <a href="#linkedin" data-tab="atividade"><svg class="icon"><use href="#i-clock"/></svg><span>Atividade</span></a>
+            <a href="#config" data-tab="config"><svg class="icon"><use href="#i-gear"/></svg><span>Configurações</span></a>
         </nav>
 
         <div class="monitor" id="monitor" data-state="idle" aria-live="polite">
@@ -153,6 +154,8 @@
     </aside>
 
     <main class="content">
+        <nav class="subnav" id="subnav" hidden></nav>
+
         <!-- Vagas -->
         <section data-panel="vagas" hidden>
             <header class="page-head">
@@ -242,28 +245,16 @@
                 <h2>Nenhuma vaga na fila</h2>
                 <p>
                     Cada vaga lida dos alertas entra aqui e espera a análise da IA. O Vagora analisa até 10 vagas (menos com o Groq, que aceita pedidos menores) a
-                    cada 2 minutos, as priorizadas primeiro, e as analisadas passam para a aba Vagas.
+                    cada 2 minutos, as priorizadas primeiro, e as analisadas passam para Analisadas.
                 </p>
-            </div>
-        </section>
-
-        <!-- Contas -->
-        <section data-panel="contas" hidden>
-            <header class="page-head">
-                <h1 class="display">Contas</h1>
-                <p class="summary">De onde vêm os alertas e com qual conta as vagas são abertas.</p>
-            </header>
-            <div class="accounts">
-                <article class="panel account" id="account-email"></article>
-                <article class="panel account" id="account-linkedin"></article>
             </div>
         </section>
 
         <!-- Leitor do LinkedIn e do Indeed -->
         <section data-panel="linkedin indeed" hidden>
             <header class="page-head">
-                <h1 class="display" id="reader-title">Leitor do LinkedIn</h1>
-                <p class="summary">Acompanhe a leitura das vagas no <span id="reader-source">LinkedIn</span> e a análise da IA, e entenda quando algo dá errado.</p>
+                <h1 class="display" id="reader-title">Atividade no LinkedIn</h1>
+                <p class="summary">O que o Vagora está fazendo agora no <span id="reader-source">LinkedIn</span> e o que deu errado, quando der.</p>
             </header>
 
             <div class="panel scraper-now" id="scraper-now" data-state="idle" aria-live="polite">
@@ -296,8 +287,7 @@
             </section>
         </section>
 
-        <!-- Perfil -->
-        <section data-panel="perfil" hidden>
+        <section data-panel="config" hidden>
             <header class="page-head identity">
                 <div class="avatar" id="avatar" aria-hidden="true"></div>
                 <div>
@@ -306,71 +296,57 @@
                 </div>
             </header>
 
-            <div class="profile-grid">
-                <section class="panel readiness" aria-labelledby="readiness-title">
-                    <h2 id="readiness-title" class="readiness-title"></h2>
-                    <p class="readiness-lede" id="readiness-lede"></p>
-                    <ul class="checklist" id="checklist"></ul>
+            <section class="panel readiness" aria-labelledby="readiness-title" hidden>
+                <h2 id="readiness-title" class="readiness-title"></h2>
+                <p class="readiness-lede">Enquanto algum item estiver pendente, os alertas ficam no email esperando, sem serem marcados como lidos.</p>
+                <ul class="checklist" id="checklist"></ul>
+            </section>
+
+            <div class="settings">
+                <section class="setting" aria-labelledby="set-curriculum">
+                    <div class="setting-about">
+                        <h2 id="set-curriculum">Currículo</h2>
+                        <p class="hint">A IA compara cada vaga com este PDF e usa ele para montar o currículo adaptado.</p>
+                    </div>
+                    <div class="setting-body">
+                        <form class="form profile-form" novalidate>
+                            <div class="file-card" id="curriculum-file">
+                                <svg class="icon file-icon" aria-hidden="true"><use href="#i-file"/></svg>
+                                <div class="file-info">
+                                    <p class="file-name" id="curriculum-name"></p>
+                                    <p class="hint" id="curriculum-meta"></p>
+                                </div>
+                                <a class="button quiet" id="open-curriculum" href="/profile/curriculum" target="_blank" rel="noopener">Abrir PDF</a>
+                            </div>
+                            <p class="hint" id="curriculum-empty">Nenhum currículo enviado ainda.</p>
+                            <div class="file-actions">
+                                <label class="button quiet file-pick">
+                                    <input class="visually-hidden" id="profile-curriculum" name="curriculum" type="file" accept="application/pdf">
+                                    <span id="curriculum-pick-label">Trocar currículo</span>
+                                </label>
+                                <button class="button primary" id="save-curriculum" type="submit" hidden>Salvar currículo</button>
+                            </div>
+                            <p class="hint">PDF de até 5 MB, com texto selecionável.</p>
+                            <p class="form-error" role="alert" hidden></p>
+                        </form>
+                    </div>
                 </section>
 
-                <div class="profile-side">
-                    <section class="panel" aria-labelledby="monitoring-title">
-                        <div class="toggle-row">
-                            <div>
-                                <h2 id="monitoring-title" class="panel-title">Verificar o email automaticamente</h2>
-                                <p class="hint" id="monitoring-hint">
-                                    Desligado, o Vagora não abre o email nem o LinkedIn. Os alertas ficam guardados no
-                                    email e são analisados quando você ligar de novo.
-                                </p>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="monitoring" aria-describedby="monitoring-hint">
-                                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-                                <span class="visually-hidden">Verificar o email automaticamente</span>
-                            </label>
-                        </div>
-                    </section>
-
-                    <section class="panel" aria-labelledby="auto-curriculum-title">
-                        <div class="toggle-row">
-                            <div>
-                                <h2 id="auto-curriculum-title" class="panel-title">Gerar currículo adaptado automaticamente</h2>
-                                <p class="hint" id="auto-curriculum-hint">
-                                    Desligado, a análise continua automática, mas o currículo adaptado só é gerado quando
-                                    você clica em "Gerar currículo" na vaga. Economiza a cota da IA.
-                                </p>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="auto-curriculum" aria-describedby="auto-curriculum-hint">
-                                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-                                <span class="visually-hidden">Gerar currículo adaptado automaticamente</span>
-                            </label>
-                        </div>
-                    </section>
-
-                    <section class="panel" aria-labelledby="browser-title">
-                        <div class="toggle-row">
-                            <div>
-                                <h2 id="browser-title" class="panel-title">Mostrar o navegador durante a análise</h2>
-                                <p class="hint" id="browser-hint">
-                                    Desligado, o navegador abre escondido e nada aparece na sua tela. Ligue quando o
-                                    LinkedIn pedir uma verificação de segurança, para resolver na janela que abrir.
-                                </p>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="show-browser" aria-describedby="browser-hint">
-                                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-                                <span class="visually-hidden">Mostrar o navegador durante a análise</span>
-                            </label>
-                        </div>
-                    </section>
-
-                    <section class="panel" aria-labelledby="edit-title">
-                        <h2 class="panel-title" id="edit-title">Editar dados</h2>
-                        <form id="profile-form" class="form" novalidate>
+                <section class="setting" aria-labelledby="set-ai">
+                    <div class="setting-about">
+                        <h2 id="set-ai">IA</h2>
+                        <p class="hint">Lê cada vaga e dá a nota. Com mais de uma configurada, a reserva assume quando a principal falhar.</p>
+                        <p class="hint" id="ai-summary"></p>
+                    </div>
+                    <div class="setting-body">
+                        <form class="form profile-form" novalidate>
                             <div class="field">
-                                <label for="profile-name">Nome</label>
-                                <input id="profile-name" name="name" autocomplete="name">
+                                <label for="profile-llm">IA principal</label>
+                                <select id="profile-llm" name="llmProvider">
+                                    <option value="GEMINI">Gemini</option>
+                                    <option value="GROQ">Groq</option>
+                                    <option value="CLAUDE">Claude</option>
+                                </select>
                             </div>
                             <div class="field">
                                 <label for="profile-gemini">Chave da API do Gemini</label>
@@ -382,30 +358,98 @@
                                 <input id="profile-groq" name="groqApiKey" type="password" autocomplete="off">
                                 <p class="hint" id="profile-groq-hint"></p>
                             </div>
-                            <div class="field">
-                                <label for="profile-llm">IA principal</label>
-                                <select id="profile-llm" name="llmProvider">
-                                    <option value="GEMINI">Gemini</option>
-                                    <option value="GROQ">Groq</option>
-                                </select>
-                                <p class="hint">A outra IA, se tiver chave, entra quando a principal falhar.</p>
+                            <p class="form-error" role="alert" hidden></p>
+                            <button class="button primary" type="submit">Salvar IA</button>
+                        </form>
+                        <article class="panel account" id="account-claude"></article>
+                    </div>
+                </section>
+
+                <section class="setting" aria-labelledby="set-sources">
+                    <div class="setting-about">
+                        <h2 id="set-sources">De onde vêm as vagas</h2>
+                        <p class="hint">O email recebe os alertas de vaga. Em cada rede, escolha a pasta do email onde os alertas dela chegam.</p>
+                    </div>
+                    <div class="setting-body">
+                        <article class="panel account" id="account-email"></article>
+                        <article class="panel account" id="account-linkedin"></article>
+                        <article class="panel account" id="account-indeed"></article>
+                    </div>
+                </section>
+
+                <section class="setting" aria-labelledby="set-automation">
+                    <div class="setting-about">
+                        <h2 id="set-automation">Automação</h2>
+                        <p class="hint">O que o Vagora faz sozinho, sem você abrir a página.</p>
+                    </div>
+                    <div class="setting-body">
+                        <div class="panel toggles">
+                            <div class="toggle-row">
+                                <div>
+                                    <h3 class="toggle-title" id="monitoring-title">Verificar o email automaticamente</h3>
+                                    <p class="hint" id="monitoring-hint">
+                                        Desligado, o Vagora não abre o email nem o LinkedIn. Os alertas ficam guardados no
+                                        email e são analisados quando você ligar de novo.
+                                    </p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="monitoring" aria-describedby="monitoring-hint">
+                                    <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+                                    <span class="visually-hidden">Verificar o email automaticamente</span>
+                                </label>
                             </div>
+                            <div class="toggle-row">
+                                <div>
+                                    <h3 class="toggle-title" id="auto-curriculum-title">Gerar currículo adaptado automaticamente</h3>
+                                    <p class="hint" id="auto-curriculum-hint">
+                                        Desligado, a análise continua automática, mas o currículo adaptado só é gerado quando
+                                        você clica em "Gerar currículo" na vaga. Economiza a cota da IA.
+                                    </p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="auto-curriculum" aria-describedby="auto-curriculum-hint">
+                                    <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+                                    <span class="visually-hidden">Gerar currículo adaptado automaticamente</span>
+                                </label>
+                            </div>
+                            <div class="toggle-row">
+                                <div>
+                                    <h3 class="toggle-title" id="browser-title">Mostrar o navegador durante a análise</h3>
+                                    <p class="hint" id="browser-hint">
+                                        Desligado, o navegador abre escondido e nada aparece na sua tela. Ligue quando o
+                                        LinkedIn pedir uma verificação de segurança, para resolver na janela que abrir.
+                                    </p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="show-browser" aria-describedby="browser-hint">
+                                    <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+                                    <span class="visually-hidden">Mostrar o navegador durante a análise</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="setting" aria-labelledby="set-profile">
+                    <div class="setting-about">
+                        <h2 id="set-profile">Perfil</h2>
+                        <p class="hint">Fica só neste computador, no arquivo vagora.db.</p>
+                    </div>
+                    <div class="setting-body">
+                        <form id="profile-form" class="form profile-form" novalidate>
                             <div class="field">
-                                <label for="profile-curriculum">Trocar currículo</label>
-                                <input id="profile-curriculum" name="curriculum" type="file" accept="application/pdf">
-                                <p class="hint" id="profile-curriculum-hint"></p>
+                                <label for="profile-name">Nome</label>
+                                <input id="profile-name" name="name" autocomplete="name">
                             </div>
                             <p class="form-error" role="alert" hidden></p>
-                            <button class="button primary" type="submit">Salvar perfil</button>
+                            <button class="button primary" type="submit">Salvar nome</button>
                         </form>
-                    </section>
-
-                    <section class="panel danger-zone" aria-labelledby="delete-title">
-                        <h2 class="panel-title" id="delete-title">Excluir perfil</h2>
-                        <p class="hint">Apaga o perfil, as contas conectadas e todas as vagas analisadas deste computador.</p>
-                        <button id="delete-profile" class="button danger" type="button">Excluir perfil</button>
-                    </section>
-                </div>
+                        <div class="danger-zone">
+                            <p class="hint">Excluir apaga o perfil, as contas conectadas e todas as vagas analisadas deste computador.</p>
+                            <button id="delete-profile" class="button danger" type="button">Excluir perfil</button>
+                        </div>
+                    </div>
+                </section>
             </div>
         </section>
     </main>
@@ -475,6 +519,9 @@
                     <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Abrir vaga
                 </a>
                 <button class="button quiet generate-ats" type="button" hidden>Gerar currículo</button>
+                <a class="button quiet pdf-ats" hidden download>
+                    <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Baixar currículo em PDF
+                </a>
                 <button class="button quiet copy-ats" type="button" hidden>
                     <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copiar currículo adaptado
                 </button>

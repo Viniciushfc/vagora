@@ -248,10 +248,10 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     static ExternalServiceException failure(int exitCode) {
         return switch (exitCode) {
             case EXIT_CHECKPOINT -> new ExternalServiceException(
-                    "O LinkedIn pediu uma verificação de segurança. Clique em \"Entrar no LinkedIn\" em Contas "
+                    "O LinkedIn pediu uma verificação de segurança. Clique em \"Entrar no LinkedIn\" em Configurações "
                             + "e resolva na janela que abrir.", ErrorCode.LINKEDIN_CHECKPOINT);
             case EXIT_LOGIN_FAILED -> new ExternalServiceException(
-                    "Não foi possível entrar no LinkedIn. Confira o login e a senha em Contas.", ErrorCode.LINKEDIN_LOGIN_FAILED);
+                    "Não foi possível entrar no LinkedIn. Confira o login e a senha em Configurações.", ErrorCode.LINKEDIN_LOGIN_FAILED);
             case EXIT_PAGE_UNREADABLE -> new ExternalServiceException(
                     "A página da vaga não mostrou a descrição a tempo. Pode ser lentidão, uma mudança na página "
                             + "ou uma tela pedindo login. Veja a captura da tela na página do LinkedIn.", ErrorCode.LINKEDIN_PAGE_UNREADABLE);
@@ -267,9 +267,9 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     static ExternalServiceException loginFailure(int exitCode) {
         return switch (exitCode) {
             case EXIT_CHECKPOINT -> new ExternalServiceException("O login no LinkedIn não terminou em 5 minutos. "
-                    + "Clique em \"Entrar no LinkedIn\" em Contas para tentar de novo.", ErrorCode.LINKEDIN_CHECKPOINT);
+                    + "Clique em \"Entrar no LinkedIn\" em Configurações para tentar de novo.", ErrorCode.LINKEDIN_CHECKPOINT);
             case EXIT_BROWSER_CLOSED -> new ExternalServiceException("A janela foi fechada antes de o login terminar. "
-                    + "Clique em \"Entrar no LinkedIn\" em Contas para tentar de novo.", ErrorCode.LINKEDIN_BROWSER_CLOSED);
+                    + "Clique em \"Entrar no LinkedIn\" em Configurações para tentar de novo.", ErrorCode.LINKEDIN_BROWSER_CLOSED);
             default -> failure(exitCode);
         };
     }
