@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 
 import com.viniciushfc.domain.entities.LinkedAccount;
+import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheLinkedAccountEmbeddable;
 
 import java.util.ArrayList;
@@ -15,7 +16,7 @@ public class LinkedAccountMapper {
             LinkedAccount linkedAccount = new LinkedAccount(panacheLinkedAccountEmbeddable.id(),
                     panacheLinkedAccountEmbeddable.username(),
                     panacheLinkedAccountEmbeddable.password(),
-                    panacheLinkedAccountEmbeddable.externalProvider(),
+                    ExternalProvider.valueOf(panacheLinkedAccountEmbeddable.externalProvider()),
                     panacheLinkedAccountEmbeddable.folder(),
                     panacheLinkedAccountEmbeddable.indeedFolder()
             );
@@ -34,7 +35,7 @@ public class LinkedAccountMapper {
                     linkedAccount.id(),
                     linkedAccount.username(),
                     linkedAccount.password(),
-                    linkedAccount.externalProvider(),
+                    linkedAccount.externalProvider().name(),
                     linkedAccount.folder(),
                     linkedAccount.indeedFolder()
             );
