@@ -8,6 +8,7 @@ import com.viniciushfc.domain.gateways.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.infra.adapter.out.llm.LlmService;
+import com.viniciushfc.infra.adapter.out.llm.claude.impl.ClaudeServiceImpl;
 import com.viniciushfc.infra.adapter.out.llm.gemini.impl.GeminiServiceImpl;
 import com.viniciushfc.infra.adapter.out.llm.groq.impl.GroqServiceImpl;
 import io.quarkus.logging.Log;
@@ -23,8 +24,8 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
 
     private final Map<LlmProvider, LlmService> services;
 
-    public AnalyzeJobsMatchCvGatewayImpl(GeminiServiceImpl gemini, GroqServiceImpl groq) {
-        this.services = Map.of(LlmProvider.GEMINI, gemini, LlmProvider.GROQ, groq);
+    public AnalyzeJobsMatchCvGatewayImpl(GeminiServiceImpl gemini, GroqServiceImpl groq, ClaudeServiceImpl claude) {
+        this.services = Map.of(LlmProvider.GEMINI, gemini, LlmProvider.GROQ, groq, LlmProvider.CLAUDE, claude);
     }
 
     @Override
@@ -47,7 +48,7 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
         List<LlmProvider> providers = profile.llmProviders();
         if (providers.isEmpty()) {
             throw new BusinessException(
-                    "Configure a chave do Gemini ou do Groq no Perfil.", ErrorCode.LLM_KEY_MISSING);
+                    "Configure uma IA em Configurações: a chave do Gemini ou do Groq, ou conecte o Claude.", ErrorCode.LLM_KEY_MISSING);
         }
         RuntimeException failure = null;
         for (LlmProvider provider : providers) {

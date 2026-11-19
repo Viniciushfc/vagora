@@ -47,7 +47,11 @@ public record Profile(UUID id,
     }
 
     public String apiKey(LlmProvider provider) {
-        return provider == LlmProvider.GROQ ? groqApiKey : geminiApiKey;
+        return switch (provider) {
+            case GEMINI -> geminiApiKey;
+            case GROQ -> groqApiKey;
+            case CLAUDE -> null;
+        };
     }
 
     public List<LlmProvider> llmProviders() {
@@ -61,6 +65,9 @@ public record Profile(UUID id,
     }
 
     private boolean hasApiKey(LlmProvider provider) {
+        if (provider == LlmProvider.CLAUDE) {
+            return findLinkedAccount(ExternalProvider.CLAUDE) != null;
+        }
         String key = apiKey(provider);
         return key != null && !key.isBlank();
     }

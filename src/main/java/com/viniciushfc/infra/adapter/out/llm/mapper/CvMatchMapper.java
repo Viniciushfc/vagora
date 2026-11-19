@@ -12,9 +12,26 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @ApplicationScoped
 public class CvMatchMapper {
+
+    private static final Map<String, Object> RESULT_SCHEMA = Map.of(
+            "type", "object",
+            "properties", Map.of(
+                    "id", Map.of("type", "integer"),
+                    "match", Map.of("type", "boolean"),
+                    "score", Map.of("type", "integer"),
+                    "motivos", Map.of("type", "array", "items", Map.of("type", "string"))),
+            "required", List.of("id", "match", "score", "motivos"),
+            "additionalProperties", false);
+
+    public static final Map<String, Object> ANALYSIS_SCHEMA = Map.of(
+            "type", "object",
+            "properties", Map.of("resultados", Map.of("type", "array", "items", RESULT_SCHEMA)),
+            "required", List.of("resultados"),
+            "additionalProperties", false);
 
     private final ObjectMapper objectMapper;
 

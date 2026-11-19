@@ -2,6 +2,7 @@ package com.viniciushfc.domain.entities;
 
 import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
+import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.vo.*;
 import org.junit.jupiter.api.Test;
 
@@ -34,4 +35,13 @@ class DomainEntitiesTest {
         assertNull(user.findLinkedAccount(ExternalProvider.LINKEDIN));
     }
 
+    @Test
+    void claudeSoEntraComoIaDepoisDeConectadoEmContas() {
+        var user = Profile.create("F", "k", null, LlmProvider.CLAUDE, null);
+        assertEquals(List.of(LlmProvider.GEMINI), user.llmProviders());
+
+        user.linkedAccounts().add(LinkedAccount.create("e@x.com", null, ExternalProvider.CLAUDE, null));
+        assertEquals(List.of(LlmProvider.CLAUDE, LlmProvider.GEMINI), user.llmProviders());
+        assertNull(user.apiKey(LlmProvider.CLAUDE));
+    }
 }

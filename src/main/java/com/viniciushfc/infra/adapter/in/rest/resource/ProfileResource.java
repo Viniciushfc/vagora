@@ -6,6 +6,7 @@ import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.domain.usecases.impl.AnalyzePendingJobsUseCaseImpl;
 import com.viniciushfc.domain.usecases.contracts.*;
 import com.viniciushfc.domain.vo.Attachment;
+import com.viniciushfc.domain.vo.ClaudeStatus;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.domain.vo.ProcessingStatus;
 import com.viniciushfc.domain.vo.ScraperActivity;
@@ -41,6 +42,7 @@ public class ProfileResource {
     private final GenerateCurriculumUseCase generateCurriculumUseCase;
     private final ListPendingJobsUseCase listPendingJobsUseCase;
     private final PrioritizePendingJobUseCase prioritizePendingJobUseCase;
+    private final ConnectClaudeUseCase connectClaudeUseCase;
 
     public ProfileResource(CreateProfileUseCase createProfileUseCase,
                            GetProfileUseCase getProfileUseCase,
@@ -56,7 +58,8 @@ public class ProfileResource {
                            OpenLinkedinLoginUseCase openLinkedinLoginUseCase,
                            GenerateCurriculumUseCase generateCurriculumUseCase,
                            ListPendingJobsUseCase listPendingJobsUseCase,
-                           PrioritizePendingJobUseCase prioritizePendingJobUseCase) {
+                           PrioritizePendingJobUseCase prioritizePendingJobUseCase,
+                           ConnectClaudeUseCase connectClaudeUseCase) {
         this.createProfileUseCase = createProfileUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
@@ -72,6 +75,7 @@ public class ProfileResource {
         this.generateCurriculumUseCase = generateCurriculumUseCase;
         this.listPendingJobsUseCase = listPendingJobsUseCase;
         this.prioritizePendingJobUseCase = prioritizePendingJobUseCase;
+        this.connectClaudeUseCase = connectClaudeUseCase;
     }
 
     @GET
@@ -132,6 +136,27 @@ public class ProfileResource {
     public Response openLinkedinLogin() {
         openLinkedinLoginUseCase.execute();
         return Response.accepted().build();
+    }
+
+    @GET
+    @Path("/accounts/CLAUDE/session")
+    public ClaudeStatus claudeStatus() {
+        return connectClaudeUseCase.status();
+    }
+
+    @POST
+    @Path("/accounts/CLAUDE/session")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public ProfileResponse connectClaude(ClaudeLoginRequest request) {
+        return ProfileRestMapper.toResponse(connectClaudeUseCase.execute(request == null ? null : request.method()));
+    }
+
+    @POST
+    @Path("/accounts/CLAUDE/code")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response submitClaudeCode(ClaudeCodeRequest request) {
+        connectClaudeUseCase.submitCode(request == null ? null : request.code());
+        return Response.noContent().build();
     }
 
     @GET

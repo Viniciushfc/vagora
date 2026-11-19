@@ -2,7 +2,8 @@ package com.viniciushfc.domain.enums;
 
 public enum ExternalProvider {
     LINKEDIN("LinkedIn"),
-    EMAIL("Email");
+    EMAIL("Email"),
+    CLAUDE("Claude");
 
     public final String label;
 

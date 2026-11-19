@@ -37,28 +37,12 @@ public class GroqServiceImpl implements LlmService {
             .connectTimeout(Duration.ofSeconds(30))
             .build();
 
-    private static final Map<String, Object> RESULT_SCHEMA = Map.of(
-            "type", "object",
-            "properties", Map.of(
-                    "id", Map.of("type", "integer"),
-                    "match", Map.of("type", "boolean"),
-                    "score", Map.of("type", "integer"),
-                    "motivos", Map.of("type", "array", "items", Map.of("type", "string"))),
-            "required", List.of("id", "match", "score", "motivos"),
-            "additionalProperties", false);
-
-    private static final Map<String, Object> ANALYSIS_SCHEMA = Map.of(
-            "type", "object",
-            "properties", Map.of("resultados", Map.of("type", "array", "items", RESULT_SCHEMA)),
-            "required", List.of("resultados"),
-            "additionalProperties", false);
-
     private static final Map<String, Object> ANALYSIS_FORMAT = Map.of(
             "type", "json_schema",
             "json_schema", Map.of(
                     "name", "analise_vagas",
                     "strict", true,
-                    "schema", ANALYSIS_SCHEMA));
+                    "schema", CvMatchMapper.ANALYSIS_SCHEMA));
 
     private final CvMatchMapper cvMatchMapper;
     private final ObjectMapper objectMapper;
@@ -166,7 +150,7 @@ public class GroqServiceImpl implements LlmService {
         Log.warnf("Groq recusou a chamada (HTTP %d): %s", status, body);
         return switch (status) {
             case 401, 403 -> new ExternalServiceException(
-                    "A chave do Groq foi recusada. Confira a chave no Perfil.", ErrorCode.LLM_KEY_REJECTED);
+                    "A chave do Groq foi recusada. Confira a chave em Configurações.", ErrorCode.LLM_KEY_REJECTED);
             case 429 -> RateLimitedException.quota("Groq", retryAfter(retryAfter));
             case 400, 413, 422 -> new ExternalServiceException(
                     "O Groq recusou o pedido (HTTP " + status + "). Os detalhes estão no terminal do Vagora.");

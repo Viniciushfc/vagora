@@ -8,6 +8,7 @@ import com.viniciushfc.domain.exceptions.RateLimitedException;
 import com.viniciushfc.domain.vo.CompanyDetails;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
+import com.viniciushfc.infra.adapter.out.llm.claude.impl.ClaudeServiceImpl;
 import com.viniciushfc.infra.adapter.out.llm.gateway.AnalyzeJobsMatchCvGatewayImpl;
 import com.viniciushfc.infra.adapter.out.llm.gemini.impl.GeminiServiceImpl;
 import com.viniciushfc.infra.adapter.out.llm.groq.impl.GroqServiceImpl;
@@ -32,7 +33,7 @@ class AnalyzeJobsMatchCvGatewayImplTest {
 
     private final GeminiServiceImpl gemini = mock(GeminiServiceImpl.class);
     private final GroqServiceImpl groq = mock(GroqServiceImpl.class);
-    private final AnalyzeJobsMatchCvGatewayImpl gateway = new AnalyzeJobsMatchCvGatewayImpl(gemini, groq);
+    private final AnalyzeJobsMatchCvGatewayImpl gateway = new AnalyzeJobsMatchCvGatewayImpl(gemini, groq, mock(ClaudeServiceImpl.class));
 
     private JobDetail job(String title) {
         return new JobDetail("link", title, "descrição de " + title, new CompanyDetails("ACME", "sobre"));
