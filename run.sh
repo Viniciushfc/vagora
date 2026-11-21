@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prepara e inicia o Vagora. Pode rodar quantas vezes quiser: só refaz o que mudou.
 #
-#   ./run.sh               inicia e abre o navegador
+#   ./run.sh               inicia e abre o Vagora em janela própria
 #   ./run.sh --no-browser  inicia sem abrir o navegador
 #   ./run.sh --clean       apaga o build e compila tudo do zero antes de iniciar
 set -euo pipefail
@@ -128,7 +128,7 @@ if [ ! -f "$JAR" ] || [ -n "$(find src pom.xml -newer "$JAR" -print -quit)" ]; t
 fi
 ok "Vagora compilado"
 
-# Abre o navegador padrão quando a aplicação responder. Use --no-browser para não abrir.
+# Abre o Vagora em janela própria (modo app do Chrome ou Edge) quando a aplicação responder. Use --no-browser para não abrir.
 open_browser() {
     local url="http://localhost:$PORT"
     for _ in $(seq 1 60); do
@@ -136,9 +136,23 @@ open_browser() {
         sleep 1
     done
     case "$(uname -s)" in
-        Darwin) open "$url" ;;
-        Linux)  [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && xdg-open "$url" ;;
-        MINGW*|MSYS*|CYGWIN*) cmd.exe /c start "$url" ;;
+        Darwin)
+            for app in "Google Chrome" "Microsoft Edge"; do
+                [ -d "/Applications/$app.app" ] && open -na "$app" --args --app="$url" && return
+            done
+            open "$url" ;;
+        Linux)
+            [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || return
+            for bin in google-chrome google-chrome-stable microsoft-edge chromium chromium-browser; do
+                command -v "$bin" >/dev/null && setsid -f "$bin" --app="$url" && return
+            done
+            xdg-open "$url" ;;
+        MINGW*|MSYS*|CYGWIN*)
+            for exe in "${PROGRAMFILES:-}/Google/Chrome/Application/chrome.exe" "${LOCALAPPDATA:-}/Google/Chrome/Application/chrome.exe" \
+                       "${PROGRAMFILES:-}/Microsoft/Edge/Application/msedge.exe" "${PROGRAMFILES:-} (x86)/Microsoft/Edge/Application/msedge.exe"; do
+                [ -f "$exe" ] && { "$exe" --app="$url" & return; }
+            done
+            cmd.exe /c start "$url" ;;
     esac
 } >/dev/null 2>&1
 
