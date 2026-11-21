@@ -22,7 +22,7 @@ done
 VENV=python/.venv
 REQUIREMENTS=python/requirements.txt
 JAR=target/quarkus-app/quarkus-run.jar
-PORT=8080
+PORT=7777
 
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1"; [ $# -gt 1 ] && printf '    %s\n' "${@:2}"; return 0; }
@@ -104,9 +104,12 @@ fi
 if command -v claude >/dev/null; then ok "Claude CLI"; else warn "Claude CLI não encontrado (opcional, só para usar o Claude)." "Instale em https://claude.com/claude-code"; fi
 
 # --- Porta livre ---
-if (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
-    fail "A porta $PORT já está em uso." "O Vagora já está aberto? Acesse http://localhost:$PORT ou feche o outro programa."
-fi
+while (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; do
+    python3 -c 'import sys, urllib.request; sys.exit(b"<title>Vagora</title>" not in urllib.request.urlopen(sys.argv[1], timeout=2).read())' \
+        "http://localhost:$PORT/" 2>/dev/null && fail "O Vagora já está aberto em http://localhost:$PORT" "Use essa aba ou feche o outro antes de abrir de novo."
+    PORT=$((PORT + 1))
+done
+ok "Porta $PORT"
 
 # --- Caches ---
 # Python: bytecode compilado, barato de recriar. A sessão do LinkedIn (python/.profile) é mantida
@@ -144,4 +147,4 @@ echo "O Vagora abre no navegador em instantes: http://localhost:$PORT"
 echo "Para parar, use Ctrl+C."
 echo
 [ "$OPEN_BROWSER" = 1 ] && open_browser &
-exec java -jar "$JAR"
+exec java -Dquarkus.http.port="$PORT" -jar "$JAR"

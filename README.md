@@ -132,7 +132,8 @@ cd vagora
 
 O `run.sh` confere Java 21 (JDK), Python 3.9+, Google Chrome e Xvfb. O que faltar ele **oferece instalar**
 (apt, dnf, pacman, zypper ou Homebrew; o Chrome pelo instalador oficial) e pergunta antes de rodar cada comando.
-Depois cria o ambiente do leitor de vagas, compila e **abre o navegador** em <http://localhost:8080>.
+Depois cria o ambiente do leitor de vagas, compila e **abre o navegador** em <http://localhost:7777>. Se a porta estiver ocupada por outro programa, ele usa
+a próxima livre (7778, 7779...); se for o próprio Vagora já aberto, ele avisa em vez de abrir outro.
 
 ```bash
 ./run.sh --no-browser   # inicia sem abrir o navegador

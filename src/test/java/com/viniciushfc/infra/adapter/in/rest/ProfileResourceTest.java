@@ -217,7 +217,7 @@ class ProfileResourceTest {
                 .then().statusCode(403);
         given().header("Host", "site-malicioso.com").when().get("/profile")
                 .then().statusCode(403);
-        given().header("Origin", "http://localhost:8080").when().get("/profile")
+        given().header("Origin", "http://localhost:7777").when().get("/profile")
                 .then().statusCode(200);
     }
 
