@@ -115,12 +115,12 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 
 | Item | Para quê | Onde conseguir |
 |---|---|---|
-| **Java 21+** | rodar o Vagora | [adoptium.net](https://adoptium.net) |
-| **Python 3.9+** | o leitor de vagas | [python.org](https://www.python.org/downloads) |
-| **Google Chrome** | abrir as vagas | [google.com/chrome](https://www.google.com/chrome) |
+| **Java 21+ (JDK)** | rodar o Vagora | o `run.sh` instala, ou [adoptium.net](https://adoptium.net) |
+| **Python 3.9+** | o leitor de vagas | o `run.sh` instala, ou [python.org](https://www.python.org/downloads) |
+| **Google Chrome** | abrir as vagas | o `run.sh` instala, ou [google.com/chrome](https://www.google.com/chrome) |
 | **Ao menos uma IA** | a análise das vagas | Gemini: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) · Groq: [console.groq.com/keys](https://console.groq.com/keys) · Claude: conta Claude, login pela tela |
 | **Senha de app do email** | ler os alertas (não é a senha normal) | Gmail: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) |
-| *Opcional:* `xvfb` (Linux) | navegador totalmente invisível | `sudo apt install xvfb` |
+| *Opcional:* `xvfb` (Linux) | navegador totalmente invisível | o `run.sh` instala |
 
 ### Instalar e iniciar
 
@@ -130,8 +130,9 @@ cd vagora
 ./run.sh
 ```
 
-O `run.sh` confere Java, Python e Chrome (e diz como resolver se faltar algo), cria o ambiente do leitor de vagas,
-compila e **abre o navegador** em <http://localhost:8080>.
+O `run.sh` confere Java 21 (JDK), Python 3.9+, Google Chrome e Xvfb. O que faltar ele **oferece instalar**
+(apt, dnf, pacman, zypper ou Homebrew; o Chrome pelo instalador oficial) e pergunta antes de rodar cada comando.
+Depois cria o ambiente do leitor de vagas, compila e **abre o navegador** em <http://localhost:8080>.
 
 ```bash
 ./run.sh --no-browser   # inicia sem abrir o navegador
