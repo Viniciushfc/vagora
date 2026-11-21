@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Vagora</title>
     <meta name="description" content="Vagora lê os alertas de vaga do LinkedIn no seu email e mostra quais combinam com o seu currículo.">
-    <meta name="theme-color" content="#F2F6FB" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#10172A" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#F8F5EC" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F241B" media="(prefers-color-scheme: dark)">
     <link rel="icon" type="image/svg+xml" href="brand/mark.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400&family=JetBrains+Mono:wght@500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="app.js" defer></script>
 </head>
@@ -50,6 +50,7 @@
         </a>
     </header>
 
+    <div class="setup-aside">
     <div class="setup-intro">
         <h1 class="display">Vamos configurar o Vagora</h1>
         <p class="lede">
@@ -62,13 +63,15 @@
         <h2 id="how-title">Como funciona</h2>
         <ol class="flow">
             <li><strong>O LinkedIn envia um alerta</strong> de vagas para o seu email, como já acontece hoje.</li>
-            <li><strong>O Vagora lê os alertas da última semana</strong>, dos mais novos para os mais antigos, sem mexer nos seus outros emails. Entre um acesso ao LinkedIn e outro, espera de 15 a 25 minutos para não chamar atenção.</li>
+            <li><strong>O Vagora lê os alertas da última semana</strong>, dos mais novos para os mais antigos, sem mexer nos seus outros emails. Entre um acesso ao LinkedIn e outro, espera de 15 a 25 minutos (ajustável em Configurações) para não chamar atenção.</li>
             <li><strong>Cada vaga é aberta</strong> num navegador nesta máquina para ler a descrição completa. Vagas encerradas são puladas.</li>
             <li><strong>A IA (Gemini, Groq ou Claude) compara</strong> a vaga com o seu currículo e dá uma nota de 0 a 100.</li>
             <li><strong>O resultado aparece aqui</strong>, com os motivos. Quando a vaga combina, o currículo adaptado sai automático ou pelo botão "Gerar currículo", conforme as Configurações.</li>
         </ol>
     </section>
+    </div>
 
+    <div class="setup-main">
     <ol class="steps" aria-label="Passos da configuração">
         <li class="step" data-step="profile">
             <h2>Seu perfil e currículo</h2>
@@ -125,13 +128,14 @@
     <div class="setup-finish">
         <button id="setup-finish" class="button primary large" type="button" hidden>Ver minhas vagas</button>
     </div>
+    </div>
 </main>
 
 <!-- ============================================================
      Aplicação
      ============================================================ -->
 <div id="app" class="shell" hidden>
-    <aside class="sidebar">
+    <header class="topbar">
         <a class="brand" href="#vagas">
             <img class="brand-mark" src="brand/mark.svg" alt="">
             <span>vagora</span>
@@ -143,6 +147,8 @@
             <a href="#config" data-tab="config"><svg class="icon"><use href="#i-gear"/></svg><span>Configurações</span></a>
         </nav>
 
+        <nav class="subnav" id="subnav" aria-label="Páginas da seção" hidden></nav>
+
         <div class="monitor" id="monitor" data-state="idle" aria-live="polite">
             <span class="monitor-dot" aria-hidden="true"></span>
             <div class="monitor-text">
@@ -151,82 +157,81 @@
             </div>
             <button class="monitor-toggle" id="monitor-toggle" type="button" hidden></button>
         </div>
-    </aside>
+    </header>
 
     <main class="content">
-        <nav class="subnav" id="subnav" hidden></nav>
 
         <!-- Vagas -->
-        <section data-panel="vagas" hidden>
-            <header class="page-head">
-                <div class="label-row">
-                    <h1 class="display">Vagas analisadas</h1>
-                    <span class="tip">
-                        <button class="tip-trigger" type="button" aria-label="Como a nota é calculada">?</button>
-                        <span class="tip-bubble" role="tooltip">
-                            A nota vai de 0 a 100 e mede o quanto o seu currículo atende à vaga. A vaga é compatível
-                            quando chega a 70 e os requisitos obrigatórios são atendidos. A marca amarela é esse corte.
+        <section data-panel="vagas" class="desk" hidden>
+            <div class="desk-list">
+                <header class="page-head">
+                    <div class="label-row">
+                        <h1 class="display">Vagas analisadas</h1>
+                        <span class="tip">
+                            <button class="tip-trigger" type="button" aria-label="Como a nota é calculada">?</button>
+                            <span class="tip-bubble" role="tooltip">
+                                A nota vai de 0 a 100 e mede o quanto o seu currículo atende à vaga. A vaga é compatível
+                                quando chega a 70 e os requisitos obrigatórios são atendidos. A marca amarela é esse corte.
+                            </span>
                         </span>
-                    </span>
+                    </div>
+                    <p id="matches-summary" class="summary"></p>
+                </header>
+                <div id="processing-alert" class="notice warn" hidden></div>
+                <div id="setup-warning" class="notice warn" hidden></div>
+                <div class="toolbar" id="toolbar" hidden>
+                    <label class="search">
+                        <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+                        <span class="visually-hidden">Buscar por vaga ou empresa</span>
+                        <input id="search" type="search" placeholder="Buscar vaga ou empresa" autocomplete="off">
+                    </label>
+                    <div class="segmented" role="group" aria-label="Filtrar vagas">
+                        <button type="button" data-filter="all" aria-pressed="true">Todas</button>
+                        <button type="button" data-filter="match" aria-pressed="false">Compatíveis</button>
+                    </div>
+                    <label class="sort">
+                        <span class="visually-hidden">Ordenar</span>
+                        <select id="sort">
+                            <option value="score">Maior nota</option>
+                            <option value="recent">Mais recentes</option>
+                        </select>
+                    </label>
+                    <button id="refresh-matches" class="button quiet icon-only" type="button" aria-label="Atualizar lista">
+                        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
+                    </button>
                 </div>
-                <p id="matches-summary" class="summary"></p>
-            </header>
-
-            <div id="processing-alert" class="notice warn" hidden></div>
-            <div id="setup-warning" class="notice warn" hidden></div>
-
-            <figure class="panel spread" id="spread" hidden>
-                <div class="spread-legend" aria-hidden="true">
-                    <span class="legend-below" id="legend-below"></span>
-                    <span class="legend-above" id="legend-above"></span>
-                </div>
-                <div class="spread-track">
-                    <span class="spread-zone" aria-hidden="true"></span>
-                    <span class="spread-cut" aria-hidden="true"></span>
-                    <div class="spread-marks" id="spread-marks"></div>
-                </div>
-                <div class="spread-scale" aria-hidden="true">
-                    <span>0</span><span class="spread-cut-label">corte 70</span><span>100</span>
-                </div>
-                <figcaption class="visually-hidden">Notas de todas as vagas numa régua de 0 a 100. Cada marca leva até a vaga.</figcaption>
-            </figure>
-
-            <div class="toolbar" id="toolbar" hidden>
-                <label class="search">
-                    <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
-                    <span class="visually-hidden">Buscar por vaga ou empresa</span>
-                    <input id="search" type="search" placeholder="Buscar vaga ou empresa" autocomplete="off">
-                </label>
-                <div class="segmented" role="group" aria-label="Filtrar vagas">
-                    <button type="button" data-filter="all" aria-pressed="true">Todas</button>
-                    <button type="button" data-filter="match" aria-pressed="false">Compatíveis</button>
-                </div>
-                <label class="sort">
-                    <span class="visually-hidden">Ordenar</span>
-                    <select id="sort">
-                        <option value="score">Maior nota</option>
-                        <option value="recent">Mais recentes</option>
-                    </select>
-                </label>
-                <button id="refresh-matches" class="button quiet icon-only" type="button" aria-label="Atualizar lista">
-                    <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
-                </button>
+                <ul id="matches" class="rows" aria-label="Vagas"></ul>
             </div>
-
-            <ul id="matches" class="matches"></ul>
-
-            <div id="matches-empty" class="panel empty" hidden>
-                <img class="empty-art" src="brand/mark.svg" alt="">
-                <h2>Nenhuma vaga analisada ainda</h2>
-                <p>
-                    Quando um alerta de vaga do LinkedIn chegar no seu email, as vagas aparecem aqui, das mais novas
-                    para as mais antigas. Para proteger sua conta, o Vagora espera de 15 a 25 minutos entre um acesso
-                    ao LinkedIn e outro, então vários alertas acumulados vão aparecendo ao longo do dia.
-                </p>
-            </div>
-            <div id="matches-filtered-empty" class="panel empty" hidden>
-                <h2 id="filtered-empty-title">Nenhuma vaga encontrada</h2>
-                <p id="filtered-empty-text"></p>
+            <div class="desk-main">
+                <figure class="spread" id="spread" hidden>
+                    <div class="spread-legend" aria-hidden="true">
+                        <span class="legend-below" id="legend-below"></span>
+                        <span class="legend-above" id="legend-above"></span>
+                    </div>
+                    <div class="spread-track">
+                        <span class="spread-zone" aria-hidden="true"></span>
+                        <span class="spread-cut" aria-hidden="true"></span>
+                        <div class="spread-marks" id="spread-marks"></div>
+                    </div>
+                    <div class="spread-scale" aria-hidden="true">
+                        <span>0</span><span class="spread-cut-label">corte 70</span><span>100</span>
+                    </div>
+                    <figcaption class="visually-hidden">Notas de todas as vagas numa régua de 0 a 100. Cada marca leva até a vaga.</figcaption>
+                </figure>
+                <aside id="match-detail" class="match-detail" aria-label="Vaga escolhida" hidden></aside>
+                <div id="matches-empty" class="panel empty" hidden>
+                    <img class="empty-art" src="brand/mark.svg" alt="">
+                    <h2>Nenhuma vaga analisada ainda</h2>
+                    <p>
+                        Quando um alerta de vaga do LinkedIn chegar no seu email, as vagas aparecem aqui, das mais novas
+                        para as mais antigas. Para proteger sua conta, o Vagora espera de 15 a 25 minutos entre um acesso
+                        ao LinkedIn e outro (ajustável em Configurações), então vários alertas acumulados vão aparecendo ao longo do dia.
+                    </p>
+                </div>
+                <div id="matches-filtered-empty" class="panel empty" hidden>
+                    <h2 id="filtered-empty-title">Nenhuma vaga encontrada</h2>
+                    <p id="filtered-empty-text"></p>
+                </div>
             </div>
         </section>
 
@@ -257,6 +262,8 @@
                 <p class="summary">O que o Vagora está fazendo agora no <span id="reader-source">LinkedIn</span> e o que deu errado, quando der.</p>
             </header>
 
+            <div class="reader">
+            <div class="reader-now">
             <div class="panel scraper-now" id="scraper-now" data-state="idle" aria-live="polite">
                 <div class="scraper-head">
                     <span class="monitor-dot" aria-hidden="true"></span>
@@ -279,15 +286,19 @@
                     <figcaption class="hint">O que o navegador estava mostrando quando parou. A imagem fica só neste computador.</figcaption>
                 </figure>
             </section>
+            </div>
 
             <section class="panel" aria-labelledby="timeline-title">
                 <h2 class="panel-title" id="timeline-title">O que o leitor fez</h2>
                 <ol class="timeline" id="scraper-events"></ol>
                 <p class="hint" id="scraper-empty">Nada por aqui ainda. Os passos aparecem quando o próximo alerta for analisado.</p>
             </section>
+            </div>
         </section>
 
-        <section data-panel="config" hidden>
+        <section data-panel="config config-ia config-fluxo config-contas config-automacao config-perfil" hidden>
+            <div class="config-layout">
+            <div class="config-aside">
             <header class="page-head identity">
                 <div class="avatar" id="avatar" aria-hidden="true"></div>
                 <div>
@@ -301,9 +312,11 @@
                 <p class="readiness-lede">Enquanto algum item estiver pendente, os alertas ficam no email esperando, sem serem marcados como lidos.</p>
                 <ul class="checklist" id="checklist"></ul>
             </section>
+            <nav class="config-nav" id="config-nav" aria-label="Partes das configurações" hidden></nav>
+            </div>
 
             <div class="settings">
-                <section class="setting" aria-labelledby="set-curriculum">
+                <section class="setting" data-page="config" aria-labelledby="set-curriculum">
                     <div class="setting-about">
                         <h2 id="set-curriculum">Currículo</h2>
                         <p class="hint">A IA compara cada vaga com este PDF e usa ele para montar o currículo adaptado.</p>
@@ -332,58 +345,98 @@
                     </div>
                 </section>
 
-                <section class="setting" aria-labelledby="set-ai">
+                <section class="setting" data-page="config-ia" aria-labelledby="set-ai">
                     <div class="setting-about">
                         <h2 id="set-ai">IA</h2>
-                        <p class="hint">Lê cada vaga e dá a nota. Com mais de uma configurada, a reserva assume quando a principal falhar.</p>
+                        <p class="hint">As chaves e a conta de cada IA. A ordem em que elas são usadas em cada etapa fica em Fluxo da IA.</p>
                         <p class="hint" id="ai-summary"></p>
                     </div>
-                    <div class="setting-body">
-                        <form class="form profile-form" novalidate>
-                            <div class="field">
-                                <label for="profile-llm">IA principal</label>
-                                <select id="profile-llm" name="llmProvider">
-                                    <option value="GEMINI">Gemini</option>
-                                    <option value="GROQ">Groq</option>
-                                    <option value="CLAUDE">Claude</option>
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label for="profile-gemini">Chave da API do Gemini</label>
-                                <input id="profile-gemini" name="geminiApiKey" type="password" autocomplete="off">
-                                <p class="hint" id="profile-gemini-hint"></p>
-                            </div>
-                            <div class="field">
-                                <label for="profile-groq">Chave da API do Groq</label>
-                                <input id="profile-groq" name="groqApiKey" type="password" autocomplete="off">
-                                <p class="hint" id="profile-groq-hint"></p>
-                            </div>
-                            <p class="form-error" role="alert" hidden></p>
-                            <button class="button primary" type="submit">Salvar IA</button>
-                        </form>
-                        <article class="panel account" id="account-claude"></article>
+                    <div class="setting-body wide">
+                        <div class="cards">
+                            <form class="panel account form profile-form" novalidate>
+                                <div class="account-head" id="gemini-head"></div>
+                                <p class="account-status">IA do Google, com cota gratuita que costuma bastar para uso pessoal.</p>
+                                <div class="field">
+                                    <label for="profile-gemini">Chave da API</label>
+                                    <input id="profile-gemini" name="geminiApiKey" type="password" autocomplete="off">
+                                    <p class="hint" id="profile-gemini-hint"></p>
+                                </div>
+                                <p class="form-error" role="alert" hidden></p>
+                                <button class="button primary" type="submit">Salvar chave do Gemini</button>
+                            </form>
+                            <form class="panel account form profile-form" novalidate>
+                                <div class="account-head" id="groq-head"></div>
+                                <p class="account-status">Rápida e com cota gratuita, mas aceita pedidos menores: analisa menos vagas por vez.</p>
+                                <div class="field">
+                                    <label for="profile-groq">Chave da API</label>
+                                    <input id="profile-groq" name="groqApiKey" type="password" autocomplete="off">
+                                    <p class="hint" id="profile-groq-hint"></p>
+                                </div>
+                                <p class="form-error" role="alert" hidden></p>
+                                <button class="button primary" type="submit">Salvar chave do Groq</button>
+                            </form>
+                            <article class="panel account" id="account-claude"></article>
+                        </div>
                     </div>
                 </section>
 
-                <section class="setting" aria-labelledby="set-sources">
+                <section class="setting" data-page="config-fluxo" aria-labelledby="set-flow">
+                    <div class="setting-about">
+                        <h2 id="set-flow">Fluxo da IA</h2>
+                        <p class="hint">
+                            Em cada etapa, a primeira IA marcada é a principal. Se ela falhar ou estiver fora do ar, o
+                            Vagora tenta a próxima marcada, na ordem. As desmarcadas não são usadas naquela etapa.
+                        </p>
+                    </div>
+                    <div class="setting-body wide">
+                        <form class="form flow-form" id="flow-form" novalidate>
+                            <ol class="flow-steps">
+                                <li class="flow-step" data-ai="no">
+                                    <h3>Alerta chega no email</h3>
+                                    <p class="hint">O Vagora lê os alertas do LinkedIn e do Indeed. Não usa IA.</p>
+                                </li>
+                                <li class="flow-step" data-ai="no">
+                                    <h3>Leitor abre cada vaga</h3>
+                                    <p class="hint">Um navegador nesta máquina lê a descrição completa. Não usa IA.</p>
+                                </li>
+                                <li class="flow-step">
+                                    <h3 id="flow-analysis">Nota da vaga</h3>
+                                    <p class="hint">Compara a vaga com o seu currículo e dá a nota de 0 a 100. Roda para toda vaga lida, então vale uma IA com cota grande.</p>
+                                    <ol class="chain" data-chain="analysisChain" aria-labelledby="flow-analysis"></ol>
+                                </li>
+                                <li class="flow-step">
+                                    <h3 id="flow-curriculum">Currículo adaptado</h3>
+                                    <p class="hint">Reescreve o seu currículo para as vagas compatíveis. Roda poucas vezes, então vale a IA que escreve melhor.</p>
+                                    <ol class="chain" data-chain="curriculumChain" aria-labelledby="flow-curriculum"></ol>
+                                </li>
+                            </ol>
+                            <p class="form-error" role="alert" hidden></p>
+                            <button class="button primary" type="submit">Salvar fluxo</button>
+                        </form>
+                    </div>
+                </section>
+
+                <section class="setting" data-page="config-contas" aria-labelledby="set-sources">
                     <div class="setting-about">
                         <h2 id="set-sources">De onde vêm as vagas</h2>
                         <p class="hint">O email recebe os alertas de vaga. Em cada rede, escolha a pasta do email onde os alertas dela chegam.</p>
                     </div>
-                    <div class="setting-body">
-                        <article class="panel account" id="account-email"></article>
-                        <article class="panel account" id="account-linkedin"></article>
-                        <article class="panel account" id="account-indeed"></article>
+                    <div class="setting-body wide">
+                        <div class="cards">
+                            <article class="panel account" id="account-email"></article>
+                            <article class="panel account" id="account-linkedin"></article>
+                            <article class="panel account" id="account-indeed"></article>
+                        </div>
                     </div>
                 </section>
 
-                <section class="setting" aria-labelledby="set-automation">
+                <section class="setting" data-page="config-automacao" aria-labelledby="set-automation">
                     <div class="setting-about">
                         <h2 id="set-automation">Automação</h2>
                         <p class="hint">O que o Vagora faz sozinho, sem você abrir a página.</p>
                     </div>
                     <div class="setting-body">
-                        <div class="panel toggles">
+                        <form class="panel toggles" id="toggles-form" novalidate>
                             <div class="toggle-row">
                                 <div>
                                     <h3 class="toggle-title" id="monitoring-title">Verificar o email automaticamente</h3>
@@ -426,11 +479,35 @@
                                     <span class="visually-hidden">Mostrar o navegador durante a análise</span>
                                 </label>
                             </div>
-                        </div>
+                            <p class="form-error" role="alert" hidden></p>
+                            <button class="button primary" type="submit">Salvar automação</button>
+                        </form>
+                        <form class="form profile-form" id="poll-form" novalidate>
+                            <h3 class="toggle-title">Intervalo entre os acessos</h3>
+                            <p class="hint" id="poll-hint">
+                                Quanto tempo o Vagora espera entre um alerta e outro. A cada vez ele sorteia um tempo entre o
+                                mínimo e o máximo. O padrão é de 15 a 25 minutos. Quanto menor, mais vagas por hora e mais
+                                acessos ao LinkedIn, o que aumenta a chance de verificações de segurança, avisos de acesso ou
+                                restrição da conta.
+                            </p>
+                            <div class="poll-fields">
+                                <div class="field">
+                                    <label for="poll-min">Mínimo (minutos)</label>
+                                    <input id="poll-min" name="pollMinMinutes" type="number" min="1" step="1" inputmode="numeric" aria-describedby="poll-hint">
+                                </div>
+                                <div class="field">
+                                    <label for="poll-max">Máximo (minutos)</label>
+                                    <input id="poll-max" name="pollMaxMinutes" type="number" min="1" step="1" inputmode="numeric" aria-describedby="poll-hint">
+                                </div>
+                            </div>
+                            <p class="notice warn" id="poll-warning" role="status" hidden></p>
+                            <p class="form-error" role="alert" hidden></p>
+                            <button class="button primary" type="submit">Salvar intervalo</button>
+                        </form>
                     </div>
                 </section>
 
-                <section class="setting" aria-labelledby="set-profile">
+                <section class="setting" data-page="config-perfil" aria-labelledby="set-profile">
                     <div class="setting-about">
                         <h2 id="set-profile">Perfil</h2>
                         <p class="hint">Fica só neste computador, no arquivo vagora.db.</p>
@@ -450,6 +527,7 @@
                         </div>
                     </div>
                 </section>
+            </div>
             </div>
         </section>
     </main>
@@ -491,7 +569,7 @@
 </template>
 
 <template id="match-template">
-    <li class="match">
+    <article class="match">
         <div class="match-score">
             <span class="score-value"></span><span class="visually-hidden"> de 100</span>
         </div>
@@ -536,7 +614,7 @@
                 <pre class="ats-text"></pre>
             </details>
         </div>
-    </li>
+    </article>
 </template>
 
 <template id="email-form-template">
@@ -595,7 +673,8 @@
                 </li>
             </ul>
             <p class="risk-advice">
-                Para reduzir o risco, o Vagora espera de 15 a 25 minutos entre um acesso ao LinkedIn e outro, não
+                Para reduzir o risco, o Vagora espera de 15 a 25 minutos entre um acesso ao LinkedIn e outro (dá para mudar
+                em Configurações; tempos menores aumentam o risco), não
                 reabre vagas já analisadas e abre as vagas com pausas de 8 a 25 segundos e movimentos parecidos com
                 os de uma pessoa. Se puder, use uma conta secundária do LinkedIn só para isso.
             </p>

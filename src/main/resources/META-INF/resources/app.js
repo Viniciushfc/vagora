@@ -80,6 +80,7 @@ const state = {
     filter: "all",
     sort: "score",
     query: "",
+    selected: null,
     status: null,
     timers: [],
 };
@@ -310,8 +311,12 @@ const KEY_MASK = "••••••••••••••••";
 const SUBPAGES = {
     vagas: [["vagas", "Analisadas"], ["pendentes", "Na fila"]],
     atividade: [["linkedin", "LinkedIn"], ["indeed", "Indeed"]],
+    config: [["config", "Currículo"], ["config-ia", "IA"], ["config-fluxo", "Fluxo da IA"], ["config-contas", "Contas"], ["config-automacao", "Automação"], ["config-perfil", "Perfil"]],
 };
-const PAGE_SECTION = { vagas: "vagas", pendentes: "vagas", linkedin: "atividade", indeed: "atividade", config: "config" };
+const PAGE_SECTION = {
+    vagas: "vagas", pendentes: "vagas", linkedin: "atividade", indeed: "atividade",
+    config: "config", "config-ia": "config", "config-fluxo": "config", "config-contas": "config", "config-automacao": "config", "config-perfil": "config",
+};
 
 let pageTimer;
 function route() {
@@ -324,7 +329,8 @@ function route() {
         else link.removeAttribute("aria-current");
     });
     $$("[data-panel]").forEach((panel) => { panel.hidden = !panel.dataset.panel.split(" ").includes(tab); });
-    renderSubnav(SUBPAGES[section], tab);
+    renderSubnav($("#subnav"), section === "config" ? null : SUBPAGES[section], tab);
+    renderSubnav($("#config-nav"), section === "config" ? SUBPAGES.config : null, tab);
 
     clearInterval(pageTimer);
     if (tab === "vagas") {
@@ -344,15 +350,17 @@ function route() {
         // enquanto a página está aberta, acompanha o leitor quase em tempo real
         pageTimer = setInterval(loadScraper, 5_000);
     }
-    if (tab === "config") {
+    if (section === "config") {
+        $$(".save-status[data-state='dirty']").forEach(clearStatus);
+        $$(".setting").forEach((setting) => { setting.hidden = setting.dataset.page !== tab; });
         renderProfile();
+        renderEditableSettings();
         renderAccounts();
     }
     window.scrollTo({ top: 0 });
 }
 
-function renderSubnav(pages, current) {
-    const nav = $("#subnav");
+function renderSubnav(nav, pages, current) {
     nav.hidden = !pages;
     nav.replaceChildren(...(pages ?? []).map(([page, label]) => {
         const link = el("a", "", label);
@@ -400,14 +408,14 @@ function mergeStatus(statuses) {
 }
 
 function hasAiKey() {
-    return state.profile.hasGeminiApiKey || state.profile.hasGroqApiKey || Boolean(account("CLAUDE"));
+    return state.profile.analysisChain.some(llmAvailable);
 }
 
 function missingSetup() {
     const missing = [];
     if (!account("EMAIL")) missing.push("o email");
     if (!account("LINKEDIN")) missing.push("o LinkedIn");
-    if (!hasAiKey()) missing.push("uma IA (Gemini, Groq ou Claude)");
+    if (!hasAiKey()) missing.push("uma IA disponível para a nota das vagas");
     if (!state.profile.curriculumName) missing.push("o currículo");
     return missing;
 }
@@ -426,7 +434,6 @@ function renderMonitor() {
     } else if (status?.lastError) {
         view = { state: "error", title: "Última análise falhou", detail: status.lastError };
     } else if (status?.nextAlertAt && new Date(status.nextAlertAt) > new Date()) {
-        // ritmo de segurança: 15 a 25 minutos entre um acesso ao LinkedIn e outro
         const at = timeFormat.format(new Date(status.nextAlertAt));
         const queue = status.queuedAlerts > 0
             ? ` · ${status.queuedAlerts} ${status.queuedAlerts === 1 ? "alerta" : "alertas"} na fila`
@@ -469,19 +476,18 @@ async function setMonitoring(enabled) {
 }
 
 $("#monitor-toggle").addEventListener("click", () => setMonitoring(!state.profile.monitoringEnabled));
-$("#monitoring").addEventListener("change", (event) => setMonitoring(event.target.checked));
 
 // o atalho de cada falha vem do código do erro (ErrorCode no backend), nunca do texto
 const ERROR_ACTIONS = {
-    LINKEDIN_CHECKPOINT: ["Entrar no LinkedIn", "#config"],
-    LINKEDIN_LOGIN_FAILED: ["Abrir configurações", "#config"],
-    LINKEDIN_NOT_CONNECTED: ["Abrir configurações", "#config"],
+    LINKEDIN_CHECKPOINT: ["Entrar no LinkedIn", "#config-contas"],
+    LINKEDIN_LOGIN_FAILED: ["Abrir configurações", "#config-contas"],
+    LINKEDIN_NOT_CONNECTED: ["Abrir configurações", "#config-contas"],
     LINKEDIN_PAGE_UNREADABLE: ["Ver o leitor", "#leitor"],
     SCRAPER_FAILED: ["Ver o leitor", "#leitor"],
-    LLM_KEY_MISSING: ["Abrir configurações", "#config"],
-    LLM_KEY_REJECTED: ["Abrir configurações", "#config"],
-    CLAUDE_NOT_INSTALLED: ["Abrir configurações", "#config"],
-    CLAUDE_NOT_CONNECTED: ["Entrar no Claude", "#config"],
+    LLM_KEY_MISSING: ["Abrir configurações", "#config-ia"],
+    LLM_KEY_REJECTED: ["Abrir configurações", "#config-ia"],
+    CLAUDE_NOT_INSTALLED: ["Abrir configurações", "#config-ia"],
+    CLAUDE_NOT_CONNECTED: ["Entrar no Claude", "#config-ia"],
 };
 
 function renderProcessingAlert() {
@@ -673,10 +679,49 @@ function renderMatches(animate) {
             : "Uma vaga é compatível quando a nota chega a 70 e os requisitos obrigatórios são atendidos.";
     }
 
-    const list = $("#matches");
-    list.replaceChildren(...visible.map(matchItem));
-    list.classList.toggle("is-entering", animate);
+    if (!visible.some((m) => m.id === state.selected)) state.selected = visible[0]?.id ?? null;
+    $("#matches").replaceChildren(...visible.map(matchRow));
+    renderDetail(animate);
     renderSpread(all);
+}
+
+const wideDesk = matchMedia("(min-width: 60rem)");
+wideDesk.addEventListener("change", () => renderDetail(false));
+
+function matchRow(match) {
+    const row = el("li", "row");
+    row.id = `row-${match.id}`;
+    row.dataset.fit = match.match ? "yes" : "no";
+    const button = el("button", "row-button");
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(match.id === state.selected));
+    const text = el("span", "row-text");
+    text.append(el("span", "row-title", match.jobTitle ?? "Vaga sem título"), el("span", "row-company", match.companyName ?? ""));
+    button.append(el("span", "row-score", String(match.score)), text);
+    button.addEventListener("click", () => selectMatch(match.id));
+    row.append(button);
+    return row;
+}
+
+function selectMatch(id) {
+    state.selected = id;
+    $$("#matches .row").forEach((row) => {
+        $(".row-button", row).setAttribute("aria-pressed", String(row.id === `row-${id}`));
+    });
+    $$("#spread-marks .spread-mark").forEach((mark) => mark.setAttribute("aria-pressed", String(mark.dataset.id === id)));
+    renderDetail(true);
+}
+
+function renderDetail(animate) {
+    const pane = $("#match-detail");
+    $$("#matches .match").forEach((item) => item.remove());
+    const match = state.matches.find((m) => m.id === state.selected);
+    pane.replaceChildren();
+    pane.hidden = !match || !wideDesk.matches;
+    if (!match) return;
+    const item = matchItem(match);
+    item.classList.toggle("is-entering", animate);
+    (wideDesk.matches ? pane : $(`#row-${match.id}`))?.append(item);
 }
 
 // Todas as notas numa régua só. Notas muito próximas viram colunas mais altas para não se esconderem.
@@ -700,6 +745,8 @@ function renderSpread(matches) {
         mark.dataset.fit = match.match ? "yes" : "no";
         mark.style.setProperty("--score", Math.max(0, Math.min(100, match.score)));
         mark.style.setProperty("--lane", lane);
+        mark.dataset.id = match.id;
+        mark.setAttribute("aria-pressed", String(match.id === state.selected));
         mark.setAttribute("aria-label", `${match.score}: ${match.jobTitle ?? "vaga"}${match.companyName ? `, ${match.companyName}` : ""}`);
         mark.title = `${match.score} · ${match.jobTitle ?? "vaga"}`;
         mark.addEventListener("click", () => focusMatch(match.id));
@@ -709,25 +756,22 @@ function renderSpread(matches) {
 }
 
 function focusMatch(id) {
-    let item = document.getElementById(`match-${id}`);
-    if (!item) {
-        // a vaga pode estar escondida pela busca ou pelo filtro
+    if (!document.getElementById(`row-${id}`)) {
         state.query = "";
         $("#search").value = "";
         setFilter("all");
-        item = document.getElementById(`match-${id}`);
     }
-    if (!item) return;
-    item.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
-    item.classList.remove("is-highlighted");
-    void item.offsetWidth;
+    const row = document.getElementById(`row-${id}`);
+    if (!row) return;
+    selectMatch(id);
+    row.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+    const item = $(".match", wideDesk.matches ? $("#match-detail") : row);
     item.classList.add("is-highlighted");
-    $(".job-link", item).focus({ preventScroll: true });
+    $(".row-button", row).focus({ preventScroll: true });
 }
 
 function matchItem(match) {
     const item = cloneTemplate("match-template");
-    item.id = `match-${match.id}`;
     item.dataset.fit = match.match ? "yes" : "no";
     item.style.setProperty("--score", Math.max(0, Math.min(100, match.score)));
 
@@ -1216,7 +1260,7 @@ async function renderClaudeAccount(refreshProfile = false) {
 
     if (status.loggingIn) {
         card.replaceChildren(head, ...claudeLoginInProgress(status));
-        if (location.hash === "#config") claudePoll = setTimeout(() => renderClaudeAccount(true), 2000);
+        if (location.hash === "#config-ia") claudePoll = setTimeout(() => renderClaudeAccount(true), 2000);
         return;
     }
 
@@ -1347,8 +1391,17 @@ function actionLink(text, href, options = {}) {
         link.addEventListener("click", (event) => {
             event.preventDefault();
             const field = $(options.focus);
-            field.scrollIntoView({ block: "center" });
-            field.focus();
+            const page = field.closest("[data-page]")?.dataset.page;
+            const show = () => {
+                field.scrollIntoView({ block: "center" });
+                field.focus();
+            };
+            if (page && location.hash !== `#${page}`) {
+                window.addEventListener("hashchange", show, { once: true });
+                location.hash = page;
+            } else {
+                show();
+            }
         });
     }
     return link;
@@ -1377,8 +1430,8 @@ function renderReadiness() {
     const missing = [
         !state.profile.curriculumName && { name: "Currículo", detail: ["Sem ele não há com o que comparar as vagas."],
             actions: [actionLink("Enviar", "#", { focus: "#profile-curriculum", primary: true })] },
-        !hasAiKey() && { name: "IA", detail: ["Falta a chave do Gemini ou do Groq, ou conectar o Claude."],
-            actions: [actionLink("Configurar", "#", { focus: "#profile-llm", primary: true })] },
+        !hasAiKey() && { name: "IA", detail: ["Nenhuma IA marcada em \"Nota da vaga\" tem chave ou conta. Configure uma chave na aba IA ou marque outra IA em Fluxo da IA."],
+            actions: [actionLink("Configurar", "#", { focus: "#profile-gemini", primary: true })] },
         !account("EMAIL") && { name: "Email", detail: ["É de onde vêm os alertas de vaga."],
             actions: [actionLink("Conectar", "#", { focus: "#account-email", primary: true })] },
         !account("LINKEDIN") && { name: "LinkedIn", detail: ["Sem ele o Vagora não lê a descrição das vagas."],
@@ -1390,16 +1443,103 @@ function renderReadiness() {
     $("#checklist").replaceChildren(...missing.map((item) => checkItem({ ...item, ok: false })));
 }
 
-function aiKeysText(profile) {
-    const names = { GEMINI: "Gemini", GROQ: "Groq", CLAUDE: "Claude" };
-    const available = { GEMINI: profile.hasGeminiApiKey, GROQ: profile.hasGroqApiKey, CLAUDE: Boolean(account("CLAUDE")) };
-    const configured = Object.keys(names).filter((key) => available[key]);
-    const primary = configured.includes(profile.llmProvider) ? profile.llmProvider : configured[0];
-    const backups = configured.filter((key) => key !== primary).map((key) => names[key]);
+const LLM_NAMES = { GEMINI: "Gemini", GROQ: "Groq", CLAUDE: "Claude" };
 
-    const backupText = backups.length ? `Reserva: ${backups.join(" e ")}.` : "Sem reserva.";
-    return configured.length ? `Principal: ${names[primary]}. ${backupText}` : "Nenhuma IA configurada ainda.";
+function llmAvailable(provider) {
+    return { GEMINI: state.profile.hasGeminiApiKey, GROQ: state.profile.hasGroqApiKey, CLAUDE: Boolean(account("CLAUDE")) }[provider];
 }
+
+function aiKeysText(profile) {
+    const chain = (order) => order.filter(llmAvailable).map((provider) => LLM_NAMES[provider]).join(" → ") || "nenhuma IA disponível";
+    return `Nota: ${chain(profile.analysisChain)}. Currículo: ${chain(profile.curriculumChain)}.`;
+}
+
+function renderFlow() {
+    const form = $("#flow-form");
+    clearError(form);
+    setBusy(form, false);
+    $$(".chain", form).forEach((list) => {
+        const chosen = state.profile[list.dataset.chain];
+        const others = Object.keys(LLM_NAMES).filter((provider) => !chosen.includes(provider));
+        list.replaceChildren(...chosen.map((provider) => chainItem(provider, true)), ...others.map((provider) => chainItem(provider, false)));
+        renumberChain(list);
+    });
+}
+
+function chainItem(provider, used) {
+    const name = LLM_NAMES[provider];
+    const item = el("li", "chain-item");
+    item.dataset.provider = provider;
+
+    const check = el("input");
+    check.type = "checkbox";
+    check.checked = used;
+    check.setAttribute("aria-label", `Usar ${name} nesta etapa`);
+    check.addEventListener("change", () => renumberChain(item.parentElement));
+
+    const label = el("span", "chain-label");
+    label.append(el("span", "chain-name", name), el("span", "chain-role"));
+
+    item.append(check, label, moveButton(item, -1, `Subir ${name}`, "↑"), moveButton(item, 1, `Descer ${name}`, "↓"));
+    if (!llmAvailable(provider)) {
+        const missing = el("span", "chain-status");
+        const link = el("a", "", "configure na aba IA");
+        link.href = "#config-ia";
+        missing.append(`${provider === "CLAUDE" ? "Claude não conectado" : "Sem chave"}: fica de fora até você `, link, ".");
+        item.append(missing);
+    }
+    return item;
+}
+
+function moveButton(item, direction, label, text) {
+    const button = el("button", "chain-move", text);
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.addEventListener("click", () => {
+        const list = item.parentElement;
+        if (direction < 0) list.insertBefore(item, item.previousElementSibling);
+        else list.insertBefore(item.nextElementSibling, item);
+        renumberChain(list);
+        markDirty(item.closest("form"));
+        button.disabled ? $("input", item).focus() : button.focus();
+    });
+    return button;
+}
+
+function renumberChain(list) {
+    const items = $$(".chain-item", list);
+    let position = 0;
+    items.forEach((item, index) => {
+        const used = $("input", item).checked;
+        item.dataset.role = !used ? "off" : position === 0 ? "primary" : "backup";
+        $(".chain-role", item).textContent = !used ? "Fora desta etapa" : position === 0 ? "Principal" : `Reserva ${position}`;
+        if (used) position++;
+        $$(".chain-move", item)[0].disabled = index === 0;
+        $$(".chain-move", item)[1].disabled = index === items.length - 1;
+    });
+}
+
+$("#flow-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    clearError(form);
+    const data = new FormData();
+    $$(".chain", form).forEach((list) => {
+        const used = $$(".chain-item", list).filter((item) => $("input", item).checked).map((item) => item.dataset.provider);
+        data.append(list.dataset.chain, used.join(","));
+    });
+    setBusy(form, true);
+    try {
+        state.profile = await api.updateProfile(data);
+        renderFlow();
+        markSaved(form);
+        $("#ai-summary").textContent = aiKeysText(state.profile);
+        toast("Fluxo da IA salvo.");
+    } catch (error) {
+        showError(error, $(".form-error", form));
+        setBusy(form, false);
+    }
+});
 
 function showCurriculum(name, size, pending) {
     $("#curriculum-file").hidden = !name;
@@ -1429,9 +1569,6 @@ function renderProfile(forms = $$(".profile-form")) {
     $("#profile-handle").textContent = email ? `Alertas de ${email.username}` : "Nenhum email conectado ainda";
     $("#ai-summary").textContent = aiKeysText(profile);
     $("#curriculum-pick-label").textContent = profile.curriculumName ? "Trocar currículo" : "Escolher PDF";
-    $("#show-browser").checked = Boolean(profile.showBrowser);
-    $("#monitoring").checked = Boolean(profile.monitoringEnabled);
-    $("#auto-curriculum").checked = Boolean(profile.autoCurriculum);
     renderReadiness();
 
     if (forms.some((form) => form.contains($("#profile-curriculum")))) {
@@ -1446,52 +1583,104 @@ function renderProfile(forms = $$(".profile-form")) {
             if (input) input.value = configured ? KEY_MASK : "";
         }
     });
-    $("#profile-name").value = profile.name ?? "";
-    $("#profile-gemini-hint").textContent = profile.hasGeminiApiKey
-        ? "Chave configurada. Para trocar, clique e cole a nova."
-        : "Nenhuma chave do Gemini configurada.";
-    $("#profile-groq-hint").textContent = profile.hasGroqApiKey
-        ? "Chave configurada. Para trocar, clique e cole a nova."
-        : "Nenhuma chave do Groq configurada.";
-    $("#profile-llm").value = profile.llmProvider ?? "GEMINI";
+    if (forms.includes($("#profile-form"))) $("#profile-name").value = profile.name ?? "";
+    $("#gemini-head").replaceChildren(...accountHead("spark", "Gemini", profile.hasGeminiApiKey, ["Configurada", "Sem chave"]).children);
+    $("#groq-head").replaceChildren(...accountHead("spark", "Groq", profile.hasGroqApiKey, ["Configurada", "Sem chave"]).children);
+    $("#profile-gemini-hint").replaceChildren(...keyHint(profile.hasGeminiApiKey, "https://aistudio.google.com/apikey"));
+    $("#profile-groq-hint").replaceChildren(...keyHint(profile.hasGroqApiKey, "https://console.groq.com/keys"));
+    if (forms.includes($("#poll-form"))) {
+        $("#poll-min").value = profile.pollMinMinutes;
+        $("#poll-max").value = profile.pollMaxMinutes;
+        renderPollWarning();
+    }
 }
 
-$("#show-browser").addEventListener("change", async (event) => {
-    const toggle = event.target;
+function renderEditableSettings() {
+    TOGGLES.forEach(([key, id]) => { $(id).checked = Boolean(state.profile[key]); });
+    renderFlow();
+}
+
+const TOGGLES = [["monitoringEnabled", "#monitoring"], ["autoCurriculum", "#auto-curriculum"], ["showBrowser", "#show-browser"]];
+
+$("#toggles-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    clearError(form);
+    const changed = TOGGLES.filter(([key, id]) => $(id).checked !== Boolean(state.profile[key]));
+    if (changed.length === 0) {
+        clearStatus(saveStatus(form));
+        toast("Nada para salvar.");
+        return;
+    }
     const data = new FormData();
-    data.append("showBrowser", String(toggle.checked));
-    toggle.disabled = true;
+    changed.forEach(([key, id]) => data.append(key, String($(id).checked)));
+    setBusy(form, true);
     try {
         state.profile = await api.updateProfile(data);
-        toast(toggle.checked
-            ? "O navegador vai aparecer na próxima análise."
-            : "O navegador vai rodar escondido.");
+        markSaved(form);
+        toast("Automação salva.");
+        renderMonitor();
         renderProcessingAlert();
     } catch (error) {
-        toggle.checked = !toggle.checked;
-        toast(messageFor(error));
+        showError(error, $(".form-error", form));
     } finally {
-        toggle.disabled = false;
+        setBusy(form, false);
     }
 });
 
-$("#auto-curriculum").addEventListener("change", async (event) => {
-    const toggle = event.target;
-    const data = new FormData();
-    data.append("autoCurriculum", String(toggle.checked));
-    toggle.disabled = true;
-    try {
-        state.profile = await api.updateProfile(data);
-        toast(toggle.checked
-            ? "O currículo adaptado vai ser gerado junto com a análise."
-            : "Só a análise roda sozinha. Gere o currículo pelo botão na vaga.");
-    } catch (error) {
-        toggle.checked = !toggle.checked;
-        toast(messageFor(error));
-    } finally {
-        toggle.disabled = false;
+function saveStatus(form) {
+    let status = $(".save-status", form);
+    if (!status) {
+        status = el("p", "save-status");
+        status.setAttribute("aria-live", "polite");
+        $("button[type=submit]", form).after(status);
     }
+    return status;
+}
+
+function clearStatus(status) {
+    status.textContent = "";
+    status.removeAttribute("data-state");
+}
+
+function markDirty(form) {
+    const status = saveStatus(form);
+    status.dataset.state = "dirty";
+    status.textContent = "Alterações não salvas";
+}
+
+function markSaved(form) {
+    const status = saveStatus(form);
+    status.dataset.state = "saved";
+    status.textContent = `Salvo às ${timeFormat.format(new Date())}`;
+}
+
+$$("[data-panel~='config'] form").forEach((form) => {
+    form.addEventListener("input", () => markDirty(form));
+    form.addEventListener("change", () => markDirty(form));
 });
+
+function keyHint(configured, url) {
+    if (configured) return ["Para trocar, clique no campo e cole a nova chave."];
+    const link = el("a", "", url.replace("https://", ""));
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    return ["Gere a sua em ", link, "."];
+}
+
+function renderPollWarning() {
+    const min = Number($("#poll-min").value);
+    const box = $("#poll-warning");
+    box.hidden = !min || min >= 15;
+    if (box.hidden) return;
+    box.replaceChildren(
+        el("strong", "", min < 10 ? "Risco alto para a sua conta do LinkedIn." : "Risco maior para a sua conta do LinkedIn."),
+        ` Com mínimo de ${min} minutos entre os acessos, o LinkedIn é aberto com mais frequência que o padrão e fica mais `
+        + "fácil perceber a automação. Se aparecerem verificações de segurança, volte para 15 a 25 minutos.");
+}
+
+$("#poll-min").addEventListener("input", renderPollWarning);
 
 for (const [id, configured] of [["#profile-gemini", "hasGeminiApiKey"], ["#profile-groq", "hasGroqApiKey"]]) {
     const input = $(id);
@@ -1510,15 +1699,19 @@ $$(".profile-form").forEach((form) => form.addEventListener("submit", async (eve
     const name = field.namedItem("name")?.value.trim();
     const gemini = field.namedItem("geminiApiKey")?.value.trim();
     const groq = field.namedItem("groqApiKey")?.value.trim();
-    const llm = field.namedItem("llmProvider")?.value;
     const curriculum = field.namedItem("curriculum")?.files[0];
     if (name && name !== state.profile.name) data.append("name", name);
     if (gemini && gemini !== KEY_MASK) data.append("geminiApiKey", gemini);
     if (groq && groq !== KEY_MASK) data.append("groqApiKey", groq);
-    if (llm && llm !== state.profile.llmProvider) data.append("llmProvider", llm);
     if (curriculum) data.append("curriculum", curriculum);
+    for (const key of ["pollMinMinutes", "pollMaxMinutes"]) {
+        const value = field.namedItem(key)?.value;
+        const minutes = Math.round(Number(value));
+        if (value && minutes !== state.profile[key]) data.append(key, String(minutes));
+    }
 
     if ([...data.keys()].length === 0) {
+        clearStatus(saveStatus(form));
         toast("Nada para salvar.");
         return;
     }
@@ -1527,6 +1720,7 @@ $$(".profile-form").forEach((form) => form.addEventListener("submit", async (eve
     try {
         state.profile = await api.updateProfile(data);
         renderProfile([form]);
+        markSaved(form);
         toast("Alterações salvas.");
     } catch (error) {
         showError(error, $(".form-error", form));
