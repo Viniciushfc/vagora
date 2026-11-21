@@ -59,7 +59,9 @@ echo "Verificando o que o Vagora precisa..."
 # --- Java 21+ ---
 java_version() { java -version 2>&1 | sed -n 's/.*version "\([0-9]*\).*/\1/p' | head -1; }
 java_ok() { command -v javac >/dev/null && [ "$(java_version)" -ge 21 ] 2>/dev/null; }
-java_ok || install "Java 21 (JDK)" openjdk-21-jdk java-21-openjdk-devel jdk21-openjdk java-21-openjdk-devel openjdk@21 || true
+brew_java() { [ "$PM" = brew ] && [ -d "$(brew --prefix)/opt/openjdk@21/bin" ] && PATH="$(brew --prefix)/opt/openjdk@21/bin:$PATH"; }
+java_ok || { brew_java || true; }
+java_ok || { install "Java 21 (JDK)" openjdk-21-jdk java-21-openjdk-devel jdk21-openjdk java-21-openjdk-devel openjdk@21 && brew_java; } || true
 java_ok || fail "É preciso o Java 21 ou mais novo (JDK) no PATH." "Baixe em https://adoptium.net"
 ok "Java $(java_version)"
 

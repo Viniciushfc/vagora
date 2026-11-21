@@ -28,7 +28,7 @@ async function request(method, path, body) {
     } catch {
         throw new ApiError({
             type_error: "NETWORK",
-            message_error: "O Vagora não está respondendo. Confira se ele está rodando com ./run.sh.",
+            message_error: "O Vagora não está respondendo. Confira se ele está rodando com ./run.sh (ou run.cmd no Windows).",
             status: 0,
         });
     }
@@ -953,7 +953,7 @@ const SCRAPER_HELP = {
     LINKEDIN_PAGE_UNREADABLE: "Olhe a captura abaixo. Se aparece uma tela de login ou de verificação, ligue \"Mostrar o navegador\" em Configurações para resolver na próxima análise. Se a página parece normal, foi lentidão e a próxima tentativa costuma passar.",
     LINKEDIN_CHECKPOINT: "Em Configurações, clique em \"Entrar no LinkedIn\". O navegador abre na tela com login e senha preenchidos e espera até 5 minutos você resolver a verificação.",
     LINKEDIN_LOGIN_FAILED: "Confira o login e a senha da conta do LinkedIn em Configurações. Se mudou a senha, desconecte e conecte de novo.",
-    SCRAPER_FAILED: "Os detalhes técnicos estão no terminal onde o Vagora está rodando. Se o erro se repetir, pare o Vagora e rode ./run.sh --clean.",
+    SCRAPER_FAILED: "Os detalhes técnicos estão no terminal onde o Vagora está rodando. Se o erro se repetir, pare o Vagora e rode ./run.sh --clean (ou run.cmd --clean no Windows).",
 };
 
 const clockFormat = new Intl.DateTimeFormat("pt-BR", { timeStyle: "medium" });

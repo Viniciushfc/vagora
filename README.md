@@ -115,14 +115,16 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 
 | Item | Para quê | Onde conseguir |
 |---|---|---|
-| **Java 21+ (JDK)** | rodar o Vagora | o `run.sh` instala, ou [adoptium.net](https://adoptium.net) |
-| **Python 3.9+** | o leitor de vagas | o `run.sh` instala, ou [python.org](https://www.python.org/downloads) |
-| **Google Chrome** | abrir as vagas | o `run.sh` instala, ou [google.com/chrome](https://www.google.com/chrome) |
+| **Java 21+ (JDK)** | rodar o Vagora | o script de início instala, ou [adoptium.net](https://adoptium.net) |
+| **Python 3.9+** | o leitor de vagas | o script de início instala, ou [python.org](https://www.python.org/downloads) |
+| **Google Chrome** | abrir as vagas | o script de início instala, ou [google.com/chrome](https://www.google.com/chrome) |
 | **Ao menos uma IA** | a análise das vagas | Gemini: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) · Groq: [console.groq.com/keys](https://console.groq.com/keys) · Claude: conta Claude, login pela tela |
 | **Senha de app do email** | ler os alertas (não é a senha normal) | Gmail: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) |
 | *Opcional:* `xvfb` (Linux) | navegador totalmente invisível | o `run.sh` instala |
 
 ### Instalar e iniciar
+
+**Linux e macOS**
 
 ```bash
 git clone https://github.com/Viniciushfc/vagora.git
@@ -130,16 +132,27 @@ cd vagora
 ./run.sh
 ```
 
-O `run.sh` confere Java 21 (JDK), Python 3.9+, Google Chrome e Xvfb. O que faltar ele **oferece instalar**
-(apt, dnf, pacman, zypper ou Homebrew; o Chrome pelo instalador oficial) e pergunta antes de rodar cada comando.
-Depois cria o ambiente do leitor de vagas, compila e **abre o navegador** em <http://localhost:7777>. Se a porta estiver ocupada por outro programa, ele usa
+**Windows**
+
+```bat
+git clone https://github.com/Viniciushfc/vagora.git
+cd vagora
+run.cmd
+```
+
+Ou dê dois cliques no `run.cmd` dentro da pasta do Vagora.
+
+O script confere Java 21 (JDK), Python 3.9+ e Google Chrome (e o Xvfb no Linux). O que faltar ele **oferece instalar**
+e pergunta antes de rodar cada comando: no Linux pelo apt, dnf, pacman ou zypper, no macOS pelo Homebrew e no
+Windows pelo `winget`. Depois cria o ambiente do leitor de vagas, compila e **abre o Vagora em janela própria**
+(modo app do Chrome ou do Edge) em <http://localhost:7777>. Se a porta estiver ocupada por outro programa, ele usa
 a próxima livre (7778, 7779...); se for o próprio Vagora já aberto, ele avisa em vez de abrir outro.
 
-```bash
-./run.sh --no-browser   # inicia sem abrir o navegador
-./run.sh --clean        # apaga o build e compila do zero
-./run.sh --help
-```
+| Linux e macOS | Windows | O que faz |
+|---|---|---|
+| `./run.sh --no-browser` | `run.cmd --no-browser` | inicia sem abrir a janela |
+| `./run.sh --clean` | `run.cmd --clean` | apaga o build e compila do zero |
+| `./run.sh --help` | `run.cmd --help` | mostra as opções |
 
 ### Primeiro acesso
 
@@ -250,7 +263,7 @@ Erros têm sempre o mesmo formato:
 - [x] Currículo adaptado para ATS, em texto e PDF
 - [x] Claude, Gemini e Groq, com fluxo e reservas configuráveis por etapa
 - [x] Intervalo entre acessos configurável
-- [ ] Suporte a Windows no `run.sh` (`run.ps1`)
+- [x] Linux, macOS e Windows, com instalação do que falta
 - [ ] **Novas plataformas de vagas:** Gupy, Catho e outras
 - [ ] Notificação quando surgir uma vaga compatível
 

@@ -17,6 +17,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -42,7 +43,8 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     static final Duration LOGIN_TIMEOUT = Duration.ofMinutes(8);
 
     private static final String EVENT_PREFIX = "@@ ";
-    private static final String PYTHON = "python/.venv/bin/python";
+    private static final String PYTHON = System.getProperty("os.name").startsWith("Windows")
+            ? "python/.venv/Scripts/python.exe" : "python/.venv/bin/python";
     private static final String SCRIPT = "python/scraping_detalis_job.py";
     private static final Path SCREENSHOT = Path.of("python/last-failure.png");
 
@@ -92,7 +94,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         try {
             Process process = processBuilder(command, linkedinAccount, true, false).start();
             process.getOutputStream().close();
-            Thread stderr = Thread.ofVirtual().start(() -> process.errorReader().lines().forEach(this::onScraperLine));
+            Thread stderr = Thread.ofVirtual().start(() -> process.errorReader(StandardCharsets.UTF_8).lines().forEach(this::onScraperLine));
             if (!process.waitFor(LOGIN_TIMEOUT.toMinutes(), TimeUnit.MINUTES)) {
                 kill(process);
             }
@@ -105,7 +107,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         } catch (IOException e) {
             Log.error("Não foi possível abrir o navegador para o login", e);
             fail(new ExternalServiceException(
-                    "Não foi possível abrir o navegador. Rode ./run.sh para reinstalar as dependências.", ErrorCode.SCRAPER_FAILED));
+                    "Não foi possível abrir o navegador. Rode ./run.sh (ou run.cmd no Windows) para reinstalar as dependências.", ErrorCode.SCRAPER_FAILED));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -120,7 +122,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         try {
             process = pb.start();
             Process started = process;
-            Thread stderr = Thread.ofVirtual().start(() -> started.errorReader().lines().forEach(this::onScraperLine));
+            Thread stderr = Thread.ofVirtual().start(() -> started.errorReader(StandardCharsets.UTF_8).lines().forEach(this::onScraperLine));
 
             AtomicBoolean timedOut = new AtomicBoolean();
             CompletableFuture.delayedExecutor(TIMEOUT.toMinutes(), TimeUnit.MINUTES).execute(() -> {
@@ -131,7 +133,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
             });
 
             mapper.writeValue(process.getOutputStream(), jobLinks);
-            try (BufferedReader stdout = process.inputReader()) {
+            try (BufferedReader stdout = process.inputReader(StandardCharsets.UTF_8)) {
                 for (String line = stdout.readLine(); line != null; line = stdout.readLine()) {
                     if (!line.isBlank()) {
                         onJobRead.accept(mapper.readValue(line, JobDetail.class));
@@ -151,7 +153,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         } catch (IOException e) {
             Log.error("Não foi possível executar o scraper", e);
             throw fail(new ExternalServiceException(
-                    "Não foi possível iniciar o leitor de vagas. Rode ./run.sh para reinstalar as dependências.", ErrorCode.SCRAPER_FAILED));
+                    "Não foi possível iniciar o leitor de vagas. Rode ./run.sh (ou run.cmd no Windows) para reinstalar as dependências.", ErrorCode.SCRAPER_FAILED));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ExternalServiceException("Leitura das vagas interrompida.", e);
@@ -226,6 +228,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
             pb.environment().put("LINKEDIN_LOGIN", linkedinAccount.username());
             pb.environment().put("LINKEDIN_PASSWORD", linkedinAccount.password());
         }
+        pb.environment().put("PYTHONUTF8", "1");
         pb.environment().put("VAGORA_HEADLESS", !showBrowser && !useVirtualDisplay ? "1" : "0");
         if (useVirtualDisplay) {
             pb.environment().remove("WAYLAND_DISPLAY");

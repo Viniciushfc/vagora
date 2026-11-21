@@ -20,6 +20,8 @@ public final class ClaudeCli {
     }
 
     private static final File WORKDIR = createWorkdir();
+    private static final List<String> NAMES = System.getProperty("os.name").startsWith("Windows")
+            ? List.of("claude.exe", "claude.cmd") : List.of("claude");
 
     private ClaudeCli() {
     }
@@ -29,7 +31,7 @@ public final class ClaudeCli {
         return Stream.concat(Arrays.stream(path.split(File.pathSeparator)),
                         Stream.of(System.getProperty("user.home") + "/.local/bin"))
                 .filter(dir -> !dir.isBlank())
-                .map(dir -> Path.of(dir, "claude"))
+                .flatMap(dir -> NAMES.stream().map(name -> Path.of(dir, name)))
                 .filter(Files::isExecutable)
                 .findFirst()
                 .map(Path::toString)
