@@ -6,6 +6,7 @@ import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.vo.*;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,6 +34,22 @@ class DomainEntitiesTest {
 
         assertEquals(email, user.findLinkedAccount(ExternalProvider.EMAIL));
         assertNull(user.findLinkedAccount(ExternalProvider.LINKEDIN));
+    }
+
+    @Test
+    void cadaEtapaSegueOFluxoConfiguradoPulandoIaSemChave() {
+        var user = new Profile(null, "F", "gemini", null, new ArrayList<>(), null, null, null, LlmProvider.GEMINI, null, null, null,
+                List.of(LlmProvider.GROQ, LlmProvider.CLAUDE, LlmProvider.GEMINI), null);
+
+        assertEquals(List.of(LlmProvider.GEMINI), user.analysisProviders());
+        assertEquals(List.of(LlmProvider.GEMINI), user.curriculumProviders());
+        assertEquals(List.of(LlmProvider.GROQ, LlmProvider.CLAUDE, LlmProvider.GEMINI), user.analysisOrder());
+        assertEquals(List.of(LlmProvider.GEMINI, LlmProvider.GROQ, LlmProvider.CLAUDE), user.curriculumOrder());
+
+        var semGemini = new Profile(null, "F", "gemini", null, new ArrayList<>(), null, null, "groq", LlmProvider.GEMINI, null, null, null,
+                List.of(LlmProvider.GROQ), List.of(LlmProvider.GEMINI, LlmProvider.GROQ));
+        assertEquals(List.of(LlmProvider.GROQ), semGemini.analysisProviders());
+        assertEquals(List.of(LlmProvider.GEMINI, LlmProvider.GROQ), semGemini.curriculumProviders());
     }
 
     @Test

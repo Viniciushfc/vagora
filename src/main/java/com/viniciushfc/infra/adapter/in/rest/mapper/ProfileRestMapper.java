@@ -3,6 +3,7 @@ package com.viniciushfc.infra.adapter.in.rest.mapper;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.enums.LlmProvider;
+import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountRequest;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountResponse;
@@ -13,6 +14,8 @@ import org.jboss.resteasy.reactive.multipart.FileUpload;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.List;
 
 public class ProfileRestMapper {
 
@@ -27,7 +30,11 @@ public class ProfileRestMapper {
                 form.monitoringEnabled,
                 form.groqApiKey,
                 form.llmProvider,
-                form.autoCurriculum
+                form.autoCurriculum,
+                form.pollMinMinutes,
+                form.pollMaxMinutes,
+                toChain(form.analysisChain),
+                toChain(form.curriculumChain)
         );
     }
 
@@ -45,6 +52,10 @@ public class ProfileRestMapper {
                 profile.isBrowserVisible(),
                 profile.isMonitoringEnabled(),
                 profile.isAutoCurriculum(),
+                profile.pollMin(),
+                profile.pollMax(),
+                profile.analysisOrder(),
+                profile.curriculumOrder(),
                 profile.curriculum() == null ? null : profile.curriculum().name(),
                 profile.curriculum() == null || profile.curriculum().content() == null
                         ? null : profile.curriculum().content().length,
@@ -52,6 +63,21 @@ public class ProfileRestMapper {
                         .map(l -> new LinkedAccountResponse(l.id(), l.username(), l.externalProvider(), l.folder(), l.indeedFolder()))
                         .toList()
         );
+    }
+
+    private static List<LlmProvider> toChain(String chain) {
+        if (chain == null) {
+            return null;
+        }
+        try {
+            return Arrays.stream(chain.split(","))
+                    .map(String::trim)
+                    .filter(name -> !name.isEmpty())
+                    .map(LlmProvider::valueOf)
+                    .toList();
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("IA desconhecida no fluxo: " + chain + ".");
+        }
     }
 
     private static Attachment toAttachment(FileUpload file) {

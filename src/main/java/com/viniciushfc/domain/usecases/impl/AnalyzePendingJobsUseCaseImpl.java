@@ -64,7 +64,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
     @Override
     public void execute() {
         Profile profile = profileRepository.find();
-        if (profile == null || !profile.isMonitoringEnabled() || profile.llmProviders().isEmpty()) {
+        if (profile == null || !profile.isMonitoringEnabled() || profile.analysisProviders().isEmpty()) {
             return;
         }
         ProcessingStatus status = statusRepository.findAnalysis(profile.id());
@@ -121,7 +121,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
     }
 
     private static List<PendingJob> fitToProviders(List<PendingJob> jobs, Profile profile) {
-        int limit = profile.llmProviders().stream()
+        int limit = profile.analysisProviders().stream()
                 .mapToInt(provider -> provider.maxJobChars)
                 .min()
                 .orElse(Integer.MAX_VALUE);
@@ -159,10 +159,10 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
 
     private static Duration waitAfter(Exception e) {
         if (e instanceof RateLimitedException limited
-                && limited.retryAfter().compareTo(PollJobAlertsUseCaseImpl.MIN_INTERVAL) > 0) {
+                && limited.retryAfter().compareTo(Duration.ofMinutes(Profile.DEFAULT_POLL_MIN_MINUTES)) > 0) {
             return limited.retryAfter();
         }
-        return PollJobAlertsUseCaseImpl.nextInterval();
+        return PollJobAlertsUseCaseImpl.nextInterval(Profile.DEFAULT_POLL_MIN_MINUTES, Profile.DEFAULT_POLL_MAX_MINUTES);
     }
 
     private void analyze(Profile profile, AlertSource source, List<PendingJob> jobs) {

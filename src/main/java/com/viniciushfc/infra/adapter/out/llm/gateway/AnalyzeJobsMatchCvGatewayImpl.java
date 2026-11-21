@@ -35,20 +35,20 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
         for (int i = 0; i < jobs.size(); i++) {
             prompt.append(job(jobs.get(i), i + 1)).append('\n');
         }
-        return withFallback(profile, (service, key) -> service.analyze(prompt.toString(), jobs.size(), key));
+        return withFallback(profile, profile.analysisProviders(), (service, key) -> service.analyze(prompt.toString(), jobs.size(), key));
     }
 
     @Override
     public String adaptCurriculum(JobDetail jobDetail, String cvUser, Profile profile) {
         String prompt = curriculum(cvUser) + job(jobDetail, 1);
-        return withFallback(profile, (service, key) -> service.adaptCurriculum(prompt, key));
+        return withFallback(profile, profile.curriculumProviders(), (service, key) -> service.adaptCurriculum(prompt, key));
     }
 
-    private <T> T withFallback(Profile profile, BiFunction<LlmService, String, T> call) {
-        List<LlmProvider> providers = profile.llmProviders();
+    private <T> T withFallback(Profile profile, List<LlmProvider> providers, BiFunction<LlmService, String, T> call) {
         if (providers.isEmpty()) {
             throw new BusinessException(
-                    "Configure uma IA em Configurações: a chave do Gemini ou do Groq, ou conecte o Claude.", ErrorCode.LLM_KEY_MISSING);
+                    "Nenhuma IA disponível para esta etapa. Configure uma chave na aba IA ou marque outra IA em Fluxo da IA.",
+                    ErrorCode.LLM_KEY_MISSING);
         }
         RuntimeException failure = null;
         for (LlmProvider provider : providers) {

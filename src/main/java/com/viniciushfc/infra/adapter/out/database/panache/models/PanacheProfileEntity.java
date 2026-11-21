@@ -5,6 +5,7 @@ import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheAtta
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheLinkedAccountEmbeddable;
 import jakarta.persistence.*;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +20,10 @@ public class PanacheProfileEntity {
     private String groqApiKey;
     private String llmProvider;
     private Boolean autoCurriculum;
+    private Integer pollMinMinutes;
+    private Integer pollMaxMinutes;
+    private String analysisLlmChain;
+    private String curriculumLlmChain;
     private Boolean showBrowser;
     private Boolean monitoringEnabled;
 
@@ -46,7 +51,11 @@ public class PanacheProfileEntity {
                                 Boolean monitoringEnabled,
                                 String groqApiKey,
                                 LlmProvider llmProvider,
-                                Boolean autoCurriculum) {
+                                Boolean autoCurriculum,
+                                Integer pollMinMinutes,
+                                Integer pollMaxMinutes,
+                                List<LlmProvider> analysisChain,
+                                List<LlmProvider> curriculumChain) {
         this.id = id;
         this.name = name;
         this.geminiApiKey = geminiApiKey;
@@ -57,6 +66,10 @@ public class PanacheProfileEntity {
         this.groqApiKey = groqApiKey;
         setLlmProvider(llmProvider);
         this.autoCurriculum = autoCurriculum;
+        this.pollMinMinutes = pollMinMinutes;
+        this.pollMaxMinutes = pollMaxMinutes;
+        setAnalysisChain(analysisChain);
+        setCurriculumChain(curriculumChain);
     }
 
     public PanacheProfileEntity() {
@@ -121,6 +134,46 @@ public class PanacheProfileEntity {
 
     public void setLlmProvider(LlmProvider llmProvider) {
         this.llmProvider = llmProvider == null ? null : llmProvider.name();
+    }
+
+    public Integer getPollMinMinutes() {
+        return pollMinMinutes;
+    }
+
+    public void setPollMinMinutes(Integer pollMinMinutes) {
+        this.pollMinMinutes = pollMinMinutes;
+    }
+
+    public Integer getPollMaxMinutes() {
+        return pollMaxMinutes;
+    }
+
+    public void setPollMaxMinutes(Integer pollMaxMinutes) {
+        this.pollMaxMinutes = pollMaxMinutes;
+    }
+
+    public List<LlmProvider> getAnalysisChain() {
+        return fromColumn(analysisLlmChain);
+    }
+
+    public void setAnalysisChain(List<LlmProvider> chain) {
+        this.analysisLlmChain = toColumn(chain);
+    }
+
+    public List<LlmProvider> getCurriculumChain() {
+        return fromColumn(curriculumLlmChain);
+    }
+
+    public void setCurriculumChain(List<LlmProvider> chain) {
+        this.curriculumLlmChain = toColumn(chain);
+    }
+
+    private static List<LlmProvider> fromColumn(String column) {
+        return column == null ? null : Arrays.stream(column.split(",")).map(LlmProvider::valueOf).toList();
+    }
+
+    private static String toColumn(List<LlmProvider> chain) {
+        return chain == null ? null : String.join(",", chain.stream().map(Enum::name).toList());
     }
 
     public PanacheAttachmentEmbeddable getCurriculum() {

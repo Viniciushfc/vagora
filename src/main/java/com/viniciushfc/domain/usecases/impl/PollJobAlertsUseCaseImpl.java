@@ -25,8 +25,6 @@ import java.util.concurrent.ThreadLocalRandom;
 @UseCase
 public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
 
-    public static final Duration MIN_INTERVAL = Duration.ofMinutes(15);
-    public static final Duration MAX_JITTER = Duration.ofMinutes(10);
     public static final Period MAX_ALERT_AGE = Period.ofDays(7);
 
     private static final System.Logger LOG = System.getLogger(PollJobAlertsUseCaseImpl.class.getName());
@@ -89,8 +87,8 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
             } catch (Exception e) {
                 LOG.log(Level.WARNING, "Falha ao processar alerta '" + subject + "', será tentado de novo depois do intervalo", e);
                 save(profile, source, status(profile, source).failed(e));
-                Duration wait = e instanceof RateLimitedException limited && limited.retryAfter().compareTo(MIN_INTERVAL) > 0
-                        ? limited.retryAfter() : nextInterval();
+                Duration wait = e instanceof RateLimitedException limited && limited.retryAfter().compareTo(Duration.ofMinutes(profile.pollMin())) > 0
+                        ? limited.retryAfter() : nextInterval(profile.pollMin(), profile.pollMax());
                 save(profile, source, status(profile, source).waitUntil(LocalDateTime.now().plus(wait)).checked());
                 return;
             }
@@ -99,12 +97,12 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
     }
 
     private void waitInterval(Profile profile, AlertSource source) {
-        save(profile, source, status(profile, source).waitUntil(LocalDateTime.now().plus(nextInterval())).checked());
+        save(profile, source, status(profile, source).waitUntil(LocalDateTime.now().plus(nextInterval(profile.pollMin(), profile.pollMax()))).checked());
     }
 
-    public static Duration nextInterval() {
-        long jitterSeconds = ThreadLocalRandom.current().nextLong(MAX_JITTER.toSeconds() + 1);
-        return MIN_INTERVAL.plusSeconds(jitterSeconds);
+    public static Duration nextInterval(int minMinutes, int maxMinutes) {
+        long jitterSeconds = ThreadLocalRandom.current().nextLong((maxMinutes - minMinutes) * 60L + 1);
+        return Duration.ofMinutes(minMinutes).plusSeconds(jitterSeconds);
     }
 
     private ProcessingStatus status(Profile profile, AlertSource source) {

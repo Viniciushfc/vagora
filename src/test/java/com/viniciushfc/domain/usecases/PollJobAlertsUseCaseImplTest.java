@@ -15,6 +15,8 @@ import com.viniciushfc.infra.adapter.out.memory.InMemoryProcessingStatusReposito
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -55,7 +57,7 @@ class PollJobAlertsUseCaseImplTest {
     }
 
     private Profile user(LinkedAccount... accounts) {
-        Profile profile = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(List.of(accounts)), null, null, null, null, null);
+        Profile profile = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null);
         lenient().when(profileRepository.find()).thenReturn(profile);
         return profile;
     }
@@ -70,7 +72,7 @@ class PollJobAlertsUseCaseImplTest {
 
     @Test
     void monitoramentoPausadoNaoAbreOEmail() {
-        var pausado = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(List.of(emailAccount)), null, false, null, null, null);
+        var pausado = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(List.of(emailAccount)), null, false, null, null, null, null, null, null, null);
         when(profileRepository.find()).thenReturn(pausado);
 
         useCase.execute(LINKEDIN);
@@ -95,8 +97,8 @@ class PollJobAlertsUseCaseImplTest {
         var status = statusRepository.find(user.id(), LINKEDIN);
         assertEquals(2, status.queuedAlerts());
         assertNull(status.currentAlert());
-        assertFalse(status.nextAlertAt().isBefore(antes.plus(PollJobAlertsUseCaseImpl.MIN_INTERVAL)));
-        assertFalse(status.nextAlertAt().isAfter(LocalDateTime.now().plus(PollJobAlertsUseCaseImpl.MIN_INTERVAL).plus(PollJobAlertsUseCaseImpl.MAX_JITTER)));
+        assertFalse(status.nextAlertAt().isBefore(antes.plusMinutes(Profile.DEFAULT_POLL_MIN_MINUTES)));
+        assertFalse(status.nextAlertAt().isAfter(LocalDateTime.now().plusMinutes(Profile.DEFAULT_POLL_MAX_MINUTES)));
     }
 
     @Test
@@ -231,12 +233,13 @@ class PollJobAlertsUseCaseImplTest {
         assertFalse(statusRepository.find(user.id(), LINKEDIN).isWaiting(LocalDateTime.now()), "o intervalo do Indeed não trava o LinkedIn");
     }
 
-    @Test
-    void intervaloSorteadoFicaEntre15E25Minutos() {
+    @ParameterizedTest
+    @CsvSource({"15, 25", "10, 15", "5, 5"})
+    void intervaloSorteadoFicaDentroDoEscolhido(int min, int max) {
         for (int i = 0; i < 200; i++) {
-            Duration interval = PollJobAlertsUseCaseImpl.nextInterval();
-            assertFalse(interval.compareTo(Duration.ofMinutes(15)) < 0, interval.toString());
-            assertFalse(interval.compareTo(Duration.ofMinutes(25)) > 0, interval.toString());
+            Duration interval = PollJobAlertsUseCaseImpl.nextInterval(min, max);
+            assertFalse(interval.compareTo(Duration.ofMinutes(min)) < 0, interval.toString());
+            assertFalse(interval.compareTo(Duration.ofMinutes(max)) > 0, interval.toString());
         }
     }
 }

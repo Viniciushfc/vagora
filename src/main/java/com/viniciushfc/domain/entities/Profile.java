@@ -19,7 +19,14 @@ public record Profile(UUID id,
                       Boolean monitoringEnabled,
                       String groqApiKey,
                       LlmProvider llmProvider,
-                      Boolean autoCurriculum) {
+                      Boolean autoCurriculum,
+                      Integer pollMinMinutes,
+                      Integer pollMaxMinutes,
+                      List<LlmProvider> analysisChain,
+                      List<LlmProvider> curriculumChain) {
+
+    public static final int DEFAULT_POLL_MIN_MINUTES = 15;
+    public static final int DEFAULT_POLL_MAX_MINUTES = 25;
 
     public static Profile create(String name,
                                  String geminiApiKey,
@@ -27,7 +34,7 @@ public record Profile(UUID id,
                                  LlmProvider llmProvider,
                                  Attachment curriculum) {
         return new Profile(UUID.randomUUID(), name, geminiApiKey, curriculum, new ArrayList<>(),
-                false, true, groqApiKey, llmProvider, false);
+                false, true, groqApiKey, llmProvider, false, null, null, null, null);
     }
 
     public boolean isBrowserVisible() {
@@ -40,6 +47,14 @@ public record Profile(UUID id,
 
     public boolean isAutoCurriculum() {
         return Boolean.TRUE.equals(autoCurriculum);
+    }
+
+    public int pollMin() {
+        return pollMinMinutes == null ? DEFAULT_POLL_MIN_MINUTES : pollMinMinutes;
+    }
+
+    public int pollMax() {
+        return pollMaxMinutes == null ? DEFAULT_POLL_MAX_MINUTES : pollMaxMinutes;
     }
 
     public LlmProvider primaryLlm() {
@@ -55,11 +70,34 @@ public record Profile(UUID id,
     }
 
     public List<LlmProvider> llmProviders() {
+        return available(defaultOrder());
+    }
+
+    public List<LlmProvider> analysisOrder() {
+        return analysisChain == null ? defaultOrder() : analysisChain;
+    }
+
+    public List<LlmProvider> curriculumOrder() {
+        return curriculumChain == null ? defaultOrder() : curriculumChain;
+    }
+
+    public List<LlmProvider> analysisProviders() {
+        return available(analysisOrder());
+    }
+
+    public List<LlmProvider> curriculumProviders() {
+        return available(curriculumOrder());
+    }
+
+    private List<LlmProvider> defaultOrder() {
         LlmProvider primary = primaryLlm();
         Stream<LlmProvider> others = Arrays.stream(LlmProvider.values())
                 .filter(provider -> provider != primary);
+        return Stream.concat(Stream.of(primary), others).toList();
+    }
 
-        return Stream.concat(Stream.of(primary), others)
+    private List<LlmProvider> available(List<LlmProvider> order) {
+        return order.stream()
                 .filter(this::hasApiKey)
                 .toList();
     }

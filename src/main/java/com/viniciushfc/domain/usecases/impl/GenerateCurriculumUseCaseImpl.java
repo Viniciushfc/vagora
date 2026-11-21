@@ -38,7 +38,7 @@ public class GenerateCurriculumUseCaseImpl implements GenerateCurriculumUseCase 
         if (jobMatch.jobDescription() == null) {
             throw new BusinessException("Esta vaga foi analisada antes de o Vagora guardar a descrição, então não dá para gerar o currículo.");
         }
-        if (profile.llmProviders().isEmpty()) {
+        if (profile.curriculumProviders().isEmpty()) {
             throw new BusinessException(
                     "Configure uma IA em Configurações: a chave do Gemini ou do Groq, ou conecte o Claude.", ErrorCode.LLM_KEY_MISSING);
         }

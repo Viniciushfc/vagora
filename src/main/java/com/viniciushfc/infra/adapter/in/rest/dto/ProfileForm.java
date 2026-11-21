@@ -29,4 +29,16 @@ public class ProfileForm {
 
     @RestForm
     public Boolean autoCurriculum;
+
+    @RestForm
+    public Integer pollMinMinutes;
+
+    @RestForm
+    public Integer pollMaxMinutes;
+
+    @RestForm
+    public String analysisChain;
+
+    @RestForm
+    public String curriculumChain;
 }
