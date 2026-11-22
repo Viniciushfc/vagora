@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
@@ -30,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class JobDetailsGatewayImpl implements JobDetailsGateway {
@@ -43,19 +45,26 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     static final Duration LOGIN_TIMEOUT = Duration.ofMinutes(8);
 
     private static final String EVENT_PREFIX = "@@ ";
-    private static final String PYTHON = System.getProperty("os.name").startsWith("Windows")
-            ? "python/.venv/Scripts/python.exe" : "python/.venv/bin/python";
-    private static final String SCRIPT = "python/scraping_detalis_job.py";
-    private static final Path SCREENSHOT = Path.of("python/last-failure.png");
+    private static final List<String> PYTHON_SCRIPT = List.of(System.getProperty("os.name").startsWith("Windows")
+            ? "python/.venv/Scripts/python.exe" : "python/.venv/bin/python", "python/scraping_detalis_job.py");
 
     private final ObjectMapper mapper;
     private final ScraperActivityRepository activity;
+    private final List<String> scraper;
+    private final String profileDir;
+    private final Path screenshot;
     private final Semaphore browserInUse = new Semaphore(1);
     private volatile AlertSource reading = AlertSource.LINKEDIN;
 
-    public JobDetailsGatewayImpl(ObjectMapper mapper, ScraperActivityRepository activity) {
+    public JobDetailsGatewayImpl(ObjectMapper mapper, ScraperActivityRepository activity,
+                                 @ConfigProperty(name = "vagora.scraper.command") Optional<String> command,
+                                 @ConfigProperty(name = "vagora.scraper.profile") String profileDir,
+                                 @ConfigProperty(name = "vagora.scraper.screenshot") String screenshot) {
         this.mapper = mapper;
         this.activity = activity;
+        this.scraper = command.map(List::of).orElse(PYTHON_SCRIPT);
+        this.profileDir = profileDir;
+        this.screenshot = Path.of(screenshot);
     }
 
     @Override
@@ -173,7 +182,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     @Override
     public byte[] lastFailureScreenshot() {
         try {
-            return Files.exists(SCREENSHOT) ? Files.readAllBytes(SCREENSHOT) : null;
+            return Files.exists(screenshot) ? Files.readAllBytes(screenshot) : null;
         } catch (IOException e) {
             return null;
         }
@@ -217,11 +226,11 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
     }
 
     private ExternalServiceException fail(ExternalServiceException e) {
-        update(a -> a.failed(e.getMessage(), Files.exists(SCREENSHOT)));
+        update(a -> a.failed(e.getMessage(), Files.exists(screenshot)));
         return e;
     }
 
-    private static ProcessBuilder processBuilder(List<String> command, LinkedAccount linkedinAccount,
+    private ProcessBuilder processBuilder(List<String> command, LinkedAccount linkedinAccount,
                                                  boolean showBrowser, boolean useVirtualDisplay) {
         ProcessBuilder pb = new ProcessBuilder(command);
         if (linkedinAccount != null) {
@@ -229,6 +238,8 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
             pb.environment().put("LINKEDIN_PASSWORD", linkedinAccount.password());
         }
         pb.environment().put("PYTHONUTF8", "1");
+        pb.environment().put("VAGORA_PROFILE", profileDir);
+        pb.environment().put("VAGORA_SCREENSHOT", screenshot.toString());
         pb.environment().put("VAGORA_HEADLESS", !showBrowser && !useVirtualDisplay ? "1" : "0");
         if (useVirtualDisplay) {
             pb.environment().remove("WAYLAND_DISPLAY");
@@ -237,14 +248,13 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         return pb;
     }
 
-    static List<String> command(boolean useVirtualDisplay) {
+    private List<String> command(boolean useVirtualDisplay) {
         List<String> command = new ArrayList<>();
         if (useVirtualDisplay) {
             command.add("xvfb-run");
             command.add("-a");
         }
-        command.add(PYTHON);
-        command.add(SCRIPT);
+        command.addAll(scraper);
         return command;
     }
 

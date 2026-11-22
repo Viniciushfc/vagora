@@ -28,8 +28,8 @@ from patchright.sync_api import TimeoutError as PlaywrightTimeout, sync_playwrig
 
 from human import Human, pause
 
-PROFILE = Path(__file__).parent / ".profile"
-SCREENSHOT = Path(__file__).parent / "last-failure.png"
+PROFILE = Path(os.environ.get("VAGORA_PROFILE") or Path(__file__).parent / ".profile")
+SCREENSHOT = Path(os.environ.get("VAGORA_SCREENSHOT") or Path(__file__).parent / "last-failure.png")
 SECTION = 'xpath=//h2[{}]/ancestor::div[.//*[@data-testid="expandable-text-box"]][1]'
 
 

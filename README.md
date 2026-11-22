@@ -111,7 +111,38 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 
 ## Começando
 
-### O que você precisa
+### Baixar e abrir (o jeito mais fácil)
+
+Baixe o ZIP do seu sistema na página de [**versões do Vagora**](https://github.com/Viniciushfc/vagora/releases/latest).
+Ele já traz o Java e o leitor de vagas: não precisa instalar nada além do **Google Chrome**.
+
+| Sistema | Arquivo | Como abrir |
+|---|---|---|
+| **Windows** | `Vagora-windows-x64.zip` | extraia e dê dois cliques em `Vagora.exe` |
+| **macOS** (Apple Silicon) | `Vagora-macos-arm64.zip` | extraia, clique com o botão direito em `Vagora.app` e escolha **Abrir** |
+| **Linux** | `Vagora-linux-x64.zip` | extraia e abra `bin/Vagora` |
+
+O Vagora abre na própria janela, e **fechar a janela encerra o Vagora**. Tudo o que ele guarda fica na pasta
+`dados`, ao lado do app: perfil, vagas, notas e a sessão do LinkedIn. Para fazer backup ou trocar de computador,
+copie a pasta inteira do Vagora. Para remover, apague a pasta.
+
+> Extraia num lugar onde dá para gravar, como **Documentos** ou a **Área de Trabalho**. Dentro de
+> `Arquivos de Programas` o Windows não deixa o Vagora criar a pasta `dados`.
+
+**Primeira vez abrindo:** o app ainda não tem assinatura digital paga, então o sistema avisa.
+
+| Sistema | O que aparece | O que fazer |
+|---|---|---|
+| Windows | "O Windows protegeu o computador" | **Mais informações › Executar assim mesmo** |
+| macOS | "não pode ser aberto porque o desenvolvedor não pode ser verificado" | botão direito em `Vagora.app` › **Abrir**. Se disser que está danificado, rode `xattr -cr Vagora.app` no Terminal, dentro da pasta |
+
+> A pasta `dados` guarda a senha de app do email e o login do LinkedIn. Não compartilhe a pasta do Vagora.
+
+### Rodar pelo código-fonte
+
+Para quem quer acompanhar a versão mais nova ou mexer no código.
+
+#### O que você precisa
 
 | Item | Para quê | Onde conseguir |
 |---|---|---|
@@ -122,7 +153,7 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 | **Senha de app do email** | ler os alertas (não é a senha normal) | Gmail: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) |
 | *Opcional:* `xvfb` (Linux) | navegador totalmente invisível | o `run.sh` instala |
 
-### Instalar e iniciar
+#### Instalar e iniciar
 
 **1. Baixe o Vagora.** Com o Git:
 
@@ -154,7 +185,7 @@ seguintes ele só refaz o que mudou e sobe em segundos.
 
 **4. O Vagora abre na própria janela.** Veja abaixo.
 
-### A janela do Vagora
+#### A janela do Vagora
 
 O Vagora abre no **modo app** do Chrome ou do Edge: uma janela só dele, sem abas nem barra de endereço, com
 ícone próprio na barra de tarefas. Parece um programa instalado, mas é o Vagora rodando na sua máquina em
@@ -171,7 +202,7 @@ O Vagora abre no **modo app** do Chrome ou do Edge: uma janela só dele, sem aba
 A janela do Vagora e o navegador que lê as vagas são coisas diferentes: o leitor usa um perfil próprio do Chrome
 (em `python/.profile`), separado do seu, e por padrão roda escondido.
 
-### Opções do script
+#### Opções do script
 
 | Linux e macOS | Windows | O que faz |
 |---|---|---|
@@ -280,7 +311,11 @@ Erros têm sempre o mesmo formato:
 ./mvnw quarkus:dev   # modo de desenvolvimento com recarga automática
 ./mvnw test          # testes (usam H2 em memória; não tocam no seu vagora.db)
 ./run.sh --clean     # build do zero e o app como o usuário roda
+./scripts/portable.sh   # gera o ZIP para download do sistema atual em target/
 ```
+
+**Publicar uma versão:** crie e envie uma tag (`git tag v1.0.0 && git push origin v1.0.0`). O GitHub Actions gera os ZIPs
+de Windows, macOS e Linux, cada um no próprio sistema, e anexa todos na página da versão.
 
 ## Roadmap
 
@@ -290,6 +325,7 @@ Erros têm sempre o mesmo formato:
 - [x] Claude, Gemini e Groq, com fluxo e reservas configuráveis por etapa
 - [x] Intervalo entre acessos configurável
 - [x] Linux, macOS e Windows, com instalação do que falta
+- [x] ZIP para download com o Java embutido e os dados junto do app
 - [ ] **Novas plataformas de vagas:** Gupy, Catho e outras
 - [ ] Notificação quando surgir uma vaga compatível
 

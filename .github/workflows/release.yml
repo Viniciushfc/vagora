@@ -1,0 +1,48 @@
+name: Versão para download
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  zip:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Gerar o ZIP
+        shell: bash
+        env:
+          PYTHON: python
+        run: ./scripts/portable.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vagora-${{ matrix.os }}
+          path: target/Vagora-*.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: zip
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: Vagora-*.zip
+          generate_release_notes: true
