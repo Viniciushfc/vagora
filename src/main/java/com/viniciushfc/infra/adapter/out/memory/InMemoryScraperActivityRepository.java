@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.UnaryOperator;
 
 @ApplicationScoped
 public class InMemoryScraperActivityRepository implements ScraperActivityRepository {
@@ -21,5 +22,10 @@ public class InMemoryScraperActivityRepository implements ScraperActivityReposit
     @Override
     public void save(AlertSource source, ScraperActivity activity) {
         activities.put(source, activity);
+    }
+
+    @Override
+    public void update(AlertSource source, UnaryOperator<ScraperActivity> change) {
+        activities.compute(source, (key, current) -> change.apply(current == null ? ScraperActivity.idle() : current));
     }
 }

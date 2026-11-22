@@ -71,7 +71,7 @@ class AnalyzePendingJobsUseCaseImplTest {
 
     private Profile profile(String key, Boolean monitoring) {
         return new Profile(UUID.randomUUID(), "F", key, new Attachment("cv.pdf", "application/pdf", new byte[]{1}),
-                new ArrayList<>(), null, monitoring, null, null, true, null, null, null, null);
+                new ArrayList<>(), null, monitoring, null, null, true, null, null, null, null, null);
     }
 
     private PendingJob pending(String id, AlertSource source, int attempts) {
@@ -128,14 +128,31 @@ class AnalyzePendingJobsUseCaseImplTest {
     }
 
     @Test
-    void esperaOLeitorDaFonteTerminar() {
-        queue(pending("1", LINKEDIN, 0));
-        activityRepository.save(LINKEDIN, activityRepository.get(LINKEDIN).started(5));
+    void comOLeitorAbertoEsperaJuntarUmLoteMinimo() {
+        queue(pending("1", LINKEDIN, 0), pending("2", LINKEDIN, 0));
+        activityRepository.save(LINKEDIN, activityRepository.get(LINKEDIN).started(9));
 
         useCase.execute();
 
         verifyNoInteractions(analyzeJobsMatchCvGateway);
-        assertTrue(activityRepository.get(LINKEDIN).running());
+    }
+
+    @Test
+    void comLoteMinimoAnalisaSemEsperarOLeitorEMantemOProgressoDele() {
+        var lidas = List.of(pending("1", LINKEDIN, 0), pending("2", LINKEDIN, 0), pending("3", LINKEDIN, 0),
+                pending("4", LINKEDIN, 0), pending("5", LINKEDIN, 0));
+        queue(lidas.toArray(PendingJob[]::new));
+        activityRepository.save(LINKEDIN, activityRepository.get(LINKEDIN).started(9).reading(6, "Abrindo a vaga 6 de 9"));
+        when(analyzeJobsMatchCvGateway.analyze(any(), eq("texto cv"), eq(user)))
+                .thenAnswer(call -> ((List<?>) call.getArgument(0)).stream().map(job -> result(false, 30)).toList());
+
+        useCase.execute();
+
+        var activity = activityRepository.get(LINKEDIN);
+        assertTrue(activity.running());
+        assertEquals(6, activity.jobIndex());
+        assertFalse(activity.analyzing());
+        assertTrue(activity.events().getFirst().message().startsWith("Análise concluída: 0 compatíveis de "));
     }
 
     @Test
@@ -154,7 +171,7 @@ class AnalyzePendingJobsUseCaseImplTest {
     @Test
     void comCurriculoAutomaticoDesligadoSoAnalisa() {
         user = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(),
-                null, null, null, null, false, null, null, null, null);
+                null, null, null, null, false, null, null, null, null, null);
         when(profileRepository.find()).thenReturn(user);
         var compativel = pending("1", LINKEDIN, 0);
         queue(compativel);
@@ -171,7 +188,7 @@ class AnalyzePendingJobsUseCaseImplTest {
     @Test
     void comChaveDoGroqOLoteCabeNoLimiteDeTexto() {
         user = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(),
-                null, null, "gsk", LlmProvider.GROQ, null, null, null, null, null);
+                null, null, "gsk", LlmProvider.GROQ, null, null, null, null, null, null);
         when(profileRepository.find()).thenReturn(user);
         String metadeDoLimite = "x".repeat(LlmProvider.GROQ.maxJobChars / 2);
         var primeira = pendingWithDescription("1", metadeDoLimite);

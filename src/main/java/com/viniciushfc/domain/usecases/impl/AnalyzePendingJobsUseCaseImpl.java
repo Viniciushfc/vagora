@@ -34,6 +34,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
 
     public static final int BATCH_SIZE = 10;
     public static final int MAX_ATTEMPTS = 3;
+    public static final int MIN_BATCH_WHILE_READING = 5;
 
     private static final System.Logger LOG = System.getLogger(AnalyzePendingJobsUseCaseImpl.class.getName());
 
@@ -77,7 +78,9 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
             return;
         }
         PendingJob first = batch.getFirst();
-        if (scraperActivityRepository.get(first.source()).running()) {
+
+        if (first.attempts() == 0 && sameSource(batch, first.source()).size() < MIN_BATCH_WHILE_READING
+                && scraperActivityRepository.get(first.source()).running()) {
             return;
         }
 
@@ -180,7 +183,7 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
             pendingJobRepository.delete(ids(jobs));
         } catch (RuntimeException e) {
             String message = e instanceof DomainException ? e.getMessage() : "Erro inesperado na análise.";
-            activity(source, a -> a.failed(message, a.screenshot()));
+            activity(source, a -> a.analysisFailed(message));
             throw e;
         }
 
@@ -216,6 +219,6 @@ public class AnalyzePendingJobsUseCaseImpl implements AnalyzePendingJobsUseCase 
     }
 
     private void activity(AlertSource source, UnaryOperator<ScraperActivity> change) {
-        scraperActivityRepository.save(source, change.apply(scraperActivityRepository.get(source)));
+        scraperActivityRepository.update(source, change);
     }
 }
