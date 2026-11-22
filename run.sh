@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Prepara e inicia o Vagora. Pode rodar quantas vezes quiser: só refaz o que mudou.
-#
-#   ./run.sh               inicia e abre o Vagora em janela própria
-#   ./run.sh --no-browser  inicia sem abrir o navegador
-#   ./run.sh --clean       apaga o build e compila tudo do zero antes de iniciar
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -56,7 +51,6 @@ install() {
 
 echo "Verificando o que o Vagora precisa..."
 
-# --- Java 21+ ---
 java_version() { java -version 2>&1 | sed -n 's/.*version "\([0-9]*\).*/\1/p' | head -1; }
 java_ok() { command -v javac >/dev/null && [ "$(java_version)" -ge 21 ] 2>/dev/null; }
 brew_java() { [ "$PM" = brew ] && [ -d "$(brew --prefix)/opt/openjdk@21/bin" ] && PATH="$(brew --prefix)/opt/openjdk@21/bin:$PATH"; }
@@ -65,13 +59,11 @@ java_ok || { install "Java 21 (JDK)" openjdk-21-jdk java-21-openjdk-devel jdk21-
 java_ok || fail "É preciso o Java 21 ou mais novo (JDK) no PATH." "Baixe em https://adoptium.net"
 ok "Java $(java_version)"
 
-# --- Python 3.9+ ---
 python_ok() { command -v python3 >/dev/null && python3 -c 'import sys, venv, ensurepip; sys.exit(sys.version_info < (3, 9))' 2>/dev/null; }
 python_ok || install "Python 3.9+ com venv" "python3 python3-venv" python3 python python3 python || true
 python_ok || fail "É preciso o Python 3.9 ou mais novo, com o módulo venv." "Instale em https://www.python.org/downloads"
 ok "$(python3 --version)"
 
-# --- Ambiente Python do scraper: criado na primeira vez, refeito se as dependências mudarem ---
 requirements_hash=$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$REQUIREMENTS")
 installed_hash=$(cat "$VENV/.requirements.sha256" 2>/dev/null || true)
 
@@ -89,7 +81,6 @@ if [ "$requirements_hash" != "$installed_hash" ]; then
 fi
 ok "Ambiente Python do scraper"
 
-# --- Google Chrome (o scraper abre as vagas nele) ---
 chrome_ok() {
     command -v google-chrome >/dev/null || command -v google-chrome-stable >/dev/null || [ -d "/Applications/Google Chrome.app" ]
 }
@@ -105,7 +96,6 @@ if [ "$(uname -s)" = Linux ]; then
 fi
 if command -v claude >/dev/null; then ok "Claude CLI"; else warn "Claude CLI não encontrado (opcional, só para usar o Claude)." "Instale em https://claude.com/claude-code"; fi
 
-# --- Porta livre ---
 while (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; do
     python3 -c 'import sys, urllib.request; sys.exit(b"<title>Vagora</title>" not in urllib.request.urlopen(sys.argv[1], timeout=2).read())' \
         "http://localhost:$PORT/" 2>/dev/null && fail "O Vagora já está aberto em http://localhost:$PORT" "Use essa aba ou feche o outro antes de abrir de novo."
@@ -113,9 +103,6 @@ while (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; do
 done
 ok "Porta $PORT"
 
-# --- Caches ---
-# Python: bytecode compilado, barato de recriar. A sessão do LinkedIn (python/.profile) é mantida
-# de propósito: apagá-la faz o LinkedIn pedir login e verificação de novo.
 find python -name __pycache__ -type d -prune -not -path "$VENV/*" -exec rm -rf {} +
 if [ "$CLEAN" = 1 ]; then
     echo "  Apagando o build anterior..."
@@ -123,14 +110,12 @@ if [ "$CLEAN" = 1 ]; then
 fi
 ok "Caches limpos"
 
-# --- Build: só quando o código mudou desde o último ---
 if [ ! -f "$JAR" ] || [ -n "$(find src pom.xml -newer "$JAR" -print -quit)" ]; then
     echo "  Compilando o Vagora (a primeira vez demora alguns minutos)..."
     ./mvnw -q package -DskipTests || fail "A compilação falhou. Veja as mensagens acima."
 fi
 ok "Vagora compilado"
 
-# Abre o Vagora em janela própria (modo app do Chrome ou Edge) quando a aplicação responder. Use --no-browser para não abrir.
 open_browser() {
     local url="http://localhost:$PORT"
     for _ in $(seq 1 60); do

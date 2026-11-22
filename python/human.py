@@ -1,17 +1,12 @@
-"""Mouse, teclado e rolagem com aparência humana."""
-
 import math
 import random
 import time
 
-
 def pause(a, b):
     time.sleep(random.uniform(a, b))
 
-
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
-
 
 class Human:
     def __init__(self, page):
@@ -24,7 +19,6 @@ class Human:
         return self.page.evaluate("() => [innerWidth, innerHeight]")
 
     def move_to(self, x, y):
-        """Curva de Bézier, acelera e desacelera, tremor que some perto do alvo."""
         w, h = self.viewport()
         x, y = clamp(x, 2, w - 2), clamp(y, 2, h - 2)
         dx, dy = x - self.x, y - self.y
@@ -33,16 +27,16 @@ class Human:
             return
 
         bend = dist * random.uniform(-0.3, 0.3)
-        nx, ny = -dy / dist * bend, dx / dist * bend   # desvio para um lado da reta
+        nx, ny = -dy / dist * bend, dx / dist * bend
         p0, p3 = (self.x, self.y), (x, y)
         p1 = (self.x + dx * 0.3 + nx, self.y + dy * 0.3 + ny)
         p2 = (self.x + dx * 0.7 + nx * 0.5, self.y + dy * 0.7 + ny * 0.5)
 
-        duration = 0.12 + 0.11 * math.log2(1 + dist / 15)   # lei de Fitts
+        duration = 0.12 + 0.11 * math.log2(1 + dist / 15)
         steps = max(8, int(duration * 60))
         for i in range(1, steps + 1):
             s = i / steps
-            t = 10 * s**3 - 15 * s**4 + 6 * s**5             # minimum-jerk
+            t = 10 * s**3 - 15 * s**4 + 6 * s**5
             u = 1 - t
             px = u**3 * p0[0] + 3 * u**2 * t * p1[0] + 3 * u * t**2 * p2[0] + t**3 * p3[0]
             py = u**3 * p0[1] + 3 * u**2 * t * p1[1] + 3 * u * t**2 * p2[1] + t**3 * p3[1]
@@ -87,7 +81,6 @@ class Human:
             self.scroll(clamp(diff, -400, 400))
 
     def read(self, text):
-        """Tempo proporcional ao texto, passando o olho, com rolagem e mouse."""
         end = time.monotonic() + clamp(len((text or "").split()) / 20, 2, 30)
         while time.monotonic() < end:
             random.choice((lambda: self.scroll(random.randint(100, 300)), self.idle))()

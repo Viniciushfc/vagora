@@ -35,7 +35,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class JobDetailsGatewayImpl implements JobDetailsGateway {
-
     static final int EXIT_CHECKPOINT = 3;
     static final int EXIT_LOGIN_FAILED = 4;
     static final int EXIT_PAGE_UNREADABLE = 5;
@@ -46,7 +45,7 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
 
     private static final String EVENT_PREFIX = "@@ ";
     private static final List<String> PYTHON_SCRIPT = List.of(System.getProperty("os.name").startsWith("Windows")
-            ? "python/.venv/Scripts/python.exe" : "python/.venv/bin/python", "python/scraping_detalis_job.py");
+            ? "python/.venv/Scripts/python.exe" : "python/.venv/bin/python", "python/hub.py");
 
     private final ObjectMapper mapper;
     private final ScraperActivityRepository activity;
@@ -178,7 +177,6 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
         process.destroyForcibly();
     }
 
-    // shortcut: uma captura só para as duas fontes, a falha mais recente sobrescreve a outra; separar por fonte se confundir
     @Override
     public byte[] lastFailureScreenshot() {
         try {
@@ -217,12 +215,12 @@ public class JobDetailsGatewayImpl implements JobDetailsGateway {
                     + "resolva o captcha, o código ou a aprovação no app do celular se aparecer (até 5 minutos)", true);
             case "session_saved" -> a -> a.finished("Sessão do LinkedIn salva: as próximas análises abrem as vagas direto");
             case "done" -> a -> a.finished("Leitura concluída: " + event.path("count").asInt() + " vagas lidas");
-            default -> a -> a; // "fail": a explicação vem do código de saída
+            default -> a -> a;
         };
     }
 
     private void update(UnaryOperator<ScraperActivity> change) {
-        activity.save(reading, change.apply(activity.get(reading)));
+        activity.update(reading, change);
     }
 
     private ExternalServiceException fail(ExternalServiceException e) {

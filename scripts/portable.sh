@@ -33,7 +33,7 @@ windowed=()
 [ "$os" = windows ] && windowed=(--noconsole)
 "$py" -m PyInstaller --noconfirm --onedir --name leitor --collect-all patchright ${windowed[@]+"${windowed[@]}"} \
     --distpath target/leitor-dist --workpath target/leitor-build --specpath target/leitor-build \
-    python/scraping_detalis_job.py
+    python/hub.py
 
 cp -r target/quarkus-app target/portable-input
 cp -r target/leitor-dist/leitor target/portable-input/leitor
