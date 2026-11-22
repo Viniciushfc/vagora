@@ -124,32 +124,58 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 
 ### Instalar e iniciar
 
-**Linux e macOS**
+**1. Baixe o Vagora.** Com o Git:
 
 ```bash
 git clone https://github.com/Viniciushfc/vagora.git
 cd vagora
-./run.sh
 ```
 
-**Windows**
+Sem o Git, baixe o ZIP em **Code › Download ZIP** no GitHub e extraia numa pasta.
 
-```bat
-git clone https://github.com/Viniciushfc/vagora.git
-cd vagora
-run.cmd
-```
+**2. Inicie.**
 
-Ou dê dois cliques no `run.cmd` dentro da pasta do Vagora.
+| Sistema | Como iniciar |
+|---|---|
+| **Linux** e **macOS** | `./run.sh` no terminal, dentro da pasta |
+| **Windows** | dois cliques no `run.cmd`, ou `run.cmd` no terminal, dentro da pasta |
 
-O script confere Java 21 (JDK), Python 3.9+ e Google Chrome (e o Xvfb no Linux). O que faltar ele **oferece instalar**
-e pergunta antes de rodar cada comando: no Linux pelo apt, dnf, pacman ou zypper, no macOS pelo Homebrew e no
-Windows pelo `winget`. Depois cria o ambiente do leitor de vagas, compila e **abre o Vagora em janela própria**
-(modo app do Chrome ou do Edge) em <http://localhost:7777>. Se a porta estiver ocupada por outro programa, ele usa
-a próxima livre (7778, 7779...); se for o próprio Vagora já aberto, ele avisa em vez de abrir outro.
+**3. Deixe o script preparar tudo.** Na primeira vez ele confere Java 21 (JDK), Python 3.9+ e Google Chrome
+(e o Xvfb no Linux). O que faltar ele **oferece instalar** e pergunta antes de rodar cada comando:
+
+| Sistema | Instala com |
+|---|---|
+| Linux | apt, dnf, pacman ou zypper (pede a senha do `sudo`) |
+| macOS | Homebrew |
+| Windows | `winget`, que já vem no Windows 10 e 11 |
+
+Depois ele cria o ambiente do leitor de vagas e compila o Vagora. A primeira vez demora alguns minutos; nas
+seguintes ele só refaz o que mudou e sobe em segundos.
+
+**4. O Vagora abre na própria janela.** Veja abaixo.
+
+### A janela do Vagora
+
+O Vagora abre no **modo app** do Chrome ou do Edge: uma janela só dele, sem abas nem barra de endereço, com
+ícone próprio na barra de tarefas. Parece um programa instalado, mas é o Vagora rodando na sua máquina em
+<http://localhost:7777>. Nada sai do seu computador, a não ser os acessos ao email, às vagas e às IAs.
+
+- **Fechou a janela?** O Vagora continua rodando no terminal. Abra <http://localhost:7777> em qualquer navegador,
+  ou rode o script de novo: ele percebe que o Vagora já está aberto e mostra o endereço.
+- **Para parar o Vagora** de verdade, use **Ctrl+C** no terminal onde ele está rodando.
+- **Fixar na barra de tarefas:** com a janela aberta, clique com o botão direito no ícone e escolha *Fixar*.
+- **Sem Chrome nem Edge** para a janela, ele abre no navegador padrão.
+- **Porta ocupada:** se outro programa estiver na 7777, o Vagora usa a próxima livre (7778, 7779...) e o
+  endereço certo aparece no terminal.
+
+A janela do Vagora e o navegador que lê as vagas são coisas diferentes: o leitor usa um perfil próprio do Chrome
+(em `python/.profile`), separado do seu, e por padrão roda escondido.
+
+### Opções do script
 
 | Linux e macOS | Windows | O que faz |
 |---|---|---|
+| `./run.sh` | `run.cmd` | prepara, compila se preciso e abre a janela |
 | `./run.sh --no-browser` | `run.cmd --no-browser` | inicia sem abrir a janela |
 | `./run.sh --clean` | `run.cmd --clean` | apaga o build e compila do zero |
 | `./run.sh --help` | `run.cmd --help` | mostra as opções |
