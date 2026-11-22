@@ -19,7 +19,8 @@ public record JobMatch(UUID id,
                        List<String> motivos,
                        String curriculoAts,
                        LocalDateTime createdAt,
-                       String jobDescription) {
+                       String jobDescription,
+                       LocalDateTime appliedAt) {
 
     public static JobMatch create(UUID profileId, UUID emailReceivedId, JobDetail jobDetail, CvMatchResult result) {
         return new JobMatch(
@@ -34,13 +35,19 @@ public record JobMatch(UUID id,
                 result.motivos(),
                 result.curriculoAts(),
                 LocalDateTime.now(),
-                jobDetail.description()
+                jobDetail.description(),
+                null
         );
     }
 
     public JobMatch withCurriculum(String curriculoAts) {
         return new JobMatch(id, profileId, emailReceivedId, jobLink, jobTitle, companyName, match, score, motivos,
-                curriculoAts, createdAt, jobDescription);
+                curriculoAts, createdAt, jobDescription, appliedAt);
+    }
+
+    public JobMatch withAppliedAt(LocalDateTime appliedAt) {
+        return new JobMatch(id, profileId, emailReceivedId, jobLink, jobTitle, companyName, match, score, motivos,
+                curriculoAts, createdAt, jobDescription, appliedAt);
     }
 
     public JobDetail jobDetail() {

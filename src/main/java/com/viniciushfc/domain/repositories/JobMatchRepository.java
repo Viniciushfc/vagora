@@ -4,6 +4,7 @@ import com.viniciushfc.domain.entities.JobMatch;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 public interface JobMatchRepository {
 
@@ -16,4 +17,6 @@ public interface JobMatchRepository {
     JobMatch findById(UUID id);
 
     void updateCurriculum(UUID id, String curriculoAts);
+
+    void updateAppliedAt(UUID id, LocalDateTime appliedAt);
 }

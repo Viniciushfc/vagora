@@ -18,7 +18,8 @@ public class JobMatchRestMapper {
                 jobMatch.motivos(),
                 jobMatch.curriculoAts(),
                 jobMatch.createdAt(),
-                jobMatch.jobDescription() != null
+                jobMatch.jobDescription() != null,
+                jobMatch.appliedAt()
         );
     }
 

@@ -43,6 +43,7 @@ public class ProfileResource {
     private final ListPendingJobsUseCase listPendingJobsUseCase;
     private final PrioritizePendingJobUseCase prioritizePendingJobUseCase;
     private final ConnectClaudeUseCase connectClaudeUseCase;
+    private final MarkJobAppliedUseCase markJobAppliedUseCase;
 
     public ProfileResource(CreateProfileUseCase createProfileUseCase,
                            GetProfileUseCase getProfileUseCase,
@@ -59,7 +60,8 @@ public class ProfileResource {
                            GenerateCurriculumUseCase generateCurriculumUseCase,
                            ListPendingJobsUseCase listPendingJobsUseCase,
                            PrioritizePendingJobUseCase prioritizePendingJobUseCase,
-                           ConnectClaudeUseCase connectClaudeUseCase) {
+                           ConnectClaudeUseCase connectClaudeUseCase,
+                           MarkJobAppliedUseCase markJobAppliedUseCase) {
         this.createProfileUseCase = createProfileUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
@@ -76,6 +78,7 @@ public class ProfileResource {
         this.listPendingJobsUseCase = listPendingJobsUseCase;
         this.prioritizePendingJobUseCase = prioritizePendingJobUseCase;
         this.connectClaudeUseCase = connectClaudeUseCase;
+        this.markJobAppliedUseCase = markJobAppliedUseCase;
     }
 
     @GET
@@ -189,6 +192,13 @@ public class ProfileResource {
         return listJobMatchesUseCase.execute().stream()
                 .map(JobMatchRestMapper::toResponse)
                 .toList();
+    }
+
+    @PUT
+    @Path("/job-matches/{id}/applied")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public JobMatchResponse markApplied(@PathParam("id") UUID id, AppliedRequest request) {
+        return JobMatchRestMapper.toResponse(markJobAppliedUseCase.execute(id, request != null && request.applied()));
     }
 
     @GET

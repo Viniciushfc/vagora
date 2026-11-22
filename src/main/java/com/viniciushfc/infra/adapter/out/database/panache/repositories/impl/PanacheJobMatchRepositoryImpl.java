@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @ApplicationScoped
 public class PanacheJobMatchRepositoryImpl implements JobMatchRepository {
@@ -54,6 +55,15 @@ public class PanacheJobMatchRepositoryImpl implements JobMatchRepository {
         var entity = panacheJobMatchRepository.findById(id);
         if (entity != null) {
             entity.setCurriculoAts(curriculoAts);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateAppliedAt(UUID id, LocalDateTime appliedAt) {
+        var entity = panacheJobMatchRepository.findById(id);
+        if (entity != null) {
+            entity.setAppliedAt(appliedAt);
         }
     }
 }

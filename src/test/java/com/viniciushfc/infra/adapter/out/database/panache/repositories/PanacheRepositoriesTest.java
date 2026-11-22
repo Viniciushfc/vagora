@@ -80,7 +80,7 @@ class PanacheRepositoriesTest {
         assertEquals("chave", found.geminiApiKey());
         assertEquals(profile.id(), profileRepository.require().id());
 
-        var updated = profileRepository.update(profile.id(), new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null));
+        var updated = profileRepository.update(profile.id(), new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("Novo", updated.name());
         assertEquals("chave", updated.geminiApiKey());
         assertEquals("Novo", profileRepository.find().name());
@@ -98,7 +98,7 @@ class PanacheRepositoriesTest {
 
     @Test
     void profileUpdateDeInexistenteRetornaNulo() {
-        assertNull(profileRepository.update(UUID.randomUUID(), new Profile(null, "x", null, null, null, null, null, null, null, null, null, null, null, null, null)));
+        assertNull(profileRepository.update(UUID.randomUUID(), new Profile(null, "x", null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
     }
 
     @Test
@@ -195,11 +195,11 @@ class PanacheRepositoriesTest {
         var userId = UUID.randomUUID();
         var outroUserId = UUID.randomUUID();
         var match1 = new JobMatch(UUID.randomUUID(), userId, UUID.randomUUID(), "https://www.linkedin.com/jobs/view/1/",
-                "Dev", "ACME", true, 80, List.of("a", "b"), "cv ats", LocalDateTime.now(), null);
+                "Dev", "ACME", true, 80, List.of("a", "b"), "cv ats", LocalDateTime.now(), null, null);
         var match2 = new JobMatch(UUID.randomUUID(), userId, UUID.randomUUID(), "https://www.linkedin.com/jobs/view/2/",
-                "QA", "ACME", false, 30, List.of("c"), null, LocalDateTime.now(), null);
+                "QA", "ACME", false, 30, List.of("c"), null, LocalDateTime.now(), null, null);
         var deOutro = new JobMatch(UUID.randomUUID(), outroUserId, UUID.randomUUID(), "https://www.linkedin.com/jobs/view/1/",
-                "Dev", "ACME", true, 80, List.of("a"), "cv", LocalDateTime.now(), null);
+                "Dev", "ACME", true, 80, List.of("a"), "cv", LocalDateTime.now(), null, null);
 
         jobMatchRepository.saveAll(List.of(match1, match2, deOutro));
 

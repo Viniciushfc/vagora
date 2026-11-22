@@ -347,7 +347,7 @@ class ProfileResourceTest {
         UUID id = UUID.fromString(createProfile());
         jobMatchRepository.saveAll(List.of(new JobMatch(UUID.randomUUID(), id, UUID.randomUUID(),
                 "https://www.linkedin.com/jobs/view/1/", "Dev Java", "ACME", true, 88,
-                List.of("bom match"), "cv ats", LocalDateTime.now(), null)));
+                List.of("bom match"), "cv ats", LocalDateTime.now(), null, null)));
 
         given().when().get("/profile/job-matches")
                 .then()
@@ -364,6 +364,29 @@ class ProfileResourceTest {
                 .body("INDEED.lastError", nullValue());
 
         given().when().get("/profile/scraper").then().statusCode(200).body("LINKEDIN.running", is(false)).body("INDEED.running", is(false));
+    }
+
+    @Test
+    void marcaEDesmarcaAVagaComoEnviadaGuardandoNoBanco() {
+        UUID profileId = UUID.fromString(createProfile());
+        UUID jobId = UUID.randomUUID();
+        jobMatchRepository.saveAll(List.of(new JobMatch(jobId, profileId, UUID.randomUUID(),
+                "https://www.linkedin.com/jobs/view/2/", "Dev Java", "ACME", true, 88,
+                List.of("bom match"), null, LocalDateTime.now(), null, null)));
+
+        given().contentType("application/json").body("{\"applied\": true}")
+                .when().put("/profile/job-matches/" + jobId + "/applied")
+                .then().statusCode(200).body("appliedAt", notNullValue());
+        given().when().get("/profile/job-matches").then().body("[0].appliedAt", notNullValue());
+
+        given().contentType("application/json").body("{\"applied\": false}")
+                .when().put("/profile/job-matches/" + jobId + "/applied")
+                .then().statusCode(200).body("appliedAt", nullValue());
+        given().when().get("/profile/job-matches").then().body("[0].appliedAt", nullValue());
+
+        given().contentType("application/json").body("{\"applied\": true}")
+                .when().put("/profile/job-matches/" + UUID.randomUUID() + "/applied")
+                .then().statusCode(404);
     }
 
     @Test

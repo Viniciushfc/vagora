@@ -20,7 +20,8 @@ public class JobMatchMapper {
                 List.copyOf(entity.getMotivos()),
                 entity.getCurriculoAts(),
                 entity.getCreatedAt(),
-                entity.getJobDescription()
+                entity.getJobDescription(),
+                entity.getAppliedAt()
         );
     }
 
@@ -37,7 +38,8 @@ public class JobMatchMapper {
                 jobMatch.motivos(),
                 jobMatch.curriculoAts(),
                 jobMatch.createdAt(),
-                jobMatch.jobDescription()
+                jobMatch.jobDescription(),
+                jobMatch.appliedAt()
         );
     }
 }
