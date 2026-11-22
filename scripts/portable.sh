@@ -36,22 +36,23 @@ windowed=()
     python/hub.py
 
 cp -r target/quarkus-app target/portable-input
-cp -r target/leitor-dist/leitor target/portable-input/leitor
+[ "$os" = macos ] || cp -r target/leitor-dist/leitor target/portable-input/leitor
 
 case "$os" in
     linux)   data='$APPDIR/../../dados'; scraper='$APPDIR/leitor/leitor'; dest="$OUT" ;;
-    macos)   data='$APPDIR/../../../dados'; scraper='$APPDIR/leitor/leitor'; dest="$OUT/Vagora" ;;
+    macos)   data='$APPDIR/../../../dados'; scraper='$APPDIR/../../../leitor/leitor'; dest="$OUT/Vagora" ;;
     windows) data='$APPDIR\..\dados'; scraper='$APPDIR\leitor\leitor.exe'; dest="$OUT" ;;
 esac
 
 echo "Gerando o app com o Java embutido..."
-jpackage --type app-image --name Vagora --app-version 1.0.0 \
+jpackage --type app-image --name Vagora --app-version 1.0.1 \
     --input target/portable-input --main-jar quarkus-run.jar --dest "$dest" \
     --java-options "-Dquarkus.profile=portable" \
     --java-options "-Dvagora.data=$data" \
     --java-options "-Dvagora.scraper.command=$scraper"
 
 cp README.txt "$OUT/Vagora/"
+[ "$os" = macos ] && cp -R target/leitor-dist/leitor "$OUT/Vagora/leitor"
 
 echo "Compactando $zip_name..."
 rm -f "target/$zip_name"
