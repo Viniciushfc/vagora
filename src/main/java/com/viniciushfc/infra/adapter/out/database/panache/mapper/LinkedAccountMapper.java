@@ -18,7 +18,8 @@ public class LinkedAccountMapper {
                     panacheLinkedAccountEmbeddable.password(),
                     ExternalProvider.valueOf(panacheLinkedAccountEmbeddable.externalProvider()),
                     panacheLinkedAccountEmbeddable.folder(),
-                    panacheLinkedAccountEmbeddable.indeedFolder()
+                    panacheLinkedAccountEmbeddable.indeedFolder(),
+                    panacheLinkedAccountEmbeddable.glassdoorFolder()
             );
 
             linkedAccounts.add(linkedAccount);
@@ -37,7 +38,8 @@ public class LinkedAccountMapper {
                     linkedAccount.password(),
                     linkedAccount.externalProvider().name(),
                     linkedAccount.folder(),
-                    linkedAccount.indeedFolder()
+                    linkedAccount.indeedFolder(),
+                    linkedAccount.glassdoorFolder()
             );
 
             panacheLinkedAccountEmbeddables.add(panacheLinkedAccountEmbeddable);

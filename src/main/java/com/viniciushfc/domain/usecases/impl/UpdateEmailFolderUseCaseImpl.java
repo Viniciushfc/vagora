@@ -26,6 +26,9 @@ public class UpdateEmailFolderUseCaseImpl implements UpdateEmailFolderUseCase {
 
     @Override
     public Profile execute(AlertSource source, String folder) {
+        if (!source.viaEmail()) {
+            throw new ValidationException("O " + source.label + " não usa pasta do email.");
+        }
         Profile profile = profileRepository.require();
 
         LinkedAccount emailAccount = profile.findLinkedAccount(ExternalProvider.EMAIL);
@@ -34,7 +37,7 @@ public class UpdateEmailFolderUseCaseImpl implements UpdateEmailFolderUseCase {
         }
 
         if (folder == null || folder.isBlank()) {
-            if (source != AlertSource.INDEED) {
+            if (source == AlertSource.LINKEDIN) {
                 throw new ValidationException("Escolha a pasta dos alertas do " + source.label + ".");
             }
             folder = null;

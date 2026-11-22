@@ -33,7 +33,6 @@ import static org.mockito.Mockito.when;
 
 @QuarkusTest
 class ProfileResourceTest {
-
     @Inject
     JobMatchRepository jobMatchRepository;
 
@@ -51,7 +50,6 @@ class ProfileResourceTest {
 
     @BeforeEach
     void setUp() {
-        // um perfil por instalação: cada teste começa sem nenhum
         QuarkusTransaction.requiringNew().run(() -> panacheProfileRepository.listAll().forEach(panacheProfileRepository::delete));
         when(mailboxGateway.listFolders(any())).thenReturn(List.of(
                 new MailFolder("INBOX", Map.of(AlertSource.LINKEDIN, 0)), new MailFolder("LinkedIn", Map.of(AlertSource.LINKEDIN, 7))));

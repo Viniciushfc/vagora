@@ -10,5 +10,6 @@ public record PanacheLinkedAccountEmbeddable (UUID id,
                                               String password,
                                               String externalProvider,
                                               String folder,
-                                              String indeedFolder) {
+                                              String indeedFolder,
+                                              String glassdoorFolder) {
 }

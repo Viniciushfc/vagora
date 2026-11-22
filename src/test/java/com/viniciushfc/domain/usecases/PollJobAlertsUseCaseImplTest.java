@@ -37,7 +37,6 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PollJobAlertsUseCaseImplTest {
-
     @Mock
     MailboxGateway mailboxGateway;
     @Mock
@@ -57,7 +56,7 @@ class PollJobAlertsUseCaseImplTest {
     }
 
     private Profile user(LinkedAccount... accounts) {
-        Profile profile = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null);
+        Profile profile = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null, null);
         lenient().when(profileRepository.find()).thenReturn(profile);
         return profile;
     }
@@ -72,7 +71,7 @@ class PollJobAlertsUseCaseImplTest {
 
     @Test
     void monitoramentoPausadoNaoAbreOEmail() {
-        var pausado = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(List.of(emailAccount)), null, false, null, null, null, null, null, null, null);
+        var pausado = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(List.of(emailAccount)), null, false, null, null, null, null, null, null, null, null);
         when(profileRepository.find()).thenReturn(pausado);
 
         useCase.execute(LINKEDIN);
@@ -146,7 +145,7 @@ class PollJobAlertsUseCaseImplTest {
         when(processEmailReceiverUseCase.execute(eq(user), any(), any())).thenReturn(true);
 
         useCase.execute(LINKEDIN);
-        useCase.execute(LINKEDIN);   // ainda no intervalo
+        useCase.execute(LINKEDIN);
         verify(processEmailReceiverUseCase, times(1)).execute(any(), any(), any());
 
         endInterval(user);

@@ -50,7 +50,8 @@ public class LinkAccountUseCaseImpl implements LinkAccountUseCase {
         if (linkedAccount.externalProvider() == ExternalProvider.EMAIL) {
             List<MailFolder> folders = mailboxGateway.listFolders(newAccount);
             newAccount = newAccount.withFolder(AlertSource.LINKEDIN, resolveFolder(folders, linkedAccount.folder()))
-                    .withFolder(AlertSource.INDEED, mostAlerts(folders, AlertSource.INDEED).orElse(null));
+                    .withFolder(AlertSource.INDEED, mostAlerts(folders, AlertSource.INDEED).orElse(null))
+                    .withFolder(AlertSource.GLASSDOOR, mostAlerts(folders, AlertSource.GLASSDOOR).orElse(null));
         }
 
         List<LinkedAccount> linkedAccounts = new ArrayList<>(profile.linkedAccounts());

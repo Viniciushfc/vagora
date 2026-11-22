@@ -23,7 +23,7 @@ public enum AlertSource {
             return links;
         }
     },
-    INDEED("donotreply@match.indeed.com", "Indeed", 10) {
+    INDEED("indeedapply@indeed.com", "Indeed", 10) {
         @Override
         public Map<String, String> jobLinks(String body) {
             Map<String, String> links = new LinkedHashMap<>();
@@ -36,11 +36,33 @@ public enum AlertSource {
             }
             return links;
         }
+    },
+    GLASSDOOR("noreply@glassdoor.com", "Glassdoor", 10) {
+        @Override
+        public Map<String, String> jobLinks(String body) {
+            Map<String, String> links = new LinkedHashMap<>();
+            Matcher matcher = GLASSDOOR_LINK.matcher(body);
+            while (matcher.find()) {
+                Matcher id = GLASSDOOR_JOB_ID.matcher(matcher.group());
+                if (id.find()) {
+                    links.putIfAbsent("https://www.glassdoor.com.br/job-listing?jl=" + id.group(1), matcher.group().replace("&amp;", "&"));
+                }
+            }
+            return links;
+        }
+    },
+    GUPY(null, "Gupy", 0) {
+        @Override
+        public Map<String, String> jobLinks(String body) {
+            return Map.of();
+        }
     };
-
     private static final Pattern LINKEDIN_LINK =
             Pattern.compile("https://www\\.linkedin\\.com/comm/jobs/view/(\\d+)/?(?:\\?[^\\s\"'<>]*)?");
     private static final Pattern INDEED_LINK = Pattern.compile("https://cts\\.indeed\\.com/v3/([A-Za-z0-9_-]+)/[A-Za-z0-9_-]+");
+    private static final Pattern GLASSDOOR_LINK =
+            Pattern.compile("https://www\\.glassdoor\\.com(?:\\.br)?/partner/jobListing\\.htm\\?[^\\s\"'<>]*");
+    private static final Pattern GLASSDOOR_JOB_ID = Pattern.compile("[?&;]jobListingId=(\\d+)");
     private static final Pattern INDEED_TARGET =
             Pattern.compile("\"u\"\\s*:\\s*\"https://([a-z.]*indeed\\.com)/(?:rc/clk|viewjob)\\?[^\"]*?\\bjk=([0-9a-f]+)");
 
@@ -55,6 +77,10 @@ public enum AlertSource {
     }
 
     public abstract Map<String, String> jobLinks(String body);
+
+    public boolean viaEmail() {
+        return sender != null;
+    }
 
     private static String unzip(String payload) {
         try (var in = new GZIPInputStream(new ByteArrayInputStream(Base64.getUrlDecoder().decode(payload)))) {

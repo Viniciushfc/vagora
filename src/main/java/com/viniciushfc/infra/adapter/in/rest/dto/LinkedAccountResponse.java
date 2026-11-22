@@ -8,5 +8,6 @@ public record LinkedAccountResponse(UUID id,
                                     String username,
                                     ExternalProvider externalProvider,
                                     String folder,
-                                    String indeedFolder) {
+                                    String indeedFolder,
+                                    String glassdoorFolder) {
 }

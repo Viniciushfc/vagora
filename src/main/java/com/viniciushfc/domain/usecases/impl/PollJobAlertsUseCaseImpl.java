@@ -45,7 +45,7 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
     @Override
     public void execute(AlertSource source) {
         Profile profile = profileRepository.find();
-        if (profile == null || !profile.isMonitoringEnabled()) {
+        if (!source.viaEmail() || profile == null || !profile.isMonitoringEnabled()) {
             return;
         }
         LinkedAccount emailAccount = profile.findLinkedAccount(ExternalProvider.EMAIL);

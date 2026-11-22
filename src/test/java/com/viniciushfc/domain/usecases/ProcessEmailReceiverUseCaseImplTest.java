@@ -35,7 +35,6 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ProcessEmailReceiverUseCaseImplTest {
-
     private static final String ALERT_FROM = "jobalerts-noreply@linkedin.com";
     private static final String TO = "fulano@gmail.com";
     private static final String LINK_1 = "https://www.linkedin.com/comm/jobs/view/111/?trk=a&amp;b=1";
@@ -64,7 +63,7 @@ class ProcessEmailReceiverUseCaseImplTest {
 
     private Profile userWith(String geminiKey, LinkedAccount... accounts) {
         return new Profile(UUID.randomUUID(), "Fulano", geminiKey,
-                new Attachment("cv.pdf", "application/pdf", new byte[]{1}), new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null);
+                new Attachment("cv.pdf", "application/pdf", new byte[]{1}), new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null, null);
     }
 
     private EmailReceived alertEmail(String body) {
@@ -99,7 +98,7 @@ class ProcessEmailReceiverUseCaseImplTest {
     }
 
     private EmailReceived indeedEmail(String messageId, String body) {
-        return EmailReceived.create(messageId, new Email("Indeed <donotreply@match.indeed.com>", TO, "Vaga", body, List.of()));
+        return EmailReceived.create(messageId, new Email("Indeed <indeedapply@indeed.com>", TO, "Vaga", body, List.of()));
     }
 
     private List<PendingJob> savedPending() {
@@ -207,7 +206,7 @@ class ProcessEmailReceiverUseCaseImplTest {
 
     @Test
     void abreONavegadorQuandoOUsuarioPede() throws Exception {
-        var visivel = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(List.of(linkedin)), true, null, null, null, null, null, null, null, null);
+        var visivel = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(List.of(linkedin)), true, null, null, null, null, null, null, null, null, null);
 
         useCase.execute(visivel, LINKEDIN, List.of(alertEmail(LINK_1)));
 
@@ -217,7 +216,7 @@ class ProcessEmailReceiverUseCaseImplTest {
     @Test
     void reprocessaEmailQueFalhouReaproveitandoORegistro() throws Exception {
         var email = alertEmail(LINK_1);
-        // o registro salvo não tem conteúdo: os links vêm do email recebido agora
+
         var falhou = new EmailReceived(UUID.randomUUID(), "msg-1", null, false);
         when(emailReceivedRepository.findByMessageId("msg-1")).thenReturn(falhou);
         scrapes(Set.of("https://www.linkedin.com/comm/jobs/view/111/?trk=a&b=1"), job("111"));

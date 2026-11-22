@@ -10,19 +10,26 @@ public record LinkedAccount(UUID id,
                             String password,
                             ExternalProvider externalProvider,
                             String folder,
-                            String indeedFolder) {
+                            String indeedFolder,
+                            String glassdoorFolder) {
 
     public static LinkedAccount create(String username, String password, ExternalProvider externalProvider, String folder) {
-        return new LinkedAccount(UUID.randomUUID(), username, password, externalProvider, folder, null);
+        return new LinkedAccount(UUID.randomUUID(), username, password, externalProvider, folder, null, null);
     }
 
     public String folder(AlertSource source) {
-        return source == AlertSource.INDEED ? indeedFolder : folder;
+        return switch (source) {
+            case INDEED -> indeedFolder;
+            case GLASSDOOR -> glassdoorFolder;
+            default -> folder;
+        };
     }
 
     public LinkedAccount withFolder(AlertSource source, String folder) {
-        return source == AlertSource.INDEED
-                ? new LinkedAccount(id, username, password, externalProvider, this.folder, folder)
-                : new LinkedAccount(id, username, password, externalProvider, folder, indeedFolder);
+        return switch (source) {
+            case INDEED -> new LinkedAccount(id, username, password, externalProvider, this.folder, folder, glassdoorFolder);
+            case GLASSDOOR -> new LinkedAccount(id, username, password, externalProvider, this.folder, indeedFolder, folder);
+            default -> new LinkedAccount(id, username, password, externalProvider, folder, indeedFolder, glassdoorFolder);
+        };
     }
 }

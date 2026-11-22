@@ -53,7 +53,9 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
                 try {
                     Map<AlertSource, Integer> alerts = new EnumMap<>(AlertSource.class);
                     for (AlertSource source : AlertSource.values()) {
-                        alerts.put(source, folder.search(new FromStringTerm(source.sender)).length);
+                        if (source.viaEmail()) {
+                            alerts.put(source, folder.search(new FromStringTerm(source.sender)).length);
+                        }
                     }
                     folders.add(new MailFolder(folder.getFullName(), alerts));
                 } finally {
