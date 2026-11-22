@@ -9,6 +9,8 @@ Como abrir
 O Vagora abre numa janela própria. Fechar a janela encerra o Vagora.
 
 Precisa ter o Google Chrome instalado: https://www.google.com/chrome
+O Claude pode ser usado com uma chave da API da Anthropic ou com a sua assinatura:
+nesse caso o Vagora instala o Claude Code sozinho quando você abre as Configurações.
 
 Seus dados
   Tudo fica na pasta "dados", ao lado do app: perfil, vagas, notas e a sessão do LinkedIn.

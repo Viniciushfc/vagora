@@ -16,6 +16,8 @@ case "$(uname -m)" in
     *)             arch=x64 ;;
 esac
 zip_name="Vagora-$os-$arch.zip"
+version=1.0.0
+[[ "${GITHUB_REF_NAME:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && version=${GITHUB_REF_NAME#v}
 
 rm -rf "$OUT" target/leitor-dist target/leitor-build target/portable-input
 mkdir -p "$OUT"
@@ -45,7 +47,7 @@ case "$os" in
 esac
 
 echo "Gerando o app com o Java embutido..."
-jpackage --type app-image --name Vagora --app-version 1.0.1 \
+jpackage --type app-image --name Vagora --app-version "$version" \
     --input target/portable-input --main-jar quarkus-run.jar --dest "$dest" \
     --java-options "-Dquarkus.profile=portable" \
     --java-options "-Dvagora.data=$data" \

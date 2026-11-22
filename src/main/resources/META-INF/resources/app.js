@@ -51,12 +51,14 @@ const api = {
     unlinkAccount: (provider) => request("DELETE", `/profile/accounts/${provider}`),
     openLinkedinLogin: () => request("POST", "/profile/accounts/LINKEDIN/session"),
     claudeStatus: () => request("GET", "/profile/accounts/CLAUDE/session"),
+    installClaude: () => request("POST", "/profile/accounts/CLAUDE/install"),
     connectClaude: (method) => request("POST", "/profile/accounts/CLAUDE/session", { method }),
     sendClaudeCode: (code) => request("POST", "/profile/accounts/CLAUDE/code", { code }),
     listFolders: () => request("GET", "/profile/email/folders"),
     updateFolder: (folder, source) => request("PUT", "/profile/email/folder", { folder, source }),
     listMatches: () => request("GET", "/profile/job-matches"),
     generateCurriculum: (id) => request("POST", `/profile/job-matches/${id}/curriculum`),
+    markApplied: (id, applied) => request("PUT", `/profile/job-matches/${id}/applied`, { applied }),
     listPending: () => request("GET", "/profile/pending-jobs"),
     prioritize: (id) => request("POST", `/profile/pending-jobs/${id}/priority`),
     status: () => request("GET", "/profile/status"),
@@ -623,18 +625,19 @@ function visibleMatches() {
         ? (a, b) => new Date(b.createdAt) - new Date(a.createdAt) || b.score - a.score
         : (a, b) => b.score - a.score);
     return sorted.filter((m) =>
-        (state.filter === "all" || m.match) &&
+        (state.filter === "all" || (state.filter === "applied" ? m.appliedAt : m.match)) &&
         (!query || normalize(`${m.jobTitle} ${m.companyName}`).includes(query)));
 }
 
 function renderMatches(animate) {
     const all = state.matches;
     const fits = all.filter((m) => m.match).length;
+    const applied = all.filter((m) => m.appliedAt).length;
     const visible = visibleMatches();
 
     $("#matches-summary").textContent = all.length === 0
         ? "As vagas dos seus alertas aparecem aqui com a nota de compatibilidade."
-        : `${all.length} ${all.length === 1 ? "vaga analisada" : "vagas analisadas"}, ${fits} ${fits === 1 ? "compatível" : "compatíveis"}.`;
+        : `${all.length} ${all.length === 1 ? "vaga analisada" : "vagas analisadas"}, ${fits} ${fits === 1 ? "compatível" : "compatíveis"}, ${applied} ${applied === 1 ? "enviada" : "enviadas"}.`;
 
     $("#toolbar").hidden = all.length === 0;
     $("#matches-empty").hidden = all.length > 0;
@@ -643,10 +646,14 @@ function renderMatches(animate) {
     $("#matches-filtered-empty").hidden = !filteredEmpty;
     if (filteredEmpty) {
         const searching = state.query.trim() !== "";
-        $("#filtered-empty-title").textContent = searching ? "Nenhuma vaga encontrada" : "Nenhuma vaga passou do corte ainda";
+        const appliedFilter = state.filter === "applied";
+        $("#filtered-empty-title").textContent = searching ? "Nenhuma vaga encontrada"
+            : appliedFilter ? "Nenhuma candidatura marcada ainda" : "Nenhuma vaga passou do corte ainda";
         $("#filtered-empty-text").textContent = searching
             ? `Nada corresponde a "${state.query.trim()}". Tente o nome da empresa ou outra palavra do título.`
-            : "Uma vaga é compatível quando a nota chega a 70 e os requisitos obrigatórios são atendidos.";
+            : appliedFilter
+                ? "Depois de se candidatar, abra a vaga e clique em Marcar como enviada para acompanhar aqui."
+                : "Uma vaga é compatível quando a nota chega a 70 e os requisitos obrigatórios são atendidos.";
     }
 
     if (!visible.some((m) => m.id === state.selected)) state.selected = visible[0]?.id ?? null;
@@ -667,6 +674,7 @@ function matchRow(match) {
     button.setAttribute("aria-pressed", String(match.id === state.selected));
     const text = el("span", "row-text");
     text.append(el("span", "row-title", match.jobTitle ?? "Vaga sem título"), el("span", "row-company", match.companyName ?? ""));
+    if (match.appliedAt) text.append(el("span", "row-applied", "Enviada"));
     button.append(el("span", "row-score", String(match.score)), text);
     button.addEventListener("click", () => selectMatch(match.id));
     row.append(button);
@@ -753,6 +761,15 @@ function matchItem(match) {
         : match.score >= MATCH_CUT ? "Falta requisito obrigatório" : `${MATCH_CUT - match.score} pontos abaixo do corte`;
 
     $(".reasons", item).replaceChildren(...(match.motivos ?? []).map((reason) => el("li", "", reason)));
+
+    const appliedAt = $(".applied-at", item);
+    appliedAt.hidden = !match.appliedAt;
+    if (match.appliedAt) appliedAt.textContent = `Candidatura enviada em ${dateFormat.format(new Date(match.appliedAt))}`;
+    const mark = $(".mark-applied", item);
+    mark.classList.toggle("primary", !match.appliedAt);
+    mark.classList.toggle("quiet", Boolean(match.appliedAt));
+    $("span", mark).textContent = match.appliedAt ? "Desmarcar envio" : "Marcar como enviada";
+    mark.addEventListener("click", () => markApplied(match, mark));
     $(".job-link", item).href = match.jobLink;
 
     if (match.curriculoAts) {
@@ -823,11 +840,11 @@ function renderAnalysisStatus(analysis, total) {
     } else if (analysis?.lastError) {
         const retry = analysis.nextAlertAt && new Date(analysis.nextAlertAt) > new Date()
             ? ` Nova tentativa às ${timeFormat.format(new Date(analysis.nextAlertAt))}.`
-            : " Nova tentativa em até 2 minutos.";
+            : " Nova tentativa em até 1 minuto.";
         text = `A última análise falhou: ${analysis.lastError}${retry}`;
         warn = true;
     } else {
-        text = "A próxima análise acontece em até 2 minutos.";
+        text = "A próxima análise acontece em até 1 minuto.";
     }
     box.className = warn ? "notice warn" : "notice info";
     box.textContent = text ?? "";
@@ -886,6 +903,19 @@ async function generateCurriculum(id, button) {
     } finally {
         generating.delete(id);
         renderMatches(false);
+    }
+}
+
+async function markApplied(match, button) {
+    button.disabled = true;
+    try {
+        const updated = await api.markApplied(match.id, !match.appliedAt);
+        state.matches = state.matches.map((m) => (m.id === match.id ? updated : m));
+        toast(updated.appliedAt ? "Vaga marcada como enviada." : "Envio desmarcado.");
+        renderMatches(false);
+    } catch (error) {
+        toast(messageFor(error));
+        button.disabled = false;
     }
 }
 
@@ -1208,19 +1238,35 @@ async function renderClaudeAccount(refreshProfile = false) {
         if (refreshProfile) state.profile = await api.getProfile();
         status = await api.claudeStatus();
     } catch (error) {
-        card.replaceChildren(accountHead("spark", "Claude", false), el("p", "form-error", messageFor(error)));
+        card.replaceChildren(el("p", "form-error", messageFor(error)));
         return;
     }
 
     const claude = account("CLAUDE");
-    const head = accountHead("spark", "Claude", Boolean(claude && status.loggedIn));
-    const intro = el("p", "account-status", "O Claude analisa as vagas com a sua conta, pelo Claude Code instalado neste computador. Não precisa de chave.");
+    const loggedIn = Boolean(claude && status.loggedIn);
+    $("#claude-head").replaceChildren(...accountHead("spark", "Claude", state.profile.hasClaudeApiKey || loggedIn,
+        [state.profile.hasClaudeApiKey ? "Chave configurada" : "Conectado", "Não conectado"]).children);
+    const head = el("h3", "account-login-title", claude ? "Conta do Claude Code" : "Ou entre com a conta do Claude Code");
+    const intro = el("p", "hint", "Usa a sua assinatura do Claude (Pro, Max, Team ou Enterprise), pelo Claude Code deste computador. Não precisa de chave.");
 
     if (!status.installed) {
-        const command = el("code", "", "curl -fsSL https://claude.ai/install.sh | bash");
+        if (status.installing) {
+            card.replaceChildren(head, el("p", "account-status", "Instalando o Claude Code neste computador. Leva um ou dois minutos."));
+            claudePoll = setTimeout(() => renderClaudeAccount(), 3000);
+            return;
+        }
+        if (!status.installError) {
+            await api.installClaude().catch(() => {});
+            claudePoll = setTimeout(() => renderClaudeAccount(), 1000);
+            return;
+        }
+        const windows = navigator.userAgent.includes("Windows");
         const hint = el("p", "hint");
-        hint.append("Instale rodando no terminal ", command, " e depois clique em Verificar de novo.");
-        card.replaceChildren(head, intro, hint, claudeButton("Verificar de novo", "quiet", () => renderClaudeAccount()));
+        hint.append(windows ? "No PowerShell, rode " : "No terminal, rode ",
+            el("code", "", windows ? "irm https://claude.ai/install.ps1 | iex" : "curl -fsSL https://claude.ai/install.sh | bash"), ".");
+        card.replaceChildren(head, el("p", "form-error", status.installError), hint,
+            claudeButton("Tentar instalar de novo", "primary", async () => { await api.installClaude(); renderClaudeAccount(); }),
+            claudeButton("Verificar de novo", "quiet", () => renderClaudeAccount()));
         if (claude) card.append(unlinkButton("CLAUDE"));
         return;
     }
@@ -1409,7 +1455,7 @@ function renderReadiness() {
 const LLM_NAMES = { GEMINI: "Gemini", GROQ: "Groq", CLAUDE: "Claude", LOCAL: "IA local" };
 
 function llmAvailable(provider) {
-    return { GEMINI: state.profile.hasGeminiApiKey, GROQ: state.profile.hasGroqApiKey, CLAUDE: Boolean(account("CLAUDE")), LOCAL: state.profile.hasLocalLlm }[provider];
+    return { GEMINI: state.profile.hasGeminiApiKey, GROQ: state.profile.hasGroqApiKey, CLAUDE: state.profile.hasClaudeApiKey || Boolean(account("CLAUDE")), LOCAL: state.profile.hasLocalLlm }[provider];
 }
 
 function aiKeysText(profile) {
@@ -1541,7 +1587,7 @@ function renderProfile(forms = $$(".profile-form")) {
         form.reset();
         clearError(form);
         setBusy(form, false);
-        for (const [name, configured] of [["geminiApiKey", profile.hasGeminiApiKey], ["groqApiKey", profile.hasGroqApiKey], ["localLlmApiKey", profile.hasLocalLlmApiKey]]) {
+        for (const [name, configured] of [["geminiApiKey", profile.hasGeminiApiKey], ["groqApiKey", profile.hasGroqApiKey], ["claudeApiKey", profile.hasClaudeApiKey], ["localLlmApiKey", profile.hasLocalLlmApiKey]]) {
             const input = form.elements.namedItem(name);
             if (input) input.value = configured ? KEY_MASK : "";
         }
@@ -1556,6 +1602,7 @@ function renderProfile(forms = $$(".profile-form")) {
     $("#groq-head").replaceChildren(...accountHead("spark", "Groq", profile.hasGroqApiKey, ["Configurada", "Sem chave"]).children);
     $("#profile-gemini-hint").replaceChildren(...keyHint(profile.hasGeminiApiKey));
     $("#profile-groq-hint").replaceChildren(...keyHint(profile.hasGroqApiKey));
+    $("#profile-claude-hint").replaceChildren(...keyHint(profile.hasClaudeApiKey));
     if (forms.includes($("#poll-form"))) {
         $("#poll-min").value = profile.pollMinMinutes;
         $("#poll-max").value = profile.pollMaxMinutes;
@@ -1645,7 +1692,7 @@ function renderPollWarning() {
 
 $("#poll-min").addEventListener("input", renderPollWarning);
 
-for (const [id, configured] of [["#profile-gemini", "hasGeminiApiKey"], ["#profile-groq", "hasGroqApiKey"]]) {
+for (const [id, configured] of [["#profile-gemini", "hasGeminiApiKey"], ["#profile-groq", "hasGroqApiKey"], ["#profile-claude", "hasClaudeApiKey"], ["#profile-local-key", "hasLocalLlmApiKey"]]) {
     const input = $(id);
     input.addEventListener("focus", () => { if (input.value === KEY_MASK) input.value = ""; });
     input.addEventListener("blur", () => { if (!input.value && state.profile[configured]) input.value = KEY_MASK; });
@@ -1670,6 +1717,8 @@ $$(".profile-form").forEach((form) => form.addEventListener("submit", async (eve
         const value = field.namedItem(key)?.value.trim();
         if (value !== undefined && value !== (state.profile[key] ?? "")) data.append(key, value);
     }
+    const claudeKey = field.namedItem("claudeApiKey")?.value.trim();
+    if (claudeKey && claudeKey !== KEY_MASK) data.append("claudeApiKey", claudeKey);
     const localKey = field.namedItem("localLlmApiKey")?.value.trim();
     if (localKey && localKey !== KEY_MASK) data.append("localLlmApiKey", localKey);
     for (const key of ["pollMinMinutes", "pollMaxMinutes"]) {
@@ -1688,6 +1737,7 @@ $$(".profile-form").forEach((form) => form.addEventListener("submit", async (eve
     try {
         state.profile = await api.updateProfile(data);
         renderProfile([form]);
+        if (form.contains($("#profile-claude"))) renderClaudeAccount();
         markSaved(form);
         toast("Alterações salvas.");
     } catch (error) {

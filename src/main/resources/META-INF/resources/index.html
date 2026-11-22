@@ -185,6 +185,7 @@
                     <div class="segmented" role="group" aria-label="Filtrar vagas">
                         <button type="button" data-filter="all" aria-pressed="true">Todas</button>
                         <button type="button" data-filter="match" aria-pressed="false">Compatíveis</button>
+                        <button type="button" data-filter="applied" aria-pressed="false">Enviadas</button>
                     </div>
                     <label class="sort">
                         <span class="visually-hidden">Ordenar</span>
@@ -418,7 +419,21 @@
                                 <p class="form-error" role="alert" hidden></p>
                                 <button class="button primary" type="submit">Salvar chave do Groq</button>
                             </form>
-                            <article class="panel account" id="account-claude"></article>
+                            <article class="panel account">
+                                <div class="account-head" id="claude-head"></div>
+                                <p class="account-status">A IA da Anthropic. Use uma chave da API, cobrada pelo uso, ou entre com a conta do Claude Code deste computador.</p>
+                                <a class="button quiet key-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Criar chave no Console da Anthropic</a>
+                                <form class="form profile-form" novalidate>
+                                    <div class="field">
+                                        <label for="profile-claude">Chave da API</label>
+                                        <input id="profile-claude" name="claudeApiKey" type="password" autocomplete="off">
+                                        <p class="hint" id="profile-claude-hint"></p>
+                                    </div>
+                                    <p class="form-error" role="alert" hidden></p>
+                                    <button class="button primary" type="submit">Salvar chave do Claude</button>
+                                </form>
+                                <div class="account-login" id="account-claude"></div>
+                            </article>
                             <form class="panel account form profile-form" novalidate>
                                 <div class="account-head" id="local-head"></div>
                                 <p class="account-status">A IA que você roda ou confia: Ollama, LM Studio, llama.cpp, vLLM ou qualquer servidor no formato da OpenAI.</p>
@@ -643,6 +658,7 @@
                 </div>
                 <p class="verdict"></p>
             </div>
+            <p class="applied-at" hidden></p>
 
             <div class="ruler" aria-hidden="true">
                 <div class="ruler-track">
@@ -657,6 +673,9 @@
                 <a class="button quiet job-link" target="_blank" rel="noopener">
                     <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Abrir vaga
                 </a>
+                <button class="button primary mark-applied" type="button">
+                    <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Marcar como enviada</span>
+                </button>
                 <button class="button quiet generate-ats" type="button" hidden>Gerar currículo</button>
                 <a class="button quiet pdf-ats" hidden download>
                     <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Baixar currículo em PDF

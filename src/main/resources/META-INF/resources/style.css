@@ -1269,6 +1269,19 @@ label {
     color: var(--fit);
 }
 
+.applied-at {
+    margin: 0.6rem 0 0;
+    color: var(--fit);
+    font-size: var(--step--1);
+    font-weight: 700;
+}
+
+.row-applied {
+    color: var(--fit);
+    font-size: var(--step--1);
+    font-weight: 700;
+}
+
 .ruler {
     margin-top: 0.9rem;
     max-width: 30rem;
@@ -1426,6 +1439,19 @@ label {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.9rem;
     justify-items: start;
+}
+
+.account-login-title {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.account-login {
+    display: grid;
+    gap: 0.9rem;
+    justify-items: start;
+    border-top: 1px solid var(--line);
+    padding-top: 0.9rem;
 }
 
 .account > *,

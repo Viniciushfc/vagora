@@ -14,7 +14,7 @@
   <img alt="Java 21" src="https://img.shields.io/badge/Java-21-1E4D3B">
   <img alt="Quarkus 3" src="https://img.shields.io/badge/Quarkus-3.40-1E4D3B">
   <img alt="Python 3.9+" src="https://img.shields.io/badge/Python-3.9%2B-3F7D5E">
-  <img alt="IA: Claude, Gemini e Groq" src="https://img.shields.io/badge/IA-Claude%20%C2%B7%20Gemini%20%C2%B7%20Groq-3F7D5E">
+  <img alt="IA: Claude, Gemini, Groq e IA local" src="https://img.shields.io/badge/IA-Claude%20%C2%B7%20Gemini%20%C2%B7%20Groq%20%C2%B7%20IA%20local-3F7D5E">
   <img alt="Licença MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-C6E85A">
 </p>
 
@@ -82,13 +82,14 @@ para enviar.
 - **IA com reserva:** em cada etapa você escolhe a IA principal e as reservas. Se a principal falhar ou estiver
   fora do ar, a próxima assume sozinha.
 
-**Plataformas suportadas:** LinkedIn e Indeed. O desenho aceita novas plataformas (veja o [roadmap](#roadmap)).
+**Plataformas suportadas:** LinkedIn, Indeed e Glassdoor, pelos alertas que chegam no email, e Gupy, pelas buscas
+que você cria no Vagora. O desenho aceita novas plataformas (veja o [roadmap](#roadmap)).
 
 ## O que você encontra na tela
 
 | Tela | O que tem |
 |---|---|
-| **Vagas › Analisadas** | Uma régua com todas as notas de 0 a 100 e o corte de 70. Ao lado, a lista de vagas e o detalhe da vaga escolhida: nota, motivos, link para a vaga e o currículo adaptado para copiar ou baixar em PDF. Tem busca, filtro de compatíveis e ordenação por nota ou data. |
+| **Vagas › Analisadas** | Uma régua com todas as notas de 0 a 100 e o corte de 70. Ao lado, a lista de vagas e o detalhe da vaga escolhida: nota, motivos, link para a vaga e o currículo adaptado para copiar ou baixar em PDF. Depois de se candidatar, **marque a vaga como enviada**: ela ganha a data do envio e aparece no filtro **Enviadas**. Tem busca, filtros (todas, compatíveis, enviadas) e ordenação por nota ou data. |
 | **Vagas › Na fila** | As vagas já lidas que esperam a análise da IA, com a opção de priorizar uma delas. |
 | **Vagas › Gupy** | **Buscas** na Gupy, desligadas até você criar uma: **cargo**, **estado**, **cidade**, **modalidade** (remoto, híbrido, presencial), **tipo de vaga** (CLT, PJ, temporária, estágio, banco de talentos) e de quantas em quantas **horas** buscar (padrão 4). Cada busca traz até 30 vagas novas por vez, publicadas nos últimos 7 dias e com inscrições abertas, que entram direto na fila da IA, sem abrir navegador e sem conta. A página mostra a atividade da Gupy: o que cada busca encontrou, as vagas na fila, as que a IA está analisando e as já analisadas com a nota. |
 | **Atividade** | O leitor do LinkedIn, do Indeed e do Glassdoor em tempo real: a vaga sendo lida, a linha do tempo dos passos e, se algo der errado, a explicação, o que fazer e **uma captura da tela** que o navegador estava vendo. |
@@ -104,7 +105,7 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 | Aba | O que você configura |
 |---|---|
 | **Currículo** | O PDF que a IA compara com cada vaga (até 5 MB, com texto selecionável). |
-| **IA** | As chaves do **Gemini** e do **Groq**, o login no **Claude**, feito pelo próprio Vagora, e uma **IA local**: o endereço e o modelo de qualquer servidor no formato da OpenAI que você roda ou confia (Ollama, LM Studio, llama.cpp, vLLM). Basta uma delas, mas com mais de uma você ganha reserva. |
+| **IA** | As chaves do **Gemini** e do **Groq**, o **Claude** (pela chave da API da Anthropic ou pelo login da sua assinatura no Claude Code, que o Vagora instala sozinho) e uma **IA local**: o endereço e o modelo de qualquer servidor no formato da OpenAI que você roda ou confia (Ollama, LM Studio, llama.cpp, vLLM). Basta uma delas, mas com mais de uma você ganha reserva. |
 | **Fluxo da IA** | Um fluxograma das etapas. Em cada etapa que usa IA (**nota da vaga** e **currículo adaptado**) você marca quais IAs entram e em que ordem: a primeira é a principal e as outras são reservas, tentadas em sequência se a anterior falhar. Exemplo: uma IA com cota grande na nota, que roda para toda vaga, e a que escreve melhor no currículo. |
 | **Contas** | O **email** que recebe os alertas (com senha de app) e a **pasta** onde os alertas de cada rede chegam, descoberta automaticamente. A conta do **LinkedIn** usada para abrir as vagas e os leitores do **Indeed** e do **Glassdoor**, cada um com a própria pasta do email. |
 | **Automação** | Ligar ou pausar a verificação do email, gerar o currículo adaptado automaticamente ou só quando você pedir (economiza cota da IA) e mostrar o navegador durante a análise (para resolver verificações do LinkedIn). Também o **intervalo entre os acessos**, com mínimo e máximo em minutos e aviso de risco quando fica abaixo do padrão. |
@@ -115,12 +116,14 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 ### Baixar e abrir (o jeito mais fácil)
 
 Baixe o ZIP do seu sistema na página de [**versões do Vagora**](https://github.com/Viniciushfc/vagora/releases/latest).
-Ele já traz o Java e o leitor de vagas: não precisa instalar nada além do **Google Chrome**.
+Ele já traz o Java e o leitor de vagas: não precisa instalar nada além do **Google Chrome**. Se você for usar o
+Claude com a sua assinatura, o Vagora instala o **Claude Code** sozinho quando você abre as Configurações; com a
+chave da API do Claude, ou com Gemini, Groq ou IA local, ele não é necessário.
 
 | Sistema | Arquivo | Como abrir |
 |---|---|---|
 | **Windows** | `Vagora-windows-x64.zip` | extraia e dê dois cliques em `Vagora.exe` |
-| **macOS** (Apple Silicon) | `Vagora-macos-arm64.zip` | extraia, clique com o botão direito em `Vagora.app` e escolha **Abrir** |
+| **macOS** (Apple Silicon) | `Vagora-macos-arm64.zip` | extraia, clique com o botão direito em `Vagora.app` e escolha **Abrir**. Deixe o `Vagora.app` junto da pasta `leitor` |
 | **Linux** | `Vagora-linux-x64.zip` | extraia e abra `bin/Vagora` |
 
 O Vagora abre na própria janela, e **fechar a janela encerra o Vagora**. Tudo o que ele guarda fica na pasta
@@ -150,7 +153,8 @@ Para quem quer acompanhar a versão mais nova ou mexer no código.
 | **Java 21+ (JDK)** | rodar o Vagora | o script de início instala, ou [adoptium.net](https://adoptium.net) |
 | **Python 3.9+** | o leitor de vagas | o script de início instala, ou [python.org](https://www.python.org/downloads) |
 | **Google Chrome** | abrir as vagas | o script de início instala, ou [google.com/chrome](https://www.google.com/chrome) |
-| **Ao menos uma IA** | a análise das vagas | Gemini: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) · Groq: [console.groq.com/keys](https://console.groq.com/keys) · Claude: conta Claude, login pela tela |
+| **Ao menos uma IA** | a análise das vagas | Gemini: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) · Groq: [console.groq.com/keys](https://console.groq.com/keys) · Claude: chave em [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) ou login da assinatura pela tela · IA local: o endereço do seu servidor |
+| *Opcional:* **Claude Code** | usar o Claude com a sua assinatura | o script de início instala, ou [claude.com/claude-code](https://claude.com/claude-code) |
 | **Senha de app do email** | ler os alertas (não é a senha normal) | Gmail: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) |
 | *Opcional:* `xvfb` (Linux) | navegador totalmente invisível | o `run.sh` instala |
 
@@ -173,7 +177,7 @@ Sem o Git, baixe o ZIP em **Code › Download ZIP** no GitHub e extraia numa pas
 | **Windows** | dois cliques no `run.cmd`, ou `run.cmd` no terminal, dentro da pasta |
 
 **3. Deixe o script preparar tudo.** Na primeira vez ele confere Java 21 (JDK), Python 3.9+ e Google Chrome
-(e o Xvfb no Linux). O que faltar ele **oferece instalar** e pergunta antes de rodar cada comando:
+(e o Xvfb no Linux) e o Claude Code. O que faltar ele **oferece instalar** e pergunta antes de rodar cada comando:
 
 | Sistema | Instala com |
 |---|---|
@@ -252,7 +256,7 @@ pode desligar de novo.
 | Banco | **SQLite** em arquivo local (`vagora.db`) |
 | Email | **IMAP** com Jakarta Mail (Angus Mail) |
 | Leitor de vagas | **Python** com **Patchright** (Playwright) controlando o **Google Chrome**; tela virtual com **Xvfb** |
-| Análise | **Claude** (CLI oficial), **Google Gemini** (SDK `google-genai`) e **Groq**, com reserva entre elas |
+| Análise | **Claude** (SDK `anthropic-java` com chave da API, ou o Claude Code com a sua assinatura), **Google Gemini** (SDK `google-genai`), **Groq** e **IA local** (qualquer servidor no formato da OpenAI), com reserva entre elas |
 | Currículo | **Apache PDFBox** para ler o PDF e gerar o currículo adaptado em PDF |
 | Interface | **HTML, CSS e JavaScript** puros, servidos pelo próprio Quarkus |
 | Testes | JUnit 5, Mockito, REST Assured e H2 em memória |
@@ -298,9 +302,11 @@ Todas as rotas são do perfil da instalação, sem id:
 | `POST` / `DELETE` | `/profile/accounts` · `/profile/accounts/{provider}` | conectar / desconectar conta (`EMAIL`, `LINKEDIN`, `CLAUDE`) |
 | `POST` | `/profile/accounts/LINKEDIN/session` | abrir o navegador para entrar no LinkedIn |
 | `GET` `POST` | `/profile/accounts/CLAUDE/session` · `/profile/accounts/CLAUDE/code` | login no Claude |
+| `POST` | `/profile/accounts/CLAUDE/install` | instala o Claude Code neste computador |
 | `GET` / `PUT` | `/profile/email/folders` · `/profile/email/folder` | pastas do email com contagem de alertas / trocar a pasta |
 | `GET` | `/profile/job-matches` | vagas analisadas |
 | `GET` / `POST` | `/profile/job-matches/{id}/curriculum` | currículo adaptado em PDF / gerar o currículo adaptado |
+| `PUT` | `/profile/job-matches/{id}/applied` | marcar ou desmarcar a vaga como enviada (`{"applied": true}`) |
 | `GET` / `POST` | `/profile/pending-jobs` · `/profile/pending-jobs/{id}/priority` | fila de análise / priorizar uma vaga |
 | `GET` | `/profile/status` | monitoramento (última verificação, próximo alerta, último erro) |
 | `GET` / `POST` | `/gupy/searches` | buscas da Gupy / criar uma busca |
@@ -323,8 +329,9 @@ Erros têm sempre o mesmo formato:
 ./scripts/portable.sh   # gera o ZIP para download do sistema atual em target/
 ```
 
-**Publicar uma versão:** crie e envie uma tag (`git tag v1.0.0 && git push origin v1.0.0`). O GitHub Actions gera os ZIPs
-de Windows, macOS e Linux, cada um no próprio sistema, e anexa todos na página da versão.
+**Publicar uma versão:** crie e envie uma tag com o número da versão (`git tag v1.2.0 && git push origin v1.2.0`).
+O GitHub Actions gera os ZIPs de Windows, macOS e Linux, cada um no próprio sistema, com esse número no app, e anexa
+todos na página da versão. Uma tag já enviada não pode ser reaproveitada: para refazer, use o próximo número.
 
 ## Roadmap
 
@@ -338,6 +345,7 @@ de Windows, macOS e Linux, cada um no próprio sistema, e anexa todos na página
 - [x] Linux, macOS e Windows, com instalação do que falta
 - [x] ZIP para download com o Java embutido e os dados junto do app
 - [ ] **Novas plataformas de vagas:** Catho e outras
+- [x] Marcar a vaga como enviada e filtrar as candidaturas enviadas
 - [ ] Notificação quando surgir uma vaga compatível
 
 ## Licença
