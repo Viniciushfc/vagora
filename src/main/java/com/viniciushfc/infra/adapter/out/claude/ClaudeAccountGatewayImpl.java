@@ -28,6 +28,10 @@ public class ClaudeAccountGatewayImpl implements ClaudeAccountGateway {
 
     static final Duration STATUS_TIMEOUT = Duration.ofSeconds(30);
     static final Duration LOGIN_TIMEOUT = Duration.ofMinutes(10);
+    static final Duration INSTALL_TIMEOUT = Duration.ofMinutes(10);
+    static final List<String> INSTALL_COMMAND = System.getProperty("os.name").startsWith("Windows")
+            ? List.of("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "irm https://claude.ai/install.ps1 | iex")
+            : List.of("bash", "-c", "curl -fsSL https://claude.ai/install.sh | bash");
 
     private static final Pattern URL = Pattern.compile("https://[^\\s\\u001b\\u0007]+");
     private static final Pattern ESCAPES = Pattern.compile("\\u001b\\][^\\u0007\\u001b]*(\\u0007|\\u001b\\\\)|\\u001b\\[[0-9;]*[A-Za-z]");
@@ -37,6 +41,8 @@ public class ClaudeAccountGatewayImpl implements ClaudeAccountGateway {
     private volatile Process login;
     private volatile String loginUrl;
     private volatile String loginError;
+    private volatile Thread installing;
+    private volatile String installError;
 
     public ClaudeAccountGatewayImpl(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -46,7 +52,7 @@ public class ClaudeAccountGatewayImpl implements ClaudeAccountGateway {
     public ClaudeStatus status() {
         String executable = ClaudeCli.executable();
         if (executable == null) {
-            return new ClaudeStatus(false, false, null, null, false, null, null);
+            return new ClaudeStatus(false, false, null, null, false, null, null, installing != null, installError);
         }
         boolean loggingIn = login != null && login.isAlive();
         try {
@@ -54,10 +60,10 @@ public class ClaudeAccountGatewayImpl implements ClaudeAccountGateway {
                     ClaudeCli.run(List.of(executable, "auth", "status", "--json"), null, STATUS_TIMEOUT).output());
             return new ClaudeStatus(true, json.path("loggedIn").asBoolean(),
                     json.path("email").asText(null), json.path("subscriptionType").asText(null),
-                    loggingIn, loggingIn ? loginUrl : null, loginError);
+                    loggingIn, loggingIn ? loginUrl : null, loginError, false, null);
         } catch (IOException | TimeoutException e) {
             Log.warn("Não foi possível ler o login do Claude Code", e);
-            return new ClaudeStatus(true, false, null, null, loggingIn, loggingIn ? loginUrl : null, loginError);
+            return new ClaudeStatus(true, false, null, null, loggingIn, loggingIn ? loginUrl : null, loginError, false, null);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ExternalServiceException("A consulta ao Claude Code foi interrompida.");
@@ -122,6 +128,31 @@ public class ClaudeAccountGatewayImpl implements ClaudeAccountGateway {
         }
         String message = lastLine.replaceFirst("^.*prompted >\\s*", "");
         return message.isBlank() ? "O login do Claude foi cancelado ou demorou demais. Tente de novo." : message;
+    }
+
+    @Override
+    public synchronized void install() {
+        if (installing != null || ClaudeCli.executable() != null) {
+            return;
+        }
+        installError = null;
+        installing = Thread.ofVirtual().unstarted(() -> {
+            try {
+                ClaudeCli.Result result = ClaudeCli.run(INSTALL_COMMAND, null, INSTALL_TIMEOUT);
+                if (result.exitCode() != 0 || ClaudeCli.executable() == null) {
+                    Log.warnf("Instalação do Claude Code terminou com código %d: %s", result.exitCode(), result.output());
+                    installError = "Não foi possível instalar o Claude Code. Instale pelo comando abaixo e clique em Verificar de novo.";
+                }
+            } catch (IOException | TimeoutException e) {
+                Log.warn("Falha ao instalar o Claude Code", e);
+                installError = "Não foi possível instalar o Claude Code. Instale pelo comando abaixo e clique em Verificar de novo.";
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                installing = null;
+            }
+        });
+        installing.start();
     }
 
     @Override

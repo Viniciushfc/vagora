@@ -142,6 +142,12 @@ public class ProfileResource {
         return Response.accepted().build();
     }
 
+    @POST
+    @Path("/accounts/CLAUDE/install")
+    public ClaudeStatus installClaude() {
+        return connectClaudeUseCase.install();
+    }
+
     @GET
     @Path("/accounts/CLAUDE/session")
     public ClaudeStatus claudeStatus() {

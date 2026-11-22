@@ -6,5 +6,7 @@ public record ClaudeStatus(boolean installed,
                            String plan,
                            boolean loggingIn,
                            String loginUrl,
-                           String loginError) {
+                           String loginError,
+                           boolean installing,
+                           String installError) {
 }

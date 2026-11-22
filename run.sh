@@ -94,7 +94,11 @@ if [ "$(uname -s)" = Linux ]; then
     command -v xvfb-run >/dev/null || install "Xvfb (deixa o navegador invisível)" xvfb xorg-x11-server-Xvfb xorg-server-xvfb xvfb-run - || true
     if command -v xvfb-run >/dev/null; then ok "Xvfb"; else warn "Sem Xvfb: a janela do Chrome aparece durante a análise."; fi
 fi
-if command -v claude >/dev/null; then ok "Claude CLI"; else warn "Claude CLI não encontrado (opcional, só para usar o Claude)." "Instale em https://claude.com/claude-code"; fi
+claude_ok() { command -v claude >/dev/null || [ -x "$HOME/.local/bin/claude" ]; }
+if ! claude_ok && ask "Claude Code não está instalado." "curl -fsSL https://claude.ai/install.sh | bash"; then
+    curl -fsSL https://claude.ai/install.sh | bash >/dev/null 2>&1 || true
+fi
+if claude_ok; then ok "Claude Code"; else warn "Não foi possível instalar o Claude Code." "Instale com: curl -fsSL https://claude.ai/install.sh | bash"; fi
 
 while (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; do
     python3 -c 'import sys, urllib.request; sys.exit(b"<title>Vagora</title>" not in urllib.request.urlopen(sys.argv[1], timeout=2).read())' \

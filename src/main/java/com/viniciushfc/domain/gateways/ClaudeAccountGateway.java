@@ -10,4 +10,6 @@ public interface ClaudeAccountGateway {
     void login(ClaudeLoginMethod method, Runnable onLoggedIn);
 
     void submitCode(String code);
+
+    void install();
 }

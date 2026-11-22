@@ -49,6 +49,12 @@ public class ConnectClaudeUseCaseImpl implements ConnectClaudeUseCase {
     }
 
     @Override
+    public ClaudeStatus install() {
+        claudeGateway.install();
+        return claudeGateway.status();
+    }
+
+    @Override
     public void submitCode(String code) {
         if (code == null || code.isBlank()) {
             throw new ValidationException("Cole o código que apareceu na página do Claude.");

@@ -11,4 +11,6 @@ public interface ConnectClaudeUseCase {
     Profile execute(ClaudeLoginMethod method);
 
     void submitCode(String code);
+
+    ClaudeStatus install();
 }

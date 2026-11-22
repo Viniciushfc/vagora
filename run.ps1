@@ -105,7 +105,12 @@ $Chrome = Find-Chrome
 if (-not $Chrome) { Fail "Google Chrome não encontrado." "O Vagora usa o Chrome para abrir as vagas do LinkedIn: https://www.google.com/chrome" }
 Ok "Google Chrome"
 
-if (Get-Command claude -ErrorAction SilentlyContinue) { Ok "Claude CLI" } else { Warn "Claude CLI não encontrado (opcional, só para usar o Claude)." "Instale em https://claude.com/claude-code" }
+function Claude-Ok { (Get-Command claude -ErrorAction SilentlyContinue) -or (Test-Path "$env:USERPROFILE\.local\bin\claude.exe") }
+if (-not (Claude-Ok) -and -not [Console]::IsInputRedirected) {
+    $answer = Read-Host "  Claude Code não está instalado. Instalar agora com `"irm https://claude.ai/install.ps1 | iex`"? [S/n]"
+    if (-not $answer -or $answer -match "^[SsYy]") { $null = Run-Quiet { Invoke-RestMethod https://claude.ai/install.ps1 | Invoke-Expression } }
+}
+if (Claude-Ok) { Ok "Claude Code" } else { Warn "Não foi possível instalar o Claude Code." "Instale com: irm https://claude.ai/install.ps1 | iex" }
 
 function Port-InUse($p) {
     $client = New-Object Net.Sockets.TcpClient

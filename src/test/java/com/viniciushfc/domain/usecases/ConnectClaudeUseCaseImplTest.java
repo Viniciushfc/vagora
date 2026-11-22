@@ -31,7 +31,7 @@ class ConnectClaudeUseCaseImplTest {
         var email = LinkedAccount.create("e@x.com", "s", ExternalProvider.EMAIL, "INBOX");
         profile.linkedAccounts().addAll(List.of(email, LinkedAccount.create("velho@x.com", null, ExternalProvider.CLAUDE, null)));
         when(repository.require()).thenReturn(profile);
-        when(gateway.status()).thenReturn(new ClaudeStatus(true, true, "novo@x.com", "pro", false, null, null));
+        when(gateway.status()).thenReturn(new ClaudeStatus(true, true, "novo@x.com", "pro", false, null, null, false, null));
 
         new ConnectClaudeUseCaseImpl(repository, gateway).execute(null);
 
