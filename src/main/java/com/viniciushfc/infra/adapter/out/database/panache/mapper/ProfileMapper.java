@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 
 import com.viniciushfc.domain.entities.Profile;
+import com.viniciushfc.domain.vo.LocalLlm;
 import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheProfileEntity;
 
 import static com.viniciushfc.infra.adapter.out.database.panache.mapper.AttachmentMapper.toDomainAttachment;
@@ -29,7 +30,8 @@ public class ProfileMapper {
                 panacheProfileEntity.getPollMinMinutes(),
                 panacheProfileEntity.getPollMaxMinutes(),
                 panacheProfileEntity.getAnalysisChain(),
-                panacheProfileEntity.getCurriculumChain()
+                panacheProfileEntity.getCurriculumChain(),
+                panacheProfileEntity.getLocalLlm()
         );
     }
 
@@ -48,7 +50,8 @@ public class ProfileMapper {
                 profile.pollMinMinutes(),
                 profile.pollMaxMinutes(),
                 profile.analysisChain(),
-                profile.curriculumChain()
+                profile.curriculumChain(),
+                profile.localLlm()
         );
     }
 
@@ -105,6 +108,23 @@ public class ProfileMapper {
             entityPersist.setCurriculum(toPanacheAttachmentEmbeddable(bo.curriculum()));
         }
 
+        LocalLlm localLlm = bo.localLlm();
+        if (localLlm != null) {
+            if (localLlm.url() != null) {
+                entityPersist.setLocalLlmUrl(blankToNull(localLlm.url()));
+            }
+            if (localLlm.model() != null) {
+                entityPersist.setLocalLlmModel(blankToNull(localLlm.model()));
+            }
+            if (localLlm.apiKey() != null) {
+                entityPersist.setLocalLlmApiKey(blankToNull(localLlm.apiKey()));
+            }
+        }
+
         return entityPersist;
+    }
+
+    private static String blankToNull(String text) {
+        return text.isBlank() ? null : text.strip();
     }
 }

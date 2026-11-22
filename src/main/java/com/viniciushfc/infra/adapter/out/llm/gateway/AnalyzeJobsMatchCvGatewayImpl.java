@@ -1,5 +1,6 @@
 package com.viniciushfc.infra.adapter.out.llm.gateway;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.exceptions.BusinessException;
@@ -7,10 +8,12 @@ import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.gateways.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
+import com.viniciushfc.domain.vo.LocalLlm;
 import com.viniciushfc.infra.adapter.out.llm.LlmService;
 import com.viniciushfc.infra.adapter.out.llm.claude.impl.ClaudeServiceImpl;
 import com.viniciushfc.infra.adapter.out.llm.gemini.impl.GeminiServiceImpl;
 import com.viniciushfc.infra.adapter.out.llm.groq.impl.GroqServiceImpl;
+import com.viniciushfc.infra.adapter.out.llm.mapper.CvMatchMapper;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -21,16 +24,19 @@ import java.util.function.BiFunction;
 
 @ApplicationScoped
 public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway {
-
     private final Map<LlmProvider, LlmService> services;
+    private final CvMatchMapper cvMatchMapper;
+    private final ObjectMapper objectMapper;
 
-    public AnalyzeJobsMatchCvGatewayImpl(GeminiServiceImpl gemini, GroqServiceImpl groq, ClaudeServiceImpl claude) {
+    public AnalyzeJobsMatchCvGatewayImpl(GeminiServiceImpl gemini, GroqServiceImpl groq, ClaudeServiceImpl claude,
+                                         CvMatchMapper cvMatchMapper, ObjectMapper objectMapper) {
         this.services = Map.of(LlmProvider.GEMINI, gemini, LlmProvider.GROQ, groq, LlmProvider.CLAUDE, claude);
+        this.cvMatchMapper = cvMatchMapper;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public List<CvMatchResult> analyze(List<JobDetail> jobs, String cvUser, Profile profile) {
-        // o currículo vem primeiro: o começo igual entre chamadas aproveita o cache automático do Gemini
         StringBuilder prompt = new StringBuilder(curriculum(cvUser));
         for (int i = 0; i < jobs.size(); i++) {
             prompt.append(job(jobs.get(i), i + 1)).append('\n');
@@ -53,13 +59,21 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
         RuntimeException failure = null;
         for (LlmProvider provider : providers) {
             try {
-                return call.apply(services.get(provider), profile.apiKey(provider));
+                return call.apply(service(profile, provider), profile.apiKey(provider));
             } catch (RuntimeException e) {
                 Log.warnf("%s falhou: %s", provider.label, e.getMessage());
                 failure = e;
             }
         }
         throw failure;
+    }
+
+    private LlmService service(Profile profile, LlmProvider provider) {
+        if (provider != LlmProvider.LOCAL) {
+            return services.get(provider);
+        }
+        LocalLlm local = profile.localLlm();
+        return GroqServiceImpl.compatible(cvMatchMapper, objectMapper, provider.label, local.model(), local.chatCompletions());
     }
 
     static String job(JobDetail job, int id) {

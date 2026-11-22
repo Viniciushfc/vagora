@@ -8,6 +8,7 @@ import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.contracts.UpdateProfileUseCase;
 import com.viniciushfc.domain.validators.CurriculumValidator;
+import com.viniciushfc.domain.vo.LocalLlm;
 
 import java.util.List;
 
@@ -32,6 +33,7 @@ public class UpdateProfileUseCaseImpl implements UpdateProfileUseCase {
             validatePollInterval(changes.pollMinMinutes() != null ? changes.pollMinMinutes() : current.pollMin(),
                     changes.pollMaxMinutes() != null ? changes.pollMaxMinutes() : current.pollMax());
         }
+        validateLocalLlm(changes.localLlm(), current.localLlm());
         validateChain(changes.analysisChain());
         validateChain(changes.curriculumChain());
         return profileRepository.update(current.id(), changes);
@@ -46,6 +48,23 @@ public class UpdateProfileUseCaseImpl implements UpdateProfileUseCase {
         }
         if (chain.stream().distinct().count() != chain.size()) {
             throw new ValidationException("Cada IA aparece uma vez só em cada etapa do fluxo.");
+        }
+    }
+
+    private static void validateLocalLlm(LocalLlm changes, LocalLlm current) {
+        if (changes == null) {
+            return;
+        }
+        String url = changes.url() != null ? changes.url() : current == null ? null : current.url();
+        String model = changes.model() != null ? changes.model() : current == null ? null : current.model();
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        if (!url.strip().matches("(?i)https?://\\S+")) {
+            throw new ValidationException("O endereço da IA local precisa começar com http:// ou https://.");
+        }
+        if (model == null || model.isBlank()) {
+            throw new ValidationException("Informe o modelo da IA local, do jeito que ele aparece no seu servidor.");
         }
     }
 

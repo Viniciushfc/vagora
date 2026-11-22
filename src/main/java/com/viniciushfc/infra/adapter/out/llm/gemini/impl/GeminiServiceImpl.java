@@ -28,11 +28,9 @@ import java.util.concurrent.TimeoutException;
 
 @ApplicationScoped
 public class GeminiServiceImpl implements LlmService {
-
     static final Duration TIMEOUT = Duration.ofMinutes(5);
     private static final ExecutorService CALLS = Executors.newVirtualThreadPerTaskExecutor();
 
-    // o esquema garante o formato da resposta; a raiz é objeto porque é o formato que a documentação do Gemini mostra
     private static final Map<String, Object> ANALYSIS_SCHEMA = Map.of(
             "type", "object",
             "properties", Map.of("resultados", Map.of(
@@ -61,7 +59,6 @@ public class GeminiServiceImpl implements LlmService {
     }
 
     private static GenerateContentConfig config(String systemPrompt, String mimeType) {
-        // o 3.8-flash pensa no nível médio por padrão e o pensamento era ~80% do tempo da resposta; LOW é o mínimo dele
         return GenerateContentConfig.builder()
                 .thinkingConfig(ThinkingConfig.builder().thinkingLevel(ThinkingLevel.Known.LOW))
                 .responseMimeType(mimeType)

@@ -13,6 +13,7 @@ import com.viniciushfc.domain.repositories.ProfileRepository;
 import com.viniciushfc.domain.usecases.impl.*;
 import com.viniciushfc.domain.validators.CurriculumValidator;
 import com.viniciushfc.domain.vo.Attachment;
+import com.viniciushfc.domain.vo.LocalLlm;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.domain.vo.ProcessingStatus;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ class ProfileUseCasesTest {
     private final Attachment cv = new Attachment("cv.pdf", "application/pdf", new byte[]{1});
 
     private Profile profile(LinkedAccount... accounts) {
-        return new Profile(UUID.randomUUID(), "Fulano", "chave", cv, new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null);
+        return new Profile(UUID.randomUUID(), "Fulano", "chave", cv, new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null, null);
     }
 
     private Profile existing(LinkedAccount... accounts) {
@@ -57,7 +58,7 @@ class ProfileUseCasesTest {
     }
 
     private LinkedAccount request(String login, ExternalProvider provider, String folder) {
-        return new LinkedAccount(null, login, "senha", provider, folder, null);
+        return new LinkedAccount(null, login, "senha", provider, folder, null, null);
     }
 
     @SuppressWarnings("unchecked")
@@ -73,7 +74,7 @@ class ProfileUseCasesTest {
         when(profileRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         Profile created = new CreateProfileUseCaseImpl(profileRepository, pdfGateway)
-                .execute(new Profile(null, "Fulano", "chave", cv, null, null, null, null, null, null, null, null, null, null));
+                .execute(new Profile(null, "Fulano", "chave", cv, null, null, null, null, null, null, null, null, null, null, null));
 
         assertNotNull(created.id());
         assertEquals("chave", created.geminiApiKey());
@@ -86,17 +87,17 @@ class ProfileUseCasesTest {
         when(profileRepository.find()).thenReturn(profile());
 
         var useCase = new CreateProfileUseCaseImpl(profileRepository, pdfGateway);
-        assertThrows(ConflictException.class, () -> useCase.execute(new Profile(null, "Outro", "k", cv, null, null, null, null, null, null, null, null, null, null)));
+        assertThrows(ConflictException.class, () -> useCase.execute(new Profile(null, "Outro", "k", cv, null, null, null, null, null, null, null, null, null, null, null)));
         verify(profileRepository, never()).save(any());
     }
 
     @Test
     void createRejeitaCurriculoInvalido() {
         var useCase = new CreateProfileUseCaseImpl(profileRepository, pdfGateway);
-        var semCv = new Profile(null, "F", "k", null, null, null, null, null, null, null, null, null, null, null);
-        var naoPdf = new Profile(null, "F", "k", new Attachment("cv.docx", "application/msword", new byte[]{1}), null, null, null, null, null, null, null, null, null, null);
+        var semCv = new Profile(null, "F", "k", null, null, null, null, null, null, null, null, null, null, null, null);
+        var naoPdf = new Profile(null, "F", "k", new Attachment("cv.docx", "application/msword", new byte[]{1}), null, null, null, null, null, null, null, null, null, null, null);
         var grande = new Profile(null, "F", "k",
-                new Attachment("cv.pdf", "application/pdf", new byte[CurriculumValidator.MAX_SIZE_BYTES + 1]), null, null, null, null, null, null, null, null, null, null);
+                new Attachment("cv.pdf", "application/pdf", new byte[CurriculumValidator.MAX_SIZE_BYTES + 1]), null, null, null, null, null, null, null, null, null, null, null);
 
         assertThrows(ValidationException.class, () -> useCase.execute(semCv));
         assertThrows(ValidationException.class, () -> useCase.execute(naoPdf));
@@ -110,7 +111,7 @@ class ProfileUseCasesTest {
         when(pdfGateway.extractTextPdf(cv)).thenReturn("  \n ");
 
         var e = assertThrows(ValidationException.class,
-                () -> new CreateProfileUseCaseImpl(profileRepository, pdfGateway).execute(new Profile(null, "F", "k", cv, null, null, null, null, null, null, null, null, null, null)));
+                () -> new CreateProfileUseCaseImpl(profileRepository, pdfGateway).execute(new Profile(null, "F", "k", cv, null, null, null, null, null, null, null, null, null, null, null)));
         assertTrue(e.getMessage().contains("texto selecionável"), e.getMessage());
         verify(profileRepository, never()).save(any());
     }
@@ -120,11 +121,11 @@ class ProfileUseCasesTest {
         Profile current = existing();
         var useCase = new UpdateProfileUseCaseImpl(profileRepository, pdfGateway);
 
-        var naoPdf = new Profile(null, null, null, new Attachment("cv.txt", "text/plain", new byte[]{1}), null, null, null, null, null, null, null, null, null, null);
+        var naoPdf = new Profile(null, null, null, new Attachment("cv.txt", "text/plain", new byte[]{1}), null, null, null, null, null, null, null, null, null, null, null);
         assertThrows(ValidationException.class, () -> useCase.execute(naoPdf));
         verify(profileRepository, never()).update(any(), any());
 
-        var soNome = new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null);
+        var soNome = new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null);
         when(profileRepository.update(current.id(), soNome)).thenReturn(current);
         assertEquals(current, useCase.execute(soNome));
     }
@@ -134,8 +135,8 @@ class ProfileUseCasesTest {
         existing();
         var useCase = new UpdateProfileUseCaseImpl(profileRepository, pdfGateway);
 
-        assertThrows(ValidationException.class, () -> useCase.execute(new Profile(null, null, null, null, null, null, null, null, null, null, 0, null, null, null)));
-        assertThrows(ValidationException.class, () -> useCase.execute(new Profile(null, null, null, null, null, null, null, null, null, null, 30, null, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new Profile(null, null, null, null, null, null, null, null, null, null, 0, null, null, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new Profile(null, null, null, null, null, null, null, null, null, null, 30, null, null, null, null)));
         verify(profileRepository, never()).update(any(), any());
     }
 
@@ -144,20 +145,34 @@ class ProfileUseCasesTest {
         existing();
         var useCase = new UpdateProfileUseCaseImpl(profileRepository, pdfGateway);
 
-        assertThrows(ValidationException.class, () -> useCase.execute(new Profile(null, null, null, null, null, null, null, null, null, null, null, null, List.of(), null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new Profile(null, null, null, null, null, null, null, null, null, null, null, null, List.of(), null, null)));
         assertThrows(ValidationException.class, () -> useCase.execute(new Profile(null, null, null, null, null, null, null, null, null, null, null, null, null,
-                List.of(LlmProvider.CLAUDE, LlmProvider.CLAUDE))));
+                List.of(LlmProvider.CLAUDE, LlmProvider.CLAUDE), null)));
         verify(profileRepository, never()).update(any(), any());
+    }
+
+    @Test
+    void updateRejeitaIaLocalSemHttpOuSemModelo() {
+        existing();
+        var useCase = new UpdateProfileUseCaseImpl(profileRepository, pdfGateway);
+
+        assertThrows(ValidationException.class, () -> useCase.execute(local(new LocalLlm("localhost:11434", "qwen", null))));
+        assertThrows(ValidationException.class, () -> useCase.execute(local(new LocalLlm("http://localhost:11434/v1", null, null))));
+        verify(profileRepository, never()).update(any(), any());
+    }
+
+    private static Profile local(LocalLlm localLlm) {
+        return new Profile(null, null, null, null, null, null, null, null, null, null, null, null, null, null, localLlm);
     }
 
     @Test
     void linkRejeitaCamposVaziosSemConsultarNada() {
         var useCase = new LinkAccountUseCaseImpl(profileRepository, mailboxGateway);
 
-        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, null, "s", ExternalProvider.EMAIL, null, null)));
-        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, " ", "s", ExternalProvider.EMAIL, null, null)));
-        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, "u", "", ExternalProvider.EMAIL, null, null)));
-        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, "u", "s", null, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, null, "s", ExternalProvider.EMAIL, null, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, " ", "s", ExternalProvider.EMAIL, null, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, "u", "", ExternalProvider.EMAIL, null, null, null)));
+        assertThrows(ValidationException.class, () -> useCase.execute(new LinkedAccount(null, "u", "s", null, null, null, null)));
         verifyNoInteractions(profileRepository, mailboxGateway);
     }
 

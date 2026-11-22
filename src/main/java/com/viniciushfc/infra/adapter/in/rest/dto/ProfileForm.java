@@ -41,4 +41,13 @@ public class ProfileForm {
 
     @RestForm
     public String curriculumChain;
+
+    @RestForm
+    public String localLlmUrl;
+
+    @RestForm
+    public String localLlmModel;
+
+    @RestForm
+    public String localLlmApiKey;
 }

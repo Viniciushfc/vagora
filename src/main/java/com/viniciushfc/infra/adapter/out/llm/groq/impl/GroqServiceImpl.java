@@ -46,8 +46,10 @@ public class GroqServiceImpl implements LlmService {
 
     private final CvMatchMapper cvMatchMapper;
     private final ObjectMapper objectMapper;
+    private final String name;
     private final String model;
     private final URI endpoint;
+    private final Map<String, Object> extras;
 
     @Inject
     public GroqServiceImpl(CvMatchMapper cvMatchMapper,
@@ -57,23 +59,34 @@ public class GroqServiceImpl implements LlmService {
     }
 
     GroqServiceImpl(CvMatchMapper cvMatchMapper, ObjectMapper objectMapper, String model, URI endpoint) {
+        this(cvMatchMapper, objectMapper, "Groq", model, endpoint, Map.of("reasoning_effort", "low"));
+    }
+
+    private GroqServiceImpl(CvMatchMapper cvMatchMapper, ObjectMapper objectMapper, String name, String model, URI endpoint,
+                            Map<String, Object> extras) {
         this.cvMatchMapper = cvMatchMapper;
         this.objectMapper = objectMapper;
+        this.name = name;
         this.model = model;
         this.endpoint = endpoint;
+        this.extras = extras;
+    }
+
+    public static LlmService compatible(CvMatchMapper cvMatchMapper, ObjectMapper objectMapper, String name, String model, URI endpoint) {
+        return new GroqServiceImpl(cvMatchMapper, objectMapper, name, model, endpoint, Map.of());
     }
 
     @Override
     public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey) {
         String text = call(PromptsContextsLLM.MatchAnalysisPrompt, prompt, ANALYSIS_FORMAT, apiKey, "análise");
-        return cvMatchMapper.toDomain("Groq", text, jobs);
+        return cvMatchMapper.toDomain(name, text, jobs);
     }
 
     @Override
     public String adaptCurriculum(String prompt, String apiKey) {
         String text = call(PromptsContextsLLM.AtsCurriculumPrompt, prompt, null, apiKey, "currículo");
         if (text == null || text.isBlank()) {
-            throw new ExternalServiceException("O Groq não devolveu o currículo adaptado. O alerta será tentado de novo.");
+            throw new ExternalServiceException(name + " não devolveu o currículo adaptado. O alerta será tentado de novo.");
         }
         return text.strip();
     }
@@ -84,26 +97,26 @@ public class GroqServiceImpl implements LlmService {
             HttpRequest request = request(body(systemPrompt, prompt, format), apiKey);
             HttpResponse<String> response = sendWaitingShortLimit(request);
             if (response.statusCode() != 200) {
-                throw translate(response.statusCode(), retryAfterHeader(response), response.body());
+                throw translate(name, response.statusCode(), retryAfterHeader(response), response.body());
             }
 
             JsonNode json = objectMapper.readTree(response.body());
             JsonNode usage = json.path("usage");
-            Log.infof("Groq respondeu em %.1f s: %d tokens de entrada, %d de resposta (%s)",
-                    (System.nanoTime() - start) / 1e9,
+            Log.infof("%s respondeu em %.1f s: %d tokens de entrada, %d de resposta (%s)",
+                    name, (System.nanoTime() - start) / 1e9,
                     usage.path("prompt_tokens").asInt(),
                     usage.path("completion_tokens").asInt(),
                     task);
             return json.path("choices").path(0).path("message").path("content").asText(null);
         } catch (HttpTimeoutException e) {
-            Log.warnf("O Groq não respondeu em %d s", TIMEOUT.toSeconds());
-            throw new ExternalServiceException("O Groq demorou demais para responder. O alerta será tentado de novo.");
+            Log.warnf("%s não respondeu em %d s", name, TIMEOUT.toSeconds());
+            throw new ExternalServiceException(name + " demorou demais para responder. O alerta será tentado de novo.");
         } catch (IOException e) {
-            Log.warn("Falha de comunicação com o Groq", e);
-            throw new ExternalServiceException("Não foi possível falar com o Groq agora. O alerta será tentado de novo.");
+            Log.warnf("Falha de comunicação com %s: %s", name, e.getMessage());
+            throw new ExternalServiceException("Não foi possível falar com " + name + " agora. O alerta será tentado de novo.");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ExternalServiceException("A análise do Groq foi interrompida.");
+            throw new ExternalServiceException("A análise de " + name + " foi interrompida.");
         }
     }
 
@@ -113,7 +126,7 @@ public class GroqServiceImpl implements LlmService {
         body.put("messages", List.of(
                 Map.of("role", "system", "content", systemPrompt),
                 Map.of("role", "user", "content", prompt)));
-        body.put("reasoning_effort", "low");
+        body.putAll(extras);
         if (format != null) {
             body.put("response_format", format);
         }
@@ -121,15 +134,17 @@ public class GroqServiceImpl implements LlmService {
     }
 
     private HttpRequest request(String body, String apiKey) {
-        return HttpRequest.newBuilder(endpoint)
+        HttpRequest.Builder request = HttpRequest.newBuilder(endpoint)
                 .timeout(TIMEOUT)
-                .header("Authorization", "Bearer " + apiKey)
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
+                .POST(HttpRequest.BodyPublishers.ofString(body));
+        if (apiKey != null && !apiKey.isBlank()) {
+            request.header("Authorization", "Bearer " + apiKey);
+        }
+        return request.build();
     }
 
-    private static HttpResponse<String> sendWaitingShortLimit(HttpRequest request)
+    private HttpResponse<String> sendWaitingShortLimit(HttpRequest request)
             throws IOException, InterruptedException {
         HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
         Duration wait = retryAfter(retryAfterHeader(response));
@@ -137,7 +152,7 @@ public class GroqServiceImpl implements LlmService {
             return response;
         }
 
-        Log.infof("Groq pediu %d s de espera pelo limite por minuto; tentando de novo", wait.toSeconds());
+        Log.infof("%s pediu %d s de espera pelo limite por minuto; tentando de novo", name, wait.toSeconds());
         Thread.sleep(wait.toMillis());
         return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
     }
@@ -146,16 +161,16 @@ public class GroqServiceImpl implements LlmService {
         return response.headers().firstValue("retry-after").orElse(null);
     }
 
-    static RuntimeException translate(int status, String retryAfter, String body) {
-        Log.warnf("Groq recusou a chamada (HTTP %d): %s", status, body);
+    static RuntimeException translate(String name, int status, String retryAfter, String body) {
+        Log.warnf("%s recusou a chamada (HTTP %d): %s", name, status, body);
         return switch (status) {
             case 401, 403 -> new ExternalServiceException(
-                    "A chave do Groq foi recusada. Confira a chave em Configurações.", ErrorCode.LLM_KEY_REJECTED);
-            case 429 -> RateLimitedException.quota("Groq", retryAfter(retryAfter));
-            case 400, 413, 422 -> new ExternalServiceException(
-                    "O Groq recusou o pedido (HTTP " + status + "). Os detalhes estão no terminal do Vagora.");
+                    "A chave de " + name + " foi recusada. Confira a chave em Configurações.", ErrorCode.LLM_KEY_REJECTED);
+            case 429 -> RateLimitedException.quota(name, retryAfter(retryAfter));
+            case 400, 404, 413, 422 -> new ExternalServiceException(
+                    name + " recusou o pedido (HTTP " + status + "). Os detalhes estão no terminal do Vagora.");
             default -> new ExternalServiceException(
-                    "O Groq está indisponível agora. O alerta será tentado de novo.");
+                    name + " está indisponível agora. O alerta será tentado de novo.");
         };
     }
 

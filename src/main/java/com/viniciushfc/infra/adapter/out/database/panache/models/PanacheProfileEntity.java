@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.out.database.panache.models;
 
 import com.viniciushfc.domain.enums.LlmProvider;
+import com.viniciushfc.domain.vo.LocalLlm;
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheAttachmentEmbeddable;
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheLinkedAccountEmbeddable;
 import jakarta.persistence.*;
@@ -26,6 +27,9 @@ public class PanacheProfileEntity {
     private String curriculumLlmChain;
     private Boolean showBrowser;
     private Boolean monitoringEnabled;
+    private String localLlmUrl;
+    private String localLlmModel;
+    private String localLlmApiKey;
 
     @Embedded
     @AttributeOverrides({
@@ -55,7 +59,8 @@ public class PanacheProfileEntity {
                                 Integer pollMinMinutes,
                                 Integer pollMaxMinutes,
                                 List<LlmProvider> analysisChain,
-                                List<LlmProvider> curriculumChain) {
+                                List<LlmProvider> curriculumChain,
+                                LocalLlm localLlm) {
         this.id = id;
         this.name = name;
         this.geminiApiKey = geminiApiKey;
@@ -70,6 +75,11 @@ public class PanacheProfileEntity {
         this.pollMaxMinutes = pollMaxMinutes;
         setAnalysisChain(analysisChain);
         setCurriculumChain(curriculumChain);
+        if (localLlm != null) {
+            this.localLlmUrl = localLlm.url();
+            this.localLlmModel = localLlm.model();
+            this.localLlmApiKey = localLlm.apiKey();
+        }
     }
 
     public PanacheProfileEntity() {
@@ -191,4 +201,21 @@ public class PanacheProfileEntity {
     public void setLinkedAccounts(List<PanacheLinkedAccountEmbeddable> linkedAccounts) {
         this.linkedAccounts = linkedAccounts;
     }
-};
+
+    public LocalLlm getLocalLlm() {
+        return localLlmUrl == null && localLlmModel == null && localLlmApiKey == null
+                ? null : new LocalLlm(localLlmUrl, localLlmModel, localLlmApiKey);
+    }
+
+    public void setLocalLlmUrl(String localLlmUrl) {
+        this.localLlmUrl = localLlmUrl;
+    }
+
+    public void setLocalLlmModel(String localLlmModel) {
+        this.localLlmModel = localLlmModel;
+    }
+
+    public void setLocalLlmApiKey(String localLlmApiKey) {
+        this.localLlmApiKey = localLlmApiKey;
+    }
+}

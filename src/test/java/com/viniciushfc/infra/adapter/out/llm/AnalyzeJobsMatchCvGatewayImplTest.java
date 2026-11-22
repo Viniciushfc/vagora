@@ -33,14 +33,14 @@ class AnalyzeJobsMatchCvGatewayImplTest {
 
     private final GeminiServiceImpl gemini = mock(GeminiServiceImpl.class);
     private final GroqServiceImpl groq = mock(GroqServiceImpl.class);
-    private final AnalyzeJobsMatchCvGatewayImpl gateway = new AnalyzeJobsMatchCvGatewayImpl(gemini, groq, mock(ClaudeServiceImpl.class));
+    private final AnalyzeJobsMatchCvGatewayImpl gateway = new AnalyzeJobsMatchCvGatewayImpl(gemini, groq, mock(ClaudeServiceImpl.class), null, null);
 
     private JobDetail job(String title) {
         return new JobDetail("link", title, "descrição de " + title, new CompanyDetails("ACME", "sobre"));
     }
 
     private Profile profile(String geminiKey, String groqKey, LlmProvider primary) {
-        return new Profile(null, "F", geminiKey, null, null, null, null, groqKey, primary, null, null, null, null, null);
+        return new Profile(null, "F", geminiKey, null, null, null, null, groqKey, primary, null, null, null, null, null, null);
     }
 
     @Test

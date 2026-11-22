@@ -5,6 +5,7 @@ import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.vo.Attachment;
+import com.viniciushfc.domain.vo.LocalLlm;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountRequest;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountResponse;
 import com.viniciushfc.infra.adapter.in.rest.dto.ProfileForm;
@@ -34,12 +35,14 @@ public class ProfileRestMapper {
                 form.pollMinMinutes,
                 form.pollMaxMinutes,
                 toChain(form.analysisChain),
-                toChain(form.curriculumChain)
+                toChain(form.curriculumChain),
+                form.localLlmUrl == null && form.localLlmModel == null && form.localLlmApiKey == null
+                        ? null : new LocalLlm(form.localLlmUrl, form.localLlmModel, form.localLlmApiKey)
         );
     }
 
     public static LinkedAccount toDomain(LinkedAccountRequest request) {
-        return new LinkedAccount(null, request.username(), request.password(), request.externalProvider(), request.folder(), null);
+        return new LinkedAccount(null, request.username(), request.password(), request.externalProvider(), request.folder(), null, null);
     }
 
     public static ProfileResponse toResponse(Profile profile) {
@@ -56,11 +59,15 @@ public class ProfileRestMapper {
                 profile.pollMax(),
                 profile.analysisOrder(),
                 profile.curriculumOrder(),
+                profile.localLlm() == null ? null : profile.localLlm().url(),
+                profile.localLlm() == null ? null : profile.localLlm().model(),
+                profile.localLlm() != null && profile.localLlm().apiKey() != null,
+                profile.llmProviders().contains(LlmProvider.LOCAL),
                 profile.curriculum() == null ? null : profile.curriculum().name(),
                 profile.curriculum() == null || profile.curriculum().content() == null
                         ? null : profile.curriculum().content().length,
                 profile.linkedAccounts().stream()
-                        .map(l -> new LinkedAccountResponse(l.id(), l.username(), l.externalProvider(), l.folder(), l.indeedFolder()))
+                        .map(l -> new LinkedAccountResponse(l.id(), l.username(), l.externalProvider(), l.folder(), l.indeedFolder(), l.glassdoorFolder()))
                         .toList()
         );
     }

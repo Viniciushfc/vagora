@@ -8,6 +8,7 @@ import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.exceptions.RateLimitedException;
 import com.viniciushfc.domain.vo.CvMatchResult;
+import com.viniciushfc.domain.vo.LocalLlm;
 import com.viniciushfc.infra.adapter.out.llm.mapper.CvMatchMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ import java.util.Deque;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -99,6 +101,22 @@ class GroqServiceImplTest {
         assertEquals("low", request.body().path("reasoning_effort").asText());
         assertEquals("prompt", request.body().path("messages").path(1).path("content").asText());
         assertTrue(request.body().path("response_format").path("json_schema").path("strict").asBoolean());
+    }
+
+    @Test
+    void iaPropriaChamaOEnderecoDaPessoaSemChaveNemParametroDoGroq() {
+        URI endpoint = new LocalLlm("http://127.0.0.1:" + server.getAddress().getPort() + "/", "qwen2.5:14b", null).chatCompletions();
+        assertEquals("/chat/completions", endpoint.getPath());
+        server.createContext("/chat/completions", this::answer);
+        reply(200, completion("cv"));
+
+        var local = GroqServiceImpl.compatible(new CvMatchMapper(objectMapper), objectMapper, "IA local", "qwen2.5:14b", endpoint);
+
+        assertEquals("cv", local.adaptCurriculum("p", null));
+        Received request = received.getFirst();
+        assertNull(request.authorization());
+        assertEquals("qwen2.5:14b", request.body().path("model").asText());
+        assertTrue(request.body().path("reasoning_effort").isMissingNode());
     }
 
     @Test
