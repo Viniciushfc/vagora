@@ -199,6 +199,17 @@ class PollJobAlertsUseCaseImplTest {
     }
 
     @Test
+    void emailLidoSemAlertaNovoTambemLimpaOErro() {
+        var user = user(emailAccount);
+        statusRepository.save(user.id(), LINKEDIN, statusRepository.find(user.id(), LINKEDIN).failed(new RuntimeException("erro antigo")));
+        when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), eq(LINKEDIN), any())).thenReturn(List.of());
+
+        useCase.execute(LINKEDIN);
+
+        assertNull(statusRepository.find(user.id(), LINKEDIN).lastError());
+    }
+
+    @Test
     void falhaAoLerOEmailFicaRegistrada() {
         var user = user(emailAccount);
         when(mailboxGateway.fetchUnreadJobAlerts(eq(emailAccount), eq(LINKEDIN), any())).thenThrow(new ExternalServiceException("Falha ao acessar o email"));

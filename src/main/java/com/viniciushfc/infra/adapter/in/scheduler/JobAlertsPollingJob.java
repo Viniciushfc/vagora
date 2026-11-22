@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.in.scheduler;
 
 import com.viniciushfc.domain.enums.AlertSource;
+import com.viniciushfc.domain.exceptions.ExternalServiceException;
 import com.viniciushfc.domain.usecases.contracts.PollJobAlertsUseCase;
 import io.quarkus.logging.Log;
 import io.quarkus.scheduler.Scheduled;
@@ -20,6 +21,8 @@ public class JobAlertsPollingJob {
         for (AlertSource source : AlertSource.values()) {
             try {
                 pollJobAlertsUseCase.execute(source);
+            } catch (ExternalServiceException e) {
+                Log.warnf("Falha ao buscar alertas de vaga do %s: %s", source.label, e.getMessage());
             } catch (Exception e) {
                 Log.warn("Falha ao buscar alertas de vaga do " + source.label, e);
             }

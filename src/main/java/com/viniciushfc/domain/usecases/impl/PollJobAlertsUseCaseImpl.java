@@ -67,7 +67,7 @@ public class PollJobAlertsUseCaseImpl implements PollJobAlertsUseCase {
         }
 
         if (alerts.isEmpty()) {
-            save(profile, source, status(profile, source).queued(0).checked());
+            save(profile, source, status(profile, source).succeeded().queued(0).checked());
             return;
         }
 

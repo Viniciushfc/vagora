@@ -150,7 +150,7 @@ public class ImapMailboxGatewayImpl implements MailboxGateway {
         if (e instanceof AuthenticationFailedException) {
             return new ValidationException("Email ou senha inválidos. No Gmail, use uma senha de app: https://myaccount.google.com/apppasswords");
         }
-        Log.warn("Falha ao acessar o email por IMAP", e);
+        Log.warnf("Falha ao acessar o email por IMAP: %s", e.getMessage());
         return new ExternalServiceException("Não foi possível acessar o email agora. O Vagora tenta de novo no próximo ciclo.", e);
     }
 }
