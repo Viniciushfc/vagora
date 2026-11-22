@@ -56,7 +56,7 @@ class DomainEntitiesTest {
     @Test
     void cadaEtapaSegueOFluxoConfiguradoPulandoIaSemChave() {
         var user = new Profile(null, "F", "gemini", null, new ArrayList<>(), null, null, null, LlmProvider.GEMINI, null, null, null,
-                List.of(LlmProvider.GROQ, LlmProvider.CLAUDE, LlmProvider.GEMINI), null, null);
+                List.of(LlmProvider.GROQ, LlmProvider.CLAUDE, LlmProvider.GEMINI), null, null, null);
 
         assertEquals(List.of(LlmProvider.GEMINI), user.analysisProviders());
         assertEquals(List.of(LlmProvider.GEMINI), user.curriculumProviders());
@@ -64,7 +64,7 @@ class DomainEntitiesTest {
         assertEquals(List.of(LlmProvider.GEMINI, LlmProvider.GROQ, LlmProvider.CLAUDE, LlmProvider.LOCAL), user.curriculumOrder());
 
         var semGemini = new Profile(null, "F", "gemini", null, new ArrayList<>(), null, null, "groq", LlmProvider.GEMINI, null, null, null,
-                List.of(LlmProvider.GROQ), List.of(LlmProvider.GEMINI, LlmProvider.GROQ), null);
+                List.of(LlmProvider.GROQ), List.of(LlmProvider.GEMINI, LlmProvider.GROQ), null, null);
         assertEquals(List.of(LlmProvider.GROQ), semGemini.analysisProviders());
         assertEquals(List.of(LlmProvider.GEMINI, LlmProvider.GROQ), semGemini.curriculumProviders());
     }
@@ -77,5 +77,14 @@ class DomainEntitiesTest {
         user.linkedAccounts().add(LinkedAccount.create("e@x.com", null, ExternalProvider.CLAUDE, null));
         assertEquals(List.of(LlmProvider.CLAUDE, LlmProvider.GEMINI), user.llmProviders());
         assertNull(user.apiKey(LlmProvider.CLAUDE));
+    }
+
+    @Test
+    void claudeEntraComoIaSoComAChaveDaApi() {
+        var user = new Profile(null, "F", null, null, new ArrayList<>(), null, null, null, LlmProvider.CLAUDE, null, null, null,
+                null, null, null, "sk-ant");
+
+        assertEquals(List.of(LlmProvider.CLAUDE), user.llmProviders());
+        assertEquals("sk-ant", user.apiKey(LlmProvider.CLAUDE));
     }
 }

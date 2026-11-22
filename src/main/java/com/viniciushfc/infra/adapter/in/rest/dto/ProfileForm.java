@@ -50,4 +50,7 @@ public class ProfileForm {
 
     @RestForm
     public String localLlmApiKey;
+
+    @RestForm
+    public String claudeApiKey;
 }

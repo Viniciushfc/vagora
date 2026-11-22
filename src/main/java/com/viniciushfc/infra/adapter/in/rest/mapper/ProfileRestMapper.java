@@ -37,7 +37,8 @@ public class ProfileRestMapper {
                 toChain(form.analysisChain),
                 toChain(form.curriculumChain),
                 form.localLlmUrl == null && form.localLlmModel == null && form.localLlmApiKey == null
-                        ? null : new LocalLlm(form.localLlmUrl, form.localLlmModel, form.localLlmApiKey)
+                        ? null : new LocalLlm(form.localLlmUrl, form.localLlmModel, form.localLlmApiKey),
+                form.claudeApiKey
         );
     }
 
@@ -51,6 +52,7 @@ public class ProfileRestMapper {
                 profile.name(),
                 profile.llmProviders().contains(LlmProvider.GEMINI),
                 profile.llmProviders().contains(LlmProvider.GROQ),
+                profile.claudeApiKey() != null && !profile.claudeApiKey().isBlank(),
                 profile.primaryLlm(),
                 profile.isBrowserVisible(),
                 profile.isMonitoringEnabled(),

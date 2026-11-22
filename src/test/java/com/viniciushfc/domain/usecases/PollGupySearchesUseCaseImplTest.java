@@ -62,7 +62,7 @@ class PollGupySearchesUseCaseImplTest {
         activityRepository = new InMemoryScraperActivityRepository();
         useCase = new PollGupySearchesUseCaseImpl(profileRepository, gupySearchRepository, gupyGateway, jobMatchRepository,
                 pendingJobRepository, statusRepository, activityRepository);
-        profile = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(), null, null, null, null, null, null, null, null, null, null);
+        profile = new Profile(UUID.randomUUID(), "F", "k", null, new ArrayList<>(), null, null, null, null, null, null, null, null, null, null, null);
         when(profileRepository.find()).thenReturn(profile);
     }
 

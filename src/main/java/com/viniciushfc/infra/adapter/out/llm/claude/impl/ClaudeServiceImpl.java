@@ -31,19 +31,25 @@ public class ClaudeServiceImpl implements LlmService {
     private final ObjectMapper objectMapper;
     private final String model;
     private final String analysisSchema;
+    private final ClaudeApi api;
 
     public ClaudeServiceImpl(CvMatchMapper cvMatchMapper,
                              ObjectMapper objectMapper,
-                             @ConfigProperty(name = "vagora.claude.model", defaultValue = "sonnet") String model)
+                             @ConfigProperty(name = "vagora.claude.model", defaultValue = "sonnet") String model,
+                             ClaudeApi api)
             throws JsonProcessingException {
         this.cvMatchMapper = cvMatchMapper;
         this.objectMapper = objectMapper;
         this.model = model;
+        this.api = api;
         this.analysisSchema = objectMapper.writeValueAsString(CvMatchMapper.ANALYSIS_SCHEMA);
     }
 
     @Override
     public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey) {
+        if (apiKey != null && !apiKey.isBlank()) {
+            return api.analyze(prompt, jobs, apiKey);
+        }
         JsonNode json = call(PromptsContextsLLM.MatchAnalysisPrompt, prompt, analysisSchema, "análise");
         JsonNode output = json.path("structured_output");
         return cvMatchMapper.toDomain("Claude", output.isMissingNode() ? null : output.toString(), jobs);
@@ -51,6 +57,9 @@ public class ClaudeServiceImpl implements LlmService {
 
     @Override
     public String adaptCurriculum(String prompt, String apiKey) {
+        if (apiKey != null && !apiKey.isBlank()) {
+            return api.adaptCurriculum(prompt, apiKey);
+        }
         String text = call(PromptsContextsLLM.AtsCurriculumPrompt, prompt, null, "currículo").path("result").asText(null);
         if (text == null || text.isBlank()) {
             throw new ExternalServiceException("O Claude não devolveu o currículo adaptado. O alerta será tentado de novo.");

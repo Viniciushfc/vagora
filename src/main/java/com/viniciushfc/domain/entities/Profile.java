@@ -25,7 +25,8 @@ public record Profile(UUID id,
                       Integer pollMaxMinutes,
                       List<LlmProvider> analysisChain,
                       List<LlmProvider> curriculumChain,
-                      LocalLlm localLlm) {
+                      LocalLlm localLlm,
+                      String claudeApiKey) {
 
     public static final int DEFAULT_POLL_MIN_MINUTES = 15;
     public static final int DEFAULT_POLL_MAX_MINUTES = 25;
@@ -36,7 +37,7 @@ public record Profile(UUID id,
                                  LlmProvider llmProvider,
                                  Attachment curriculum) {
         return new Profile(UUID.randomUUID(), name, geminiApiKey, curriculum, new ArrayList<>(),
-                false, true, groqApiKey, llmProvider, false, null, null, null, null, null);
+                false, true, groqApiKey, llmProvider, false, null, null, null, null, null, null);
     }
 
     public boolean isBrowserVisible() {
@@ -67,7 +68,7 @@ public record Profile(UUID id,
         return switch (provider) {
             case GEMINI -> geminiApiKey;
             case GROQ -> groqApiKey;
-            case CLAUDE -> null;
+            case CLAUDE -> claudeApiKey;
             case LOCAL -> localLlm == null ? null : localLlm.apiKey();
         };
     }
@@ -107,7 +108,7 @@ public record Profile(UUID id,
 
     private boolean hasApiKey(LlmProvider provider) {
         if (provider == LlmProvider.CLAUDE) {
-            return findLinkedAccount(ExternalProvider.CLAUDE) != null;
+            return (claudeApiKey != null && !claudeApiKey.isBlank()) || findLinkedAccount(ExternalProvider.CLAUDE) != null;
         }
         if (provider == LlmProvider.LOCAL) {
             return localLlm != null && localLlm.configured();

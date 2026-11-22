@@ -31,7 +31,8 @@ public class ProfileMapper {
                 panacheProfileEntity.getPollMaxMinutes(),
                 panacheProfileEntity.getAnalysisChain(),
                 panacheProfileEntity.getCurriculumChain(),
-                panacheProfileEntity.getLocalLlm()
+                panacheProfileEntity.getLocalLlm(),
+                panacheProfileEntity.getClaudeApiKey()
         );
     }
 
@@ -51,7 +52,8 @@ public class ProfileMapper {
                 profile.pollMaxMinutes(),
                 profile.analysisChain(),
                 profile.curriculumChain(),
-                profile.localLlm()
+                profile.localLlm(),
+                profile.claudeApiKey()
         );
     }
 
@@ -78,6 +80,10 @@ public class ProfileMapper {
 
         if (bo.groqApiKey() != null) {
             entityPersist.setGroqApiKey(bo.groqApiKey());
+        }
+
+        if (bo.claudeApiKey() != null) {
+            entityPersist.setClaudeApiKey(blankToNull(bo.claudeApiKey()));
         }
 
         if (bo.llmProvider() != null) {

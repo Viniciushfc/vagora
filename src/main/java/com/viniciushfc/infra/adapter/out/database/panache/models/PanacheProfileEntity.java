@@ -30,6 +30,7 @@ public class PanacheProfileEntity {
     private String localLlmUrl;
     private String localLlmModel;
     private String localLlmApiKey;
+    private String claudeApiKey;
 
     @Embedded
     @AttributeOverrides({
@@ -60,7 +61,8 @@ public class PanacheProfileEntity {
                                 Integer pollMaxMinutes,
                                 List<LlmProvider> analysisChain,
                                 List<LlmProvider> curriculumChain,
-                                LocalLlm localLlm) {
+                                LocalLlm localLlm,
+                                String claudeApiKey) {
         this.id = id;
         this.name = name;
         this.geminiApiKey = geminiApiKey;
@@ -75,6 +77,7 @@ public class PanacheProfileEntity {
         this.pollMaxMinutes = pollMaxMinutes;
         setAnalysisChain(analysisChain);
         setCurriculumChain(curriculumChain);
+        this.claudeApiKey = claudeApiKey;
         if (localLlm != null) {
             this.localLlmUrl = localLlm.url();
             this.localLlmModel = localLlm.model();
@@ -217,5 +220,13 @@ public class PanacheProfileEntity {
 
     public void setLocalLlmApiKey(String localLlmApiKey) {
         this.localLlmApiKey = localLlmApiKey;
+    }
+
+    public String getClaudeApiKey() {
+        return claudeApiKey;
+    }
+
+    public void setClaudeApiKey(String claudeApiKey) {
+        this.claudeApiKey = claudeApiKey;
     }
 }

@@ -63,7 +63,7 @@ class ProcessEmailReceiverUseCaseImplTest {
 
     private Profile userWith(String geminiKey, LinkedAccount... accounts) {
         return new Profile(UUID.randomUUID(), "Fulano", geminiKey,
-                new Attachment("cv.pdf", "application/pdf", new byte[]{1}), new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null, null);
+                new Attachment("cv.pdf", "application/pdf", new byte[]{1}), new ArrayList<>(List.of(accounts)), null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private EmailReceived alertEmail(String body) {
@@ -206,7 +206,7 @@ class ProcessEmailReceiverUseCaseImplTest {
 
     @Test
     void abreONavegadorQuandoOUsuarioPede() throws Exception {
-        var visivel = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(List.of(linkedin)), true, null, null, null, null, null, null, null, null, null);
+        var visivel = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(List.of(linkedin)), true, null, null, null, null, null, null, null, null, null, null);
 
         useCase.execute(visivel, LINKEDIN, List.of(alertEmail(LINK_1)));
 
