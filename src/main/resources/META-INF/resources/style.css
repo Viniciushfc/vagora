@@ -1,7 +1,3 @@
-/* ============================================================
- * Tokens
- * ============================================================ */
-
 :root {
     --brand: oklch(0.36 0.07 160);
     --brand-sky: oklch(0.5 0.08 155);
@@ -28,7 +24,6 @@
     --text: "Space Grotesk", system-ui, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, monospace;
 
-    /* escala 1.25 a partir de 16px */
     --step--1: 0.82rem;
     --step-0: 1rem;
     --step-1: 1.25rem;
@@ -71,10 +66,6 @@
         color-scheme: dark;
     }
 }
-
-/* ============================================================
- * Base
- * ============================================================ */
 
 *, *::before, *::after {
     box-sizing: border-box;
@@ -147,10 +138,6 @@ code {
     font-size: 0.92em;
 }
 
-/* ============================================================
- * Marca: a régua com o corte
- * ============================================================ */
-
 .brand {
     display: inline-flex;
     align-items: center;
@@ -168,10 +155,6 @@ code {
     width: 2.4rem;
     height: 2.4rem;
 }
-
-/* ============================================================
- * Estrutura da aplicação
- * ============================================================ */
 
 .topbar {
     position: sticky;
@@ -226,11 +209,11 @@ code {
     display: none;
 }
 
-/* Monitor: o que o Vagora está fazendo agora */
 .monitor {
     display: flex;
     gap: 0.7rem;
     align-items: center;
+    min-width: 0;
     max-width: 30rem;
     margin-left: auto;
 }
@@ -260,6 +243,7 @@ code {
 .monitor-text {
     flex: 1;
     min-width: 0;
+    overflow: hidden;
 }
 
 .monitor[data-state="paused"] .monitor-dot {
@@ -290,6 +274,9 @@ code {
 .monitor-title {
     font-weight: 700;
     font-size: var(--step--1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .monitor-detail {
@@ -363,10 +350,6 @@ code {
     font-size: var(--step-1);
 }
 
-/* ============================================================
- * Controles
- * ============================================================ */
-
 .button {
     display: inline-flex;
     align-items: center;
@@ -401,6 +384,12 @@ code {
     background: var(--surface);
     border-color: var(--line);
     color: var(--ink);
+}
+
+.account > .key-link {
+    justify-self: start;
+    gap: 0.45rem;
+    text-decoration: none;
 }
 
 .button.quiet:hover {
@@ -481,7 +470,6 @@ input[type="file"]::file-selector-button {
     box-shadow: var(--lift);
 }
 
-/* Interruptor liga/desliga */
 .switch {
     position: relative;
     flex: none;
@@ -556,15 +544,174 @@ input[type="file"]::file-selector-button {
     font-size: var(--step-0);
 }
 
+.gupy-page {
+    display: grid;
+    gap: 1.25rem;
+    align-content: start;
+    max-width: 64rem;
+}
+
+.gupy-page .page-head {
+    margin-bottom: 0;
+}
+
+.gupy-now {
+    margin-bottom: 0;
+}
+
+.gupy-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.25rem;
+}
+
+.gupy-jobs {
+    display: grid;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.gupy-job {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0;
+    border-top: 1px solid var(--line);
+}
+
+.gupy-job-text {
+    display: grid;
+    min-width: 0;
+}
+
+.gupy-job-title {
+    overflow: hidden;
+    color: var(--ink);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gupy-job-company {
+    overflow: hidden;
+    color: var(--graphite);
+    font-size: var(--step--1);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gupy-job-badge {
+    flex: none;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    color: var(--graphite);
+    font-size: var(--step--1);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.gupy-job-badge[data-state="busy"] {
+    background: color-mix(in srgb, var(--focus) 22%, transparent);
+    color: var(--ink);
+}
+
+.gupy-job-badge[data-state="fit"] {
+    background: color-mix(in srgb, var(--fit) 25%, transparent);
+    color: var(--ink);
+}
+
+.gupy-all {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-size: var(--step--1);
+    font-weight: 700;
+}
+
+.gupy-history {
+    margin-top: 1.25rem;
+}
+
+.gupy-history summary {
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.gupy-heading {
+    margin-top: 0.75rem;
+    font-size: var(--step-2);
+}
+
+.invite {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.25rem;
+}
+
+.invite p {
+    flex: 1 1 22rem;
+}
+
+.gupy-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.gupy-list:empty {
+    display: none;
+}
+
+#gupy-add {
+    justify-self: start;
+}
+
+.gupy-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem;
+}
+
+.choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.4rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.choices legend {
+    width: 100%;
+    margin-bottom: 0.2rem;
+    padding: 0;
+    font-weight: 700;
+}
+
+.choices .check {
+    margin-top: 0;
+}
+
+.gupy-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+}
+
+.gupy-actions .save-status {
+    order: 3;
+}
+
 .toggles .toggle-row + .toggle-row {
     margin-top: 1.1rem;
     padding-top: 1.1rem;
     border-top: 1px solid var(--line);
 }
-
-/* ============================================================
- * Formulários
- * ============================================================ */
 
 .form {
     display: grid;
@@ -575,7 +722,6 @@ input[type="file"]::file-selector-button {
     display: grid;
     gap: 0.35rem;
 }
-
 
 label {
     font-weight: 700;
@@ -665,10 +811,6 @@ label {
     accent-color: var(--ink);
 }
 
-/* ============================================================
- * Tooltip
- * ============================================================ */
-
 .tip {
     position: relative;
     display: inline-flex;
@@ -743,10 +885,6 @@ label {
 @media (prefers-reduced-motion: no-preference) {
     .tip-bubble { transition: opacity 120ms ease, visibility 120ms; }
 }
-
-/* ============================================================
- * Vagas: régua geral (o destaque da página)
- * ============================================================ */
 
 .spread {
     margin: 0 0 2rem;
@@ -853,10 +991,6 @@ label {
     font-weight: 700;
     white-space: nowrap;
 }
-
-/* ============================================================
- * Vagas: barra de ferramentas e lista
- * ============================================================ */
 
 .toolbar {
     display: flex;
@@ -1224,7 +1358,6 @@ label {
     line-height: 1.6;
 }
 
-/* Única animação automática: as réguas enchem quando a lista aparece. */
 @media (prefers-reduced-motion: no-preference) {
     .match.is-entering .ruler-fill {
         animation: fill 700ms cubic-bezier(.2, .7, .2, 1) both;
@@ -1267,14 +1400,10 @@ label {
     opacity: 0.9;
 }
 
-/* ============================================================
- * Contas
- * ============================================================ */
-
-
 .account-head {
     display: flex;
-    gap: 0.85rem;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.85rem;
     align-items: center;
 }
 
@@ -1294,6 +1423,7 @@ label {
 
 .account {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.9rem;
     justify-items: start;
 }
@@ -1366,7 +1496,6 @@ label {
     gap: 0.5rem;
 }
 
-
 .risk {
     padding: 1.1rem 1.2rem;
     border: 1px solid color-mix(in srgb, var(--cut) 45%, var(--line));
@@ -1396,10 +1525,6 @@ label {
     margin-top: 0.85rem;
     color: var(--graphite);
 }
-
-/* ============================================================
- * Perfil
- * ============================================================ */
 
 .identity {
     display: flex;
@@ -1799,10 +1924,6 @@ label {
     margin: 0.4rem 0 1rem;
 }
 
-/* ============================================================
- * Configuração inicial
- * ============================================================ */
-
 .setup {
     max-width: 46rem;
     margin: 0 auto;
@@ -1916,10 +2037,6 @@ label {
     padding-left: 4.35rem;
 }
 
-/* ============================================================
- * Diálogo e aviso
- * ============================================================ */
-
 .dialog {
     max-width: 26rem;
     padding: 1.5rem;
@@ -1964,14 +2081,18 @@ label {
     transform: translateX(-50%);
 }
 
-/* ============================================================
- * Responsivo
- * ============================================================ */
-
 @media (max-width: 64rem) {
     .setting {
         grid-template-columns: minmax(0, 1fr);
         gap: 1rem;
+    }
+
+    .topbar {
+        gap: 1rem;
+    }
+
+    .nav a {
+        padding: 0.5rem 0.7rem;
     }
 }
 
@@ -2067,10 +2188,6 @@ label {
         flex-basis: 100%;
     }
 }
-
-/* ============================================================
- * Leitor do LinkedIn
- * ============================================================ */
 
 .scraper-now {
     margin-bottom: 1.25rem;

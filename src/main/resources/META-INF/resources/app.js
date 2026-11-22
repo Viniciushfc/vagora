@@ -1,9 +1,5 @@
 "use strict";
 
-/* ============================================================
- * API
- * ============================================================ */
-
 class ApiError extends Error {
     constructor(body) {
         super(body.message_error);
@@ -46,7 +42,6 @@ async function request(method, path, body) {
     return data;
 }
 
-// um perfil por instalação: nenhuma rota leva id
 const api = {
     getProfile: () => request("GET", "/profile"),
     createProfile: (form) => request("POST", "/profile", form),
@@ -66,11 +61,11 @@ const api = {
     prioritize: (id) => request("POST", `/profile/pending-jobs/${id}/priority`),
     status: () => request("GET", "/profile/status"),
     scraper: () => request("GET", "/profile/scraper"),
+    listGupySearches: () => request("GET", "/gupy/searches"),
+    createGupySearch: (search) => request("POST", "/gupy/searches", search),
+    updateGupySearch: (id, search) => request("PUT", `/gupy/searches/${id}`, search),
+    deleteGupySearch: (id) => request("DELETE", `/gupy/searches/${id}`),
 };
-
-/* ============================================================
- * Estado e utilitários
- * ============================================================ */
 
 const MATCH_CUT = 70;
 
@@ -105,7 +100,6 @@ function icon(name) {
     return svg;
 }
 
-// texto com partes em negrito: ["Conectado a ", { strong: "x" }, "."]
 function rich(parts) {
     return parts.map((part) => (typeof part === "string" ? part : el("strong", "", part.strong)));
 }
@@ -113,7 +107,7 @@ function rich(parts) {
 let uid = 0;
 function cloneTemplate(id) {
     const node = $(`#${id}`).content.firstElementChild.cloneNode(true);
-    // um template pode ser clonado várias vezes: os ids precisam ser únicos
+
     $$(".field", node).forEach((field) => {
         const input = $("input, select", field);
         const label = $("label", field);
@@ -137,10 +131,10 @@ function account(provider) {
     return state.profile?.linkedAccounts.find((a) => a.externalProvider === provider) ?? null;
 }
 
-const SOURCE_LABELS = { LINKEDIN: "LinkedIn", INDEED: "Indeed" };
+const SOURCE_LABELS = { LINKEDIN: "LinkedIn", INDEED: "Indeed", GLASSDOOR: "Glassdoor", GUPY: "Gupy" };
 
 function folderOf(email, source) {
-    return source === "INDEED" ? email.indeedFolder : email.folder;
+    return { INDEED: email.indeedFolder, GLASSDOOR: email.glassdoorFolder }[source] ?? (source === "LINKEDIN" ? email.folder : null);
 }
 
 let toastTimer;
@@ -178,10 +172,6 @@ function normalize(text) {
     return (text ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-/* ============================================================
- * Tooltip: hover e foco no CSS; aqui ficam o toque, o Esc e os ids
- * ============================================================ */
-
 function wireTip(tip) {
     const trigger = $(".tip-trigger", tip);
     const bubble = $(".tip-bubble", tip);
@@ -189,7 +179,6 @@ function wireTip(tip) {
     trigger.setAttribute("aria-describedby", bubble.id);
     trigger.setAttribute("aria-expanded", "false");
 
-    // perto das bordas da tela, a bolha deixa de ser centralizada para não vazar
     const alignBubble = () => {
         const { left, right } = trigger.getBoundingClientRect();
         if (left < 180) tip.dataset.align = "start";
@@ -223,17 +212,12 @@ document.addEventListener("keydown", (event) => {
     if (document.activeElement?.classList.contains("tip-trigger")) document.activeElement.blur();
 });
 
-/* ============================================================
- * Erros: a decisão é pelo type_error, a mensagem é só para exibir
- * ============================================================ */
-
 function showError(error, target) {
     if (!(error instanceof ApiError)) {
         console.error(error);
         error = new ApiError({ type_error: "INTERNAL_ERROR", message_error: "Algo deu errado nesta página." });
     }
 
-    // o perfil sumiu (ex.: banco apagado): volta para o início
     if (error.type === "NOT_FOUND" && state.profile) {
         toast("Esse perfil não existe mais.");
         boot();
@@ -270,10 +254,6 @@ function clearError(form) {
     if (box) box.hidden = true;
 }
 
-/* ============================================================
- * Inicialização e navegação
- * ============================================================ */
-
 function stopTimers() {
     state.timers.forEach(clearInterval);
     state.timers = [];
@@ -309,12 +289,12 @@ function showApp() {
 const KEY_MASK = "••••••••••••••••";
 
 const SUBPAGES = {
-    vagas: [["vagas", "Analisadas"], ["pendentes", "Na fila"]],
-    atividade: [["linkedin", "LinkedIn"], ["indeed", "Indeed"]],
+    vagas: [["vagas", "Analisadas"], ["pendentes", "Na fila"], ["gupy", "Gupy"]],
+    atividade: [["linkedin", "LinkedIn"], ["indeed", "Indeed"], ["glassdoor", "Glassdoor"]],
     config: [["config", "Currículo"], ["config-ia", "IA"], ["config-fluxo", "Fluxo da IA"], ["config-contas", "Contas"], ["config-automacao", "Automação"], ["config-perfil", "Perfil"]],
 };
 const PAGE_SECTION = {
-    vagas: "vagas", pendentes: "vagas", linkedin: "atividade", indeed: "atividade",
+    vagas: "vagas", pendentes: "vagas", gupy: "vagas", linkedin: "atividade", indeed: "atividade", glassdoor: "atividade",
     config: "config", "config-ia": "config", "config-fluxo": "config", "config-contas": "config", "config-automacao": "config", "config-perfil": "config",
 };
 
@@ -335,19 +315,19 @@ function route() {
     clearInterval(pageTimer);
     if (tab === "vagas") {
         loadMatches(true);
-        // o servidor verifica o email a cada minuto; a lista acompanha
+
         pageTimer = setInterval(() => loadMatches(false), 60_000);
     }
     if (tab === "pendentes") {
         loadPending();
         pageTimer = setInterval(loadPending, 30_000);
     }
-    if (tab === "linkedin" || tab === "indeed") {
+    if (tab === "linkedin" || tab === "indeed" || tab === "glassdoor") {
         state.readerSource = tab.toUpperCase();
         $("#reader-title").textContent = `Leitor do ${SOURCE_LABELS[state.readerSource]}`;
         $("#reader-source").textContent = SOURCE_LABELS[state.readerSource];
         loadScraper();
-        // enquanto a página está aberta, acompanha o leitor quase em tempo real
+
         pageTimer = setInterval(loadScraper, 5_000);
     }
     if (section === "config") {
@@ -357,6 +337,12 @@ function route() {
         renderEditableSettings();
         renderAccounts();
     }
+    if (tab === "gupy") {
+        renderGupy();
+        loadGupyActivity();
+        pageTimer = setInterval(loadGupyActivity, 10_000);
+    }
+    if (tab === "vagas") renderGupyInvite();
     window.scrollTo({ top: 0 });
 }
 
@@ -371,10 +357,6 @@ function renderSubnav(nav, pages, current) {
 }
 
 window.addEventListener("hashchange", route);
-
-/* ============================================================
- * Monitor: o que o Vagora está fazendo agora
- * ============================================================ */
 
 async function loadStatus() {
     if (!state.profile) return;
@@ -477,7 +459,6 @@ async function setMonitoring(enabled) {
 
 $("#monitor-toggle").addEventListener("click", () => setMonitoring(!state.profile.monitoringEnabled));
 
-// o atalho de cada falha vem do código do erro (ErrorCode no backend), nunca do texto
 const ERROR_ACTIONS = {
     LINKEDIN_CHECKPOINT: ["Entrar no LinkedIn", "#config-contas"],
     LINKEDIN_LOGIN_FAILED: ["Abrir configurações", "#config-contas"],
@@ -508,10 +489,6 @@ function renderProcessingAlert() {
     }
     box.hidden = false;
 }
-
-/* ============================================================
- * Configuração inicial
- * ============================================================ */
 
 function showSetup() {
     $("#app").hidden = true;
@@ -546,7 +523,7 @@ $("#setup-profile-form").addEventListener("submit", async (event) => {
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     clearError(form);
-    // lê os campos antes de desabilitar: campos desabilitados ficam fora do FormData
+
     const data = new FormData(form);
     setBusy(form, true);
     try {
@@ -562,7 +539,8 @@ $("#setup-profile-form").addEventListener("submit", async (event) => {
 function onSetupEmailLinked(profile) {
     const email = profile.linkedAccounts.find((a) => a.externalProvider === "EMAIL");
     completeStep("email", `Conectado a ${email.username}. Os alertas do LinkedIn serão lidos da pasta ${email.folder}`
-        + (email.indeedFolder ? ` e os do Indeed, da pasta ${email.indeedFolder}.` : "."));
+        + (email.indeedFolder ? `, os do Indeed, da pasta ${email.indeedFolder}` : "")
+        + (email.glassdoorFolder ? `, os do Glassdoor, da pasta ${email.glassdoorFolder}` : "") + ".");
     unlockStep("linkedin", linkedinForm(onSetupLinkedinLinked));
 }
 
@@ -579,10 +557,6 @@ $("#setup-finish").addEventListener("click", () => {
     location.hash = "#vagas";
     boot();
 });
-
-/* ============================================================
- * Formulários de conta (configuração inicial e aba Contas)
- * ============================================================ */
 
 function accountForm(templateId, provider, onLinked) {
     const form = cloneTemplate(templateId);
@@ -614,10 +588,6 @@ function accountForm(templateId, provider, onLinked) {
 
 const emailForm = (onLinked) => accountForm("email-form-template", "EMAIL", onLinked);
 const linkedinForm = (onLinked) => accountForm("linkedin-form-template", "LINKEDIN", onLinked);
-
-/* ============================================================
- * Vagas
- * ============================================================ */
 
 async function loadMatches(animate) {
     $("#setup-warning").hidden = true;
@@ -724,7 +694,6 @@ function renderDetail(animate) {
     (wideDesk.matches ? pane : $(`#row-${match.id}`))?.append(item);
 }
 
-// Todas as notas numa régua só. Notas muito próximas viram colunas mais altas para não se esconderem.
 function renderSpread(matches) {
     const spread = $("#spread");
     spread.hidden = matches.length === 0;
@@ -898,7 +867,6 @@ async function prioritize(id, button) {
     }
 }
 
-// a lista se redesenha a cada minuto; o conjunto mantém o botão ocupado enquanto o Gemini escreve
 const generating = new Set();
 
 function showGenerating(button) {
@@ -944,11 +912,6 @@ $("#refresh-matches").addEventListener("click", () => {
     loadStatus();
 });
 
-/* ============================================================
- * Leitor do LinkedIn
- * ============================================================ */
-
-// o que fazer em cada falha do leitor, pelo código do erro
 const SCRAPER_HELP = {
     LINKEDIN_PAGE_UNREADABLE: "Olhe a captura abaixo. Se aparece uma tela de login ou de verificação, ligue \"Mostrar o navegador\" em Configurações para resolver na próxima análise. Se a página parece normal, foi lentidão e a próxima tentativa costuma passar.",
     LINKEDIN_CHECKPOINT: "Em Configurações, clique em \"Entrar no LinkedIn\". O navegador abre na tela com login e senha preenchidos e espera até 5 minutos você resolver a verificação.",
@@ -976,10 +939,11 @@ function renderScraper(activity) {
         view = { state: "busy", title: "Entrando no LinkedIn", detail: "Termine o login na janela do navegador." };
     } else if (activity.running) {
         view = { state: "busy", title: "Lendo vagas",
-            detail: activity.jobIndex ? `Vaga ${activity.jobIndex} de ${activity.jobTotal}${status?.currentAlert ? ` do alerta "${status.currentAlert}"` : ""}.` : "Abrindo o navegador." };
+            detail: (activity.jobIndex ? `Vaga ${activity.jobIndex} de ${activity.jobTotal}${status?.currentAlert ? ` do alerta "${status.currentAlert}"` : ""}.` : "Abrindo o navegador.")
+                + (activity.analyzing ? ` A IA já está dando nota em ${activity.analysisTotal} ${activity.analysisTotal === 1 ? "vaga lida" : "vagas lidas"}.` : "") };
     } else if (activity.analyzing) {
         view = { state: "busy", title: "Analisando com a IA",
-            detail: `Comparando ${activity.jobTotal} ${activity.jobTotal === 1 ? "vaga" : "vagas"} com o seu currículo.` };
+            detail: `Comparando ${activity.analysisTotal} ${activity.analysisTotal === 1 ? "vaga" : "vagas"} com o seu currículo.` };
     } else if (activity.failure) {
         view = { state: "error", title: "Parou com um problema", detail: next ? `Vai tentar de novo às ${next}.` : "Vai tentar de novo no próximo ciclo." };
     } else if (!state.profile.monitoringEnabled) {
@@ -996,7 +960,6 @@ function renderScraper(activity) {
     progress.hidden = !(activity.running && activity.jobTotal);
     $("#scraper-progress-fill").style.width = activity.jobTotal ? `${Math.round(100 * activity.jobIndex / activity.jobTotal)}%` : "0";
 
-    // painel de problema: falha do alerta ou vaga pulada (com a captura do que o navegador mostrou)
     const failure = $("#scraper-failure");
     failure.hidden = !activity.failure && !activity.screenshot;
     if (!failure.hidden) {
@@ -1008,13 +971,11 @@ function renderScraper(activity) {
             : "Veja abaixo o que o navegador mostrava. Se for uma tela de login ou de verificação, ligue \"Mostrar o navegador\" em Configurações.";
         $("#scraper-shot").hidden = !activity.screenshot;
         if (activity.screenshot) {
-            // a URL muda a cada evento para o navegador não reaproveitar a imagem anterior
             const src = `/profile/scraper/screenshot?at=${encodeURIComponent(activity.events[0]?.at ?? "")}`;
             if ($("#scraper-shot-img").getAttribute("src") !== src) $("#scraper-shot-img").src = src;
             $("#scraper-shot-link").href = src;
         }
     }
-
 
     $("#scraper-empty").hidden = activity.events.length > 0;
     $("#scraper-events").replaceChildren(...activity.events.map((event) => {
@@ -1024,14 +985,11 @@ function renderScraper(activity) {
     }));
 }
 
-/* ============================================================
- * Contas
- * ============================================================ */
-
 function renderAccounts() {
     renderEmailAccount();
     renderLinkedinAccount();
     renderIndeedAccount();
+    renderGlassdoorAccount();
     renderClaudeAccount();
 }
 
@@ -1045,7 +1003,6 @@ function accountHead(iconName, title, connected, labels = ["Conectado", "Não co
 
 const ACCOUNT_NAMES = { EMAIL: "email", LINKEDIN: "LinkedIn", CLAUDE: "Claude" };
 
-// uma conta por site: para trocar, desconecta e conecta de novo. Pede um segundo clique para confirmar.
 function unlinkButton(provider) {
     const button = el("button", "button quiet", `Desconectar ${ACCOUNT_NAMES[provider]}`);
     button.type = "button";
@@ -1077,7 +1034,7 @@ function renderEmailAccount() {
     const onLinked = () => { toast("Email conectado."); renderAccounts(); loadStatus(); };
 
     if (!email) {
-        const status = el("p", "account-status", "Conecte o email que recebe os alertas de vaga do LinkedIn e do Indeed.");
+        const status = el("p", "account-status", "Conecte o email que recebe os alertas de vaga do LinkedIn, do Indeed e do Glassdoor.");
         card.replaceChildren(accountHead("mail", "Email", false), status, emailForm(onLinked));
         return;
     }
@@ -1095,6 +1052,17 @@ function renderIndeedAccount() {
         email
             ? folderPicker(email, "INDEED")
             : el("p", "account-status", "Conecte o email para escolher a pasta dos alertas do Indeed."),
+    );
+}
+
+function renderGlassdoorAccount() {
+    const email = account("EMAIL");
+    const reading = Boolean(email?.glassdoorFolder);
+    $("#account-glassdoor").replaceChildren(
+        accountHead("search", "Glassdoor", reading, ["Lendo alertas", "Desligado"]),
+        email
+            ? folderPicker(email, "GLASSDOOR")
+            : el("p", "account-status", "Conecte o email para escolher a pasta dos alertas do Glassdoor."),
     );
 }
 
@@ -1140,14 +1108,13 @@ function folderForm(email, source, folders) {
     const alerts = (f) => f.jobAlerts[source] ?? 0;
     const current = folderOf(email, source);
     const sorted = [...folders].sort((a, b) => alerts(b) - alerts(a));
-    if (source === "INDEED") select.append(new Option("Não ler alertas do Indeed", "", false, !current));
+    if (source !== "LINKEDIN") select.append(new Option(`Não ler alertas do ${SOURCE_LABELS[source]}`, "", false, !current));
     select.append(...sorted.map((f) => new Option(
         `${f.name} · ${alerts(f) === 0 ? "nenhum alerta" : `${alerts(f)} ${alerts(f) === 1 ? "alerta" : "alertas"}`}${f.name === current ? " (atual)" : ""}`,
         f.name, false, f.name === current)));
 
-    const hint = el("p", "hint", source === "LINKEDIN"
-        ? "Só emails de jobalerts-noreply@linkedin.com são lidos."
-        : "Só emails de donotreply@match.indeed.com são lidos. Pode ser a mesma pasta do LinkedIn.");
+    const senders = { LINKEDIN: "jobalerts-noreply@linkedin.com", INDEED: "indeedapply@indeed.com", GLASSDOOR: "noreply@glassdoor.com" };
+    const hint = el("p", "hint", `Só emails de ${senders[source]} são lidos.${source === "LINKEDIN" ? "" : " Pode ser a mesma pasta do LinkedIn."}`);
     field.append(label, select, hint);
 
     const error = el("p", "form-error");
@@ -1376,10 +1343,6 @@ function claudeLoginInProgress(status) {
     return parts;
 }
 
-/* ============================================================
- * Perfil
- * ============================================================ */
-
 function actionLink(text, href, options = {}) {
     const link = el("a", `button ${options.primary ? "primary" : "quiet"}`, text);
     link.href = href;
@@ -1443,10 +1406,10 @@ function renderReadiness() {
     $("#checklist").replaceChildren(...missing.map((item) => checkItem({ ...item, ok: false })));
 }
 
-const LLM_NAMES = { GEMINI: "Gemini", GROQ: "Groq", CLAUDE: "Claude" };
+const LLM_NAMES = { GEMINI: "Gemini", GROQ: "Groq", CLAUDE: "Claude", LOCAL: "IA local" };
 
 function llmAvailable(provider) {
-    return { GEMINI: state.profile.hasGeminiApiKey, GROQ: state.profile.hasGroqApiKey, CLAUDE: Boolean(account("CLAUDE")) }[provider];
+    return { GEMINI: state.profile.hasGeminiApiKey, GROQ: state.profile.hasGroqApiKey, CLAUDE: Boolean(account("CLAUDE")), LOCAL: state.profile.hasLocalLlm }[provider];
 }
 
 function aiKeysText(profile) {
@@ -1578,16 +1541,21 @@ function renderProfile(forms = $$(".profile-form")) {
         form.reset();
         clearError(form);
         setBusy(form, false);
-        for (const [name, configured] of [["geminiApiKey", profile.hasGeminiApiKey], ["groqApiKey", profile.hasGroqApiKey]]) {
+        for (const [name, configured] of [["geminiApiKey", profile.hasGeminiApiKey], ["groqApiKey", profile.hasGroqApiKey], ["localLlmApiKey", profile.hasLocalLlmApiKey]]) {
             const input = form.elements.namedItem(name);
             if (input) input.value = configured ? KEY_MASK : "";
         }
     });
     if (forms.includes($("#profile-form"))) $("#profile-name").value = profile.name ?? "";
+    if (forms.some((form) => form.contains($("#profile-local-url")))) {
+        $("#profile-local-url").value = profile.localLlmUrl ?? "";
+        $("#profile-local-model").value = profile.localLlmModel ?? "";
+    }
+    $("#local-head").replaceChildren(...accountHead("spark", "IA local", profile.hasLocalLlm, ["Configurada", "Sem endereço"]).children);
     $("#gemini-head").replaceChildren(...accountHead("spark", "Gemini", profile.hasGeminiApiKey, ["Configurada", "Sem chave"]).children);
     $("#groq-head").replaceChildren(...accountHead("spark", "Groq", profile.hasGroqApiKey, ["Configurada", "Sem chave"]).children);
-    $("#profile-gemini-hint").replaceChildren(...keyHint(profile.hasGeminiApiKey, "https://aistudio.google.com/apikey"));
-    $("#profile-groq-hint").replaceChildren(...keyHint(profile.hasGroqApiKey, "https://console.groq.com/keys"));
+    $("#profile-gemini-hint").replaceChildren(...keyHint(profile.hasGeminiApiKey));
+    $("#profile-groq-hint").replaceChildren(...keyHint(profile.hasGroqApiKey));
     if (forms.includes($("#poll-form"))) {
         $("#poll-min").value = profile.pollMinMinutes;
         $("#poll-max").value = profile.pollMaxMinutes;
@@ -1660,13 +1628,8 @@ $$("[data-panel~='config'] form").forEach((form) => {
     form.addEventListener("change", () => markDirty(form));
 });
 
-function keyHint(configured, url) {
-    if (configured) return ["Para trocar, clique no campo e cole a nova chave."];
-    const link = el("a", "", url.replace("https://", ""));
-    link.href = url;
-    link.target = "_blank";
-    link.rel = "noopener";
-    return ["Gere a sua em ", link, "."];
+function keyHint(configured) {
+    return [configured ? "Para trocar, clique no campo e cole a nova chave." : "Cole aqui a chave criada no botão acima."];
 }
 
 function renderPollWarning() {
@@ -1693,7 +1656,6 @@ $$(".profile-form").forEach((form) => form.addEventListener("submit", async (eve
     const form = event.currentTarget;
     clearError(form);
 
-    // envia só o que mudou: campos vazios mantêm o valor atual
     const data = new FormData();
     const field = form.elements;
     const name = field.namedItem("name")?.value.trim();
@@ -1704,6 +1666,12 @@ $$(".profile-form").forEach((form) => form.addEventListener("submit", async (eve
     if (gemini && gemini !== KEY_MASK) data.append("geminiApiKey", gemini);
     if (groq && groq !== KEY_MASK) data.append("groqApiKey", groq);
     if (curriculum) data.append("curriculum", curriculum);
+    for (const key of ["localLlmUrl", "localLlmModel"]) {
+        const value = field.namedItem(key)?.value.trim();
+        if (value !== undefined && value !== (state.profile[key] ?? "")) data.append(key, value);
+    }
+    const localKey = field.namedItem("localLlmApiKey")?.value.trim();
+    if (localKey && localKey !== KEY_MASK) data.append("localLlmApiKey", localKey);
     for (const key of ["pollMinMinutes", "pollMaxMinutes"]) {
         const value = field.namedItem(key)?.value;
         const minutes = Math.round(Number(value));
@@ -1740,6 +1708,243 @@ $("#confirm-delete").addEventListener("close", async () => {
     } catch (error) {
         showError(error, $("#profile-form .form-error"));
     }
+});
+
+const GUPY_WORKPLACES = [["REMOTE", "Remoto"], ["HYBRID", "Híbrido"], ["ON_SITE", "Presencial"]];
+const GUPY_CONTRACTS = [["CLT", "CLT"], ["PJ", "PJ"], ["TEMPORARY", "Temporária"], ["INTERNSHIP", "Estágio"],
+    ["TALENT_POOL", "Banco de talentos"], ["OTHER", "Outros"]];
+const BRAZIL_STATES = ["Acre", "Alagoas", "Amapá", "Amazonas", "Bahia", "Ceará", "Distrito Federal", "Espírito Santo",
+    "Goiás", "Maranhão", "Mato Grosso", "Mato Grosso do Sul", "Minas Gerais", "Pará", "Paraíba", "Paraná", "Pernambuco",
+    "Piauí", "Rio de Janeiro", "Rio Grande do Norte", "Rio Grande do Sul", "Rondônia", "Roraima", "Santa Catarina",
+    "São Paulo", "Sergipe", "Tocantins"];
+const NEW_GUPY_SEARCH = {
+    jobName: "", state: null, city: null, everyHours: 4, enabled: true, lastRunAt: null,
+    workplaces: ["REMOTE", "HYBRID", "ON_SITE"], contracts: ["CLT", "PJ", "TEMPORARY", "OTHER"],
+};
+let gupyFieldCount = 0;
+
+async function renderGupyInvite() {
+    try {
+        $("#gupy-invite").hidden = (await api.listGupySearches()).length > 0;
+    } catch {
+        $("#gupy-invite").hidden = true;
+    }
+}
+
+const isGupyLink = (link) => /^https:\/\/[^/]+\.gupy\.io\//.test(link ?? "");
+
+async function loadGupyActivity() {
+    try {
+        const [activities, queue, matches] = await Promise.all([api.scraper(), api.listPending(), api.listMatches()]);
+        renderGupyActivity(activities.GUPY, queue.jobs.filter((job) => job.source === "GUPY"),
+            matches.filter((match) => isGupyLink(match.jobLink)));
+    } catch (error) {
+        showError(error, $("#gupy-error"));
+    }
+}
+
+function gupyJobItem(title, company, link, badge, badgeState) {
+    const item = el("li", "gupy-job");
+    const anchor = el("a", "gupy-job-title", title ?? "Vaga sem título");
+    anchor.href = link;
+    anchor.target = "_blank";
+    anchor.rel = "noopener";
+    const text = el("span", "gupy-job-text");
+    text.append(anchor, el("span", "gupy-job-company", company ?? ""));
+    const tag = el("span", "gupy-job-badge", badge);
+    tag.dataset.state = badgeState;
+    item.append(text, tag);
+    return item;
+}
+
+function renderGupyActivity(activity, queue, analyzed) {
+    const analyzing = activity.analyzing ? activity.analysisTotal : 0;
+    let view;
+    if (analyzing) {
+        view = { state: "busy", title: "Analisando com a IA",
+            detail: `Comparando ${analyzing} ${analyzing === 1 ? "vaga" : "vagas"} da Gupy com o seu currículo.` };
+    } else if (activity.failure) {
+        view = { state: "error", title: "Parou com um problema", detail: `${activity.failure} Vai tentar de novo no próximo ciclo.` };
+    } else if (!state.profile.monitoringEnabled) {
+        view = { state: "paused", title: "Monitoramento pausado", detail: "Nenhuma busca roda até você retomar." };
+    } else if (queue.length) {
+        view = { state: "ok", title: "Vagas na fila",
+            detail: `${queue.length} ${queue.length === 1 ? "vaga da Gupy espera" : "vagas da Gupy esperam"} a vez da IA.` };
+    } else if (activity.events.length) {
+        view = { state: "ok", title: "Em dia", detail: `Último passo: ${activity.events[0].message}.` };
+    } else {
+        view = { state: "idle", title: "Nenhuma busca rodou ainda", detail: "Crie uma busca abaixo. A primeira roda em até 10 minutos." };
+    }
+    $("#gupy-now").dataset.state = view.state;
+    $("#gupy-now-title").textContent = view.title;
+    $("#gupy-now-detail").textContent = view.detail;
+
+    $("#gupy-queue-title").textContent = queue.length ? `Na fila (${queue.length})` : "Na fila";
+    $("#gupy-queue").replaceChildren(...queue.slice(0, 8).map((job, index) => index < analyzing
+        ? gupyJobItem(job.jobTitle, job.companyName, job.jobLink, "Analisando", "busy")
+        : gupyJobItem(job.jobTitle, job.companyName, job.jobLink, "Na fila", "idle")));
+    $("#gupy-queue-empty").hidden = queue.length > 0;
+    $("#gupy-queue-more").hidden = queue.length <= 8;
+    $("#gupy-queue-more").textContent = `Mais ${queue.length - 8} na fila completa`;
+
+    const recent = [...analyzed].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 8);
+    const fits = analyzed.filter((match) => match.match).length;
+    $("#gupy-analyzed-title").textContent = analyzed.length
+        ? `Analisadas (${analyzed.length}, ${fits} ${fits === 1 ? "compatível" : "compatíveis"})`
+        : "Analisadas";
+    $("#gupy-analyzed").replaceChildren(...recent.map((match) =>
+        gupyJobItem(match.jobTitle, match.companyName, match.jobLink, String(match.score), match.match ? "fit" : "miss")));
+    $("#gupy-analyzed-empty").hidden = analyzed.length > 0;
+    $("#gupy-all").hidden = analyzed.length <= recent.length;
+
+    $("#gupy-history").hidden = activity.events.length === 0;
+    $("#gupy-events").replaceChildren(...activity.events.slice(0, 15).map((event) => {
+        const li = el("li", event.problem ? "is-problem" : "");
+        li.append(el("time", "", dateFormat.format(new Date(event.at))), el("span", "", event.message));
+        return li;
+    }));
+}
+
+async function renderGupy() {
+    try {
+        const searches = await api.listGupySearches();
+        $("#gupy-searches").replaceChildren(...searches.map(gupyForm));
+        $("#gupy-error").hidden = true;
+    } catch (error) {
+        showError(error, $("#gupy-error"));
+    }
+}
+
+function gupyField(labelText, input) {
+    const field = el("div", "field");
+    const label = el("label", "", labelText);
+    input.id = `gupy-field-${++gupyFieldCount}`;
+    label.htmlFor = input.id;
+    field.append(label, input);
+    return field;
+}
+
+function gupyChoices(legend, name, options, selected) {
+    const set = el("fieldset", "choices");
+    set.append(el("legend", "", legend));
+    for (const [value, label] of options) {
+        const item = el("label", "check");
+        const box = el("input");
+        box.type = "checkbox";
+        box.name = name;
+        box.value = value;
+        box.checked = selected.includes(value);
+        item.append(box, el("span", "", label));
+        set.append(item);
+    }
+    return set;
+}
+
+function gupySwitch(search) {
+    const row = el("div", "toggle-row");
+    const text = el("div");
+    text.append(el("h3", "toggle-title", search.jobName || "Nova busca"),
+        el("p", "hint", search.lastRunAt ? `Última busca ${timeAgo(search.lastRunAt)}.` : "Ainda não buscou."));
+    const toggle = el("label", "switch");
+    const box = el("input");
+    box.type = "checkbox";
+    box.name = "enabled";
+    box.checked = search.enabled;
+    const track = el("span", "switch-track");
+    track.setAttribute("aria-hidden", "true");
+    track.append(el("span", "switch-thumb"));
+    toggle.append(box, track, el("span", "visually-hidden", "Busca ativa"));
+    row.append(text, toggle);
+    return row;
+}
+
+function gupyForm(search) {
+    const form = el("form", "panel form gupy-search");
+    form.noValidate = true;
+    if (search.id) form.dataset.id = search.id;
+
+    const jobName = el("input");
+    jobName.value = search.jobName;
+    jobName.placeholder = "Ex.: Desenvolvedor Java";
+    jobName.autocomplete = "off";
+    const state = el("select");
+    state.append(new Option("Qualquer estado", ""), ...BRAZIL_STATES.map((name) => new Option(name, name, false, name === search.state)));
+    const city = el("input");
+    city.value = search.city ?? "";
+    city.placeholder = "Qualquer cidade";
+    const every = el("input");
+    every.type = "number";
+    every.min = "1";
+    every.step = "1";
+    every.inputMode = "numeric";
+    every.value = String(search.everyHours);
+
+    const fields = el("div", "gupy-fields");
+    fields.append(gupyField("Cargo", jobName), gupyField("Estado", state), gupyField("Cidade", city), gupyField("Buscar a cada (horas)", every));
+    const error = el("p", "form-error");
+    error.setAttribute("role", "alert");
+    error.hidden = true;
+    const save = el("button", "button primary", "Salvar busca");
+    save.type = "submit";
+    const remove = el("button", "button quiet", "Excluir busca");
+    remove.type = "button";
+    const actions = el("div", "gupy-actions");
+    actions.append(save, remove);
+    form.append(gupySwitch(search), fields,
+        gupyChoices("Modalidade", "workplaces", GUPY_WORKPLACES, search.workplaces),
+        gupyChoices("Tipo de vaga", "contracts", GUPY_CONTRACTS, search.contracts), error, actions);
+
+    form.addEventListener("input", () => markDirty(form));
+    form.addEventListener("change", () => markDirty(form));
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        clearError(form);
+        save.disabled = true;
+        const body = {
+            jobName: jobName.value,
+            state: state.value || null,
+            city: city.value.trim() || null,
+            everyHours: Number(every.value),
+            enabled: $("input[name=enabled]", form).checked,
+            workplaces: $$("input[name=workplaces]:checked", form).map((box) => box.value),
+            contracts: $$("input[name=contracts]:checked", form).map((box) => box.value),
+        };
+        try {
+            const saved = form.dataset.id
+                ? await api.updateGupySearch(form.dataset.id, body)
+                : await api.createGupySearch(body);
+            form.dataset.id = saved.id;
+            $(".toggle-title", form).textContent = saved.jobName;
+            markSaved(form);
+        } catch (failure) {
+            showError(failure, error);
+        } finally {
+            save.disabled = false;
+        }
+    });
+    remove.addEventListener("click", async () => {
+        if (!form.dataset.id) {
+            form.remove();
+            return;
+        }
+        remove.disabled = true;
+        try {
+            await api.deleteGupySearch(form.dataset.id);
+            form.remove();
+            toast("Busca excluída.");
+        } catch (failure) {
+            showError(failure, error);
+            remove.disabled = false;
+        }
+    });
+    return form;
+}
+
+$("#gupy-add").addEventListener("click", () => {
+    const form = gupyForm(NEW_GUPY_SEARCH);
+    $("#gupy-searches").append(form);
+    markDirty(form);
+    $("input", $(".gupy-fields", form)).focus();
 });
 
 $$(".tip").forEach(wireTip);

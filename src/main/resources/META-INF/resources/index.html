@@ -16,7 +16,6 @@
 </head>
 <body>
 
-<!-- Ícones (traço único, 24px) -->
 <svg class="sprite" aria-hidden="true">
     <symbol id="i-jobs" viewBox="0 0 24 24"><path d="M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1"/><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 12h18"/></symbol>
     <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
@@ -39,9 +38,6 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<!-- ============================================================
-     Configuração inicial: aparece quando ainda não existe perfil
-     ============================================================ -->
 <main id="setup" class="setup" hidden>
     <header class="setup-head">
         <a class="brand" href="#">
@@ -131,9 +127,6 @@
     </div>
 </main>
 
-<!-- ============================================================
-     Aplicação
-     ============================================================ -->
 <div id="app" class="shell" hidden>
     <header class="topbar">
         <a class="brand" href="#vagas">
@@ -161,7 +154,6 @@
 
     <main class="content">
 
-        <!-- Vagas -->
         <section data-panel="vagas" class="desk" hidden>
             <div class="desk-list">
                 <header class="page-head">
@@ -179,6 +171,11 @@
                 </header>
                 <div id="processing-alert" class="notice warn" hidden></div>
                 <div id="setup-warning" class="notice warn" hidden></div>
+                <div id="gupy-invite" class="notice info invite" hidden>
+                    <p><strong>Busque vagas na Gupy também.</strong> Sem conta e sem email: diga o cargo e onde quer
+                        trabalhar, e as vagas novas chegam aqui com a nota da IA.</p>
+                    <a class="button primary" href="#gupy">Criar busca na Gupy</a>
+                </div>
                 <div class="toolbar" id="toolbar" hidden>
                     <label class="search">
                         <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
@@ -255,8 +252,52 @@
             </div>
         </section>
 
-        <!-- Leitor do LinkedIn e do Indeed -->
-        <section data-panel="linkedin indeed" hidden>
+        <section data-panel="gupy" class="gupy-page" hidden>
+            <header class="page-head">
+                <h1 class="display">Buscas na Gupy</h1>
+                <p class="summary">
+                    Diga o cargo e onde quer trabalhar. O Vagora procura na Gupy de tempos em tempos e manda as vagas
+                    novas para a IA dar nota. Não precisa de conta na Gupy nem de email.
+                </p>
+            </header>
+            <div class="panel scraper-now gupy-now" id="gupy-now" data-state="idle" aria-live="polite">
+                <div class="scraper-head">
+                    <span class="monitor-dot" aria-hidden="true"></span>
+                    <h2 id="gupy-now-title">Parado</h2>
+                </div>
+                <p class="hint" id="gupy-now-detail"></p>
+                <div class="gupy-columns">
+                    <section aria-labelledby="gupy-queue-title">
+                        <h3 class="toggle-title" id="gupy-queue-title">Na fila</h3>
+                        <ol class="gupy-jobs" id="gupy-queue"></ol>
+                        <p class="hint" id="gupy-queue-empty">Nenhuma vaga da Gupy esperando a IA.</p>
+                        <a class="gupy-all" id="gupy-queue-more" href="#pendentes" hidden></a>
+                    </section>
+                    <section aria-labelledby="gupy-analyzed-title">
+                        <h3 class="toggle-title" id="gupy-analyzed-title">Analisadas</h3>
+                        <ol class="gupy-jobs" id="gupy-analyzed"></ol>
+                        <p class="hint" id="gupy-analyzed-empty">Nenhuma vaga da Gupy analisada ainda.</p>
+                        <a class="gupy-all" id="gupy-all" href="#vagas" hidden>Ver todas em Vagas</a>
+                    </section>
+                </div>
+                <details class="gupy-history" id="gupy-history" hidden>
+                    <summary>O que aconteceu</summary>
+                    <ol class="timeline" id="gupy-events"></ol>
+                </details>
+            </div>
+
+            <h2 class="gupy-heading">Suas buscas</h2>
+            <p class="hint" id="gupy-hint">
+                Cada busca traz até 30 vagas novas por vez, publicadas nos últimos 7 dias e ainda com inscrições abertas.
+                Filtros mais específicos gastam menos cota da IA. Sem nenhuma busca ativa, nada é procurado. Pausar o
+                monitoramento pausa a Gupy também.
+            </p>
+            <div class="gupy-list" id="gupy-searches"></div>
+            <p class="form-error" id="gupy-error" role="alert" hidden></p>
+            <button class="button primary" id="gupy-add" type="button">Nova busca</button>
+        </section>
+
+        <section data-panel="linkedin indeed glassdoor" hidden>
             <header class="page-head">
                 <h1 class="display" id="reader-title">Atividade no LinkedIn</h1>
                 <p class="summary">O que o Vagora está fazendo agora no <span id="reader-source">LinkedIn</span> e o que deu errado, quando der.</p>
@@ -356,6 +397,7 @@
                             <form class="panel account form profile-form" novalidate>
                                 <div class="account-head" id="gemini-head"></div>
                                 <p class="account-status">IA do Google, com cota gratuita que costuma bastar para uso pessoal.</p>
+                                <a class="button quiet key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Criar chave no Google AI Studio</a>
                                 <div class="field">
                                     <label for="profile-gemini">Chave da API</label>
                                     <input id="profile-gemini" name="geminiApiKey" type="password" autocomplete="off">
@@ -367,6 +409,7 @@
                             <form class="panel account form profile-form" novalidate>
                                 <div class="account-head" id="groq-head"></div>
                                 <p class="account-status">Rápida e com cota gratuita, mas aceita pedidos menores: analisa menos vagas por vez.</p>
+                                <a class="button quiet key-link" href="https://console.groq.com/keys" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Criar chave no console do Groq</a>
                                 <div class="field">
                                     <label for="profile-groq">Chave da API</label>
                                     <input id="profile-groq" name="groqApiKey" type="password" autocomplete="off">
@@ -376,6 +419,26 @@
                                 <button class="button primary" type="submit">Salvar chave do Groq</button>
                             </form>
                             <article class="panel account" id="account-claude"></article>
+                            <form class="panel account form profile-form" novalidate>
+                                <div class="account-head" id="local-head"></div>
+                                <p class="account-status">A IA que você roda ou confia: Ollama, LM Studio, llama.cpp, vLLM ou qualquer servidor no formato da OpenAI.</p>
+                                <div class="field">
+                                    <label for="profile-local-url">Endereço</label>
+                                    <input id="profile-local-url" name="localLlmUrl" type="url" inputmode="url" autocomplete="off" placeholder="http://localhost:11434/v1">
+                                    <p class="hint">O Vagora chama <code>/chat/completions</code> nesse endereço.</p>
+                                </div>
+                                <div class="field">
+                                    <label for="profile-local-model">Modelo</label>
+                                    <input id="profile-local-model" name="localLlmModel" autocomplete="off" placeholder="qwen2.5:14b">
+                                </div>
+                                <div class="field">
+                                    <label for="profile-local-key">Chave da API (opcional)</label>
+                                    <input id="profile-local-key" name="localLlmApiKey" type="password" autocomplete="off">
+                                    <p class="hint">Depois de salvar, marque a IA local em Fluxo da IA.</p>
+                                </div>
+                                <p class="form-error" role="alert" hidden></p>
+                                <button class="button primary" type="submit">Salvar IA local</button>
+                            </form>
                         </div>
                     </div>
                 </section>
@@ -426,6 +489,7 @@
                             <article class="panel account" id="account-email"></article>
                             <article class="panel account" id="account-linkedin"></article>
                             <article class="panel account" id="account-indeed"></article>
+                            <article class="panel account" id="account-glassdoor"></article>
                         </div>
                     </div>
                 </section>
@@ -544,9 +608,6 @@
     </form>
 </dialog>
 
-<!-- ============================================================
-     Templates
-     ============================================================ -->
 <template id="pending-template">
     <li class="match pending">
         <div class="match-body">

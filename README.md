@@ -77,7 +77,7 @@ para enviar.
 - **Recentes primeiro:** só alertas da última semana, dos mais novos para os mais antigos.
 - **Sem retrabalho:** vagas já analisadas não são abertas de novo. Vagas encerradas ou que não carregaram são
   puladas sem derrubar o alerta.
-- **Fila de análise:** as vagas lidas esperam numa fila e a IA analisa em lotes a cada 2 minutos. Uma falha da IA
+- **Fila de análise:** as vagas lidas esperam numa fila e a IA analisa em lotes a cada minuto, sem esperar o leitor terminar o alerta (a partir de 5 vagas lidas, para não gastar a cota da IA em lotes pequenos). Uma falha da IA
   não perde nenhuma vaga, e você pode priorizar uma vaga da fila.
 - **IA com reserva:** em cada etapa você escolhe a IA principal e as reservas. Se a principal falhar ou estiver
   fora do ar, a próxima assume sozinha.
@@ -90,7 +90,8 @@ para enviar.
 |---|---|
 | **Vagas › Analisadas** | Uma régua com todas as notas de 0 a 100 e o corte de 70. Ao lado, a lista de vagas e o detalhe da vaga escolhida: nota, motivos, link para a vaga e o currículo adaptado para copiar ou baixar em PDF. Tem busca, filtro de compatíveis e ordenação por nota ou data. |
 | **Vagas › Na fila** | As vagas já lidas que esperam a análise da IA, com a opção de priorizar uma delas. |
-| **Atividade** | O leitor do LinkedIn e do Indeed em tempo real: a vaga sendo lida, a linha do tempo dos passos e, se algo der errado, a explicação, o que fazer e **uma captura da tela** que o navegador estava vendo. |
+| **Vagas › Gupy** | **Buscas** na Gupy, desligadas até você criar uma: **cargo**, **estado**, **cidade**, **modalidade** (remoto, híbrido, presencial), **tipo de vaga** (CLT, PJ, temporária, estágio, banco de talentos) e de quantas em quantas **horas** buscar (padrão 4). Cada busca traz até 30 vagas novas por vez, publicadas nos últimos 7 dias e com inscrições abertas, que entram direto na fila da IA, sem abrir navegador e sem conta. A página mostra a atividade da Gupy: o que cada busca encontrou, as vagas na fila, as que a IA está analisando e as já analisadas com a nota. |
+| **Atividade** | O leitor do LinkedIn, do Indeed e do Glassdoor em tempo real: a vaga sendo lida, a linha do tempo dos passos e, se algo der errado, a explicação, o que fazer e **uma captura da tela** que o navegador estava vendo. |
 | **Configurações** | Tudo o que dá para ajustar, separado em abas (abaixo), com a lista do que ainda falta configurar. |
 
 O **monitor** no topo mostra o que o Vagora está fazendo agora (verificando o email, analisando um alerta,
@@ -103,9 +104,9 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 | Aba | O que você configura |
 |---|---|
 | **Currículo** | O PDF que a IA compara com cada vaga (até 5 MB, com texto selecionável). |
-| **IA** | As chaves do **Gemini** e do **Groq** e o login no **Claude**, feito pelo próprio Vagora. Basta uma delas, mas com mais de uma você ganha reserva. |
+| **IA** | As chaves do **Gemini** e do **Groq**, o login no **Claude**, feito pelo próprio Vagora, e uma **IA local**: o endereço e o modelo de qualquer servidor no formato da OpenAI que você roda ou confia (Ollama, LM Studio, llama.cpp, vLLM). Basta uma delas, mas com mais de uma você ganha reserva. |
 | **Fluxo da IA** | Um fluxograma das etapas. Em cada etapa que usa IA (**nota da vaga** e **currículo adaptado**) você marca quais IAs entram e em que ordem: a primeira é a principal e as outras são reservas, tentadas em sequência se a anterior falhar. Exemplo: uma IA com cota grande na nota, que roda para toda vaga, e a que escreve melhor no currículo. |
-| **Contas** | O **email** que recebe os alertas (com senha de app) e a **pasta** onde os alertas de cada rede chegam, descoberta automaticamente. A conta do **LinkedIn** usada para abrir as vagas e o leitor do **Indeed**. |
+| **Contas** | O **email** que recebe os alertas (com senha de app) e a **pasta** onde os alertas de cada rede chegam, descoberta automaticamente. A conta do **LinkedIn** usada para abrir as vagas e os leitores do **Indeed** e do **Glassdoor**, cada um com a própria pasta do email. |
 | **Automação** | Ligar ou pausar a verificação do email, gerar o currículo adaptado automaticamente ou só quando você pedir (economiza cota da IA) e mostrar o navegador durante a análise (para resolver verificações do LinkedIn). Também o **intervalo entre os acessos**, com mínimo e máximo em minutos e aviso de risco quando fica abaixo do padrão. |
 | **Perfil** | O seu nome e a exclusão do perfil com todos os dados. |
 
@@ -240,7 +241,7 @@ pode desligar de novo.
   esse arquivo.
 - **A API só aceita conexões da própria máquina** (`127.0.0.1`) e não tem login, porque cada instalação é de uma
   pessoa.
-- **O que vai para fora:** o texto da vaga e do seu currículo é enviado à IA escolhida (Claude, Gemini ou Groq)
+- **O que vai para fora:** o texto da vaga e do seu currículo é enviado à IA escolhida (Claude, Gemini, Groq ou o endereço da sua IA local)
   para a análise, usando a sua chave ou a sua conta. Nada mais sai da sua máquina.
 
 ## Tecnologias e arquitetura
@@ -272,13 +273,19 @@ src/main/java/com/viniciushfc
     ├── adapter/in              REST (/profile) e os jobs agendados (email e fila de análise)
     └── adapter/out             SQLite (Panache), IMAP, leitor (Python), Claude, Gemini, Groq, PDFBox
 
-python/scraping_detalis_job.py  leitor de vagas do LinkedIn e do Indeed
+python
+├── hub.py                      entrada do leitor: abre o navegador, percorre os links e escolhe o leitor de cada site
+├── core.py                     caminhos, erros, códigos de saída e eventos para o Vagora
+├── linkedin.py                 login, verificação de segurança e leitura da vaga do LinkedIn
+├── indeed.py                   leitura da vaga do Indeed
+├── glassdoor.py                leitura da vaga do Glassdoor (bloco JobPosting)
+└── human.py                    cliques, digitação e pausas com ritmo humano
 src/main/resources/META-INF/resources   interface web
 ```
 
-**Adicionar uma plataforma nova** (ex.: Gupy) segue esse desenho: um novo valor em `AlertSource` com o
-reconhecimento dos alertas dela, e o leitor de vagas para a página da plataforma. O resto do fluxo (fila, análise,
-notas, interface) é reaproveitado.
+**Adicionar uma plataforma nova por email** segue esse desenho: um novo valor em `AlertSource` com o
+reconhecimento dos alertas dela, um arquivo em `python/` com a função `scrape(page, url)` e uma linha em `SCRAPERS`,
+no `hub.py`. O resto do fluxo (fila, análise, notas, interface) é reaproveitado.
 
 ### API
 
@@ -296,6 +303,8 @@ Todas as rotas são do perfil da instalação, sem id:
 | `GET` / `POST` | `/profile/job-matches/{id}/curriculum` | currículo adaptado em PDF / gerar o currículo adaptado |
 | `GET` / `POST` | `/profile/pending-jobs` · `/profile/pending-jobs/{id}/priority` | fila de análise / priorizar uma vaga |
 | `GET` | `/profile/status` | monitoramento (última verificação, próximo alerta, último erro) |
+| `GET` / `POST` | `/gupy/searches` | buscas da Gupy / criar uma busca |
+| `PUT` / `DELETE` | `/gupy/searches/{id}` | editar / excluir uma busca |
 | `GET` | `/profile/scraper` · `/profile/scraper/screenshot` | leitor de vagas em tempo real e captura da última falha |
 
 Erros têm sempre o mesmo formato:
@@ -321,12 +330,14 @@ de Windows, macOS e Linux, cada um no próprio sistema, e anexa todos na página
 
 - [x] LinkedIn: leitura dos alertas, abertura das vagas e análise
 - [x] Indeed: leitura dos alertas, abertura das vagas e análise
+- [~] Glassdoor: leitura dos alertas pronta; a abertura das vagas depende de sessão logada no Glassdoor
+- [x] Gupy: buscas com filtros de cargo, local, modalidade e tipo de vaga, direto na fila da IA
 - [x] Currículo adaptado para ATS, em texto e PDF
-- [x] Claude, Gemini e Groq, com fluxo e reservas configuráveis por etapa
+- [x] Claude, Gemini, Groq e IA local (qualquer servidor no formato da OpenAI), com fluxo e reservas configuráveis por etapa
 - [x] Intervalo entre acessos configurável
 - [x] Linux, macOS e Windows, com instalação do que falta
 - [x] ZIP para download com o Java embutido e os dados junto do app
-- [ ] **Novas plataformas de vagas:** Gupy, Catho e outras
+- [ ] **Novas plataformas de vagas:** Catho e outras
 - [ ] Notificação quando surgir uma vaga compatível
 
 ## Licença
