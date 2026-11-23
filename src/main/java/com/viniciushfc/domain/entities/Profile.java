@@ -4,6 +4,7 @@ import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.LocalLlm;
+import com.viniciushfc.domain.vo.LlmModels;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,7 +27,8 @@ public record Profile(UUID id,
                       List<LlmProvider> analysisChain,
                       List<LlmProvider> curriculumChain,
                       LocalLlm localLlm,
-                      String claudeApiKey) {
+                      String claudeApiKey,
+                      LlmModels models) {
 
     public static final int DEFAULT_POLL_MIN_MINUTES = 15;
     public static final int DEFAULT_POLL_MAX_MINUTES = 25;
@@ -37,7 +39,7 @@ public record Profile(UUID id,
                                  LlmProvider llmProvider,
                                  Attachment curriculum) {
         return new Profile(UUID.randomUUID(), name, geminiApiKey, curriculum, new ArrayList<>(),
-                false, true, groqApiKey, llmProvider, false, null, null, null, null, null, null);
+                false, true, groqApiKey, llmProvider, false, null, null, null, null, null, null, null);
     }
 
     public boolean isBrowserVisible() {
@@ -71,6 +73,17 @@ public record Profile(UUID id,
             case CLAUDE -> claudeApiKey;
             case LOCAL -> localLlm == null ? null : localLlm.apiKey();
         };
+    }
+
+    public String model(LlmProvider provider) {
+        String chosen = switch (provider) {
+            case GEMINI -> models == null ? null : models.gemini();
+            case GROQ -> models == null ? null : models.groq();
+            case CLAUDE -> models == null ? null
+                    : claudeApiKey != null && !claudeApiKey.isBlank() ? models.claudeApi() : models.claudeCode();
+            case LOCAL -> localLlm == null ? null : localLlm.model();
+        };
+        return chosen == null || chosen.isBlank() ? null : chosen;
     }
 
     public List<LlmProvider> llmProviders() {

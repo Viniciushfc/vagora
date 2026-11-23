@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -40,7 +41,7 @@ class AnalyzeJobsMatchCvGatewayImplTest {
     }
 
     private Profile profile(String geminiKey, String groqKey, LlmProvider primary) {
-        return new Profile(null, "F", geminiKey, null, null, null, null, groqKey, primary, null, null, null, null, null, null, null);
+        return new Profile(null, "F", geminiKey, null, null, null, null, groqKey, primary, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -48,13 +49,13 @@ class AnalyzeJobsMatchCvGatewayImplTest {
         var results = List.of(
                 new CvMatchResult(true, 90, List.of("m"), null),
                 new CvMatchResult(false, 20, List.of("n"), null));
-        when(gemini.analyze(anyString(), eq(2), eq("chave"))).thenReturn(results);
+        when(gemini.analyze(anyString(), eq(2), eq("chave"), isNull())).thenReturn(results);
 
         var jobs = List.of(job("Dev Java"), job("Dev Go"));
         assertEquals(results, gateway.analyze(jobs, "meu curriculo", profile("chave", null, null)));
 
         ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
-        verify(gemini).analyze(prompt.capture(), eq(2), eq("chave"));
+        verify(gemini).analyze(prompt.capture(), eq(2), eq("chave"), isNull());
         assertTrue(prompt.getValue().contains("<vaga id=\"1\">\nTítulo: Dev Java"));
         assertTrue(prompt.getValue().contains("<vaga id=\"2\">\nTítulo: Dev Go"));
         assertTrue(prompt.getValue().contains("<curriculo>\nmeu curriculo\n</curriculo>"));
@@ -62,17 +63,17 @@ class AnalyzeJobsMatchCvGatewayImplTest {
 
     @Test
     void usaAReservaQuandoAPrincipalFalha() {
-        when(groq.adaptCurriculum(anyString(), eq("g"))).thenThrow(new ExternalServiceException("fora do ar"));
-        when(gemini.adaptCurriculum(anyString(), eq("k"))).thenReturn("cv");
+        when(groq.adaptCurriculum(anyString(), eq("g"), isNull())).thenThrow(new ExternalServiceException("fora do ar"));
+        when(gemini.adaptCurriculum(anyString(), eq("k"), isNull())).thenReturn("cv");
 
         assertEquals("cv", gateway.adaptCurriculum(job("Dev"), "cv", profile("k", "g", LlmProvider.GROQ)));
-        verify(groq).adaptCurriculum(anyString(), eq("g"));
+        verify(groq).adaptCurriculum(anyString(), eq("g"), isNull());
     }
 
     @Test
     void semReservaOErroDaUnicaChaveSobe() {
         var cota = RateLimitedException.quota("Groq", Duration.ofMinutes(5));
-        when(groq.adaptCurriculum(anyString(), eq("g"))).thenThrow(cota);
+        when(groq.adaptCurriculum(anyString(), eq("g"), isNull())).thenThrow(cota);
 
         var thrown = assertThrows(RateLimitedException.class,
                 () -> gateway.adaptCurriculum(job("Dev"), "cv", profile(null, "g", LlmProvider.GEMINI)));

@@ -105,7 +105,7 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 | Aba | O que você configura |
 |---|---|
 | **Currículo** | O PDF que a IA compara com cada vaga (até 5 MB, com texto selecionável). |
-| **IA** | As chaves do **Gemini** e do **Groq**, o **Claude** (pela chave da API da Anthropic ou pelo login da sua assinatura no Claude Code, que o Vagora instala sozinho) e uma **IA local**: o endereço e o modelo de qualquer servidor no formato da OpenAI que você roda ou confia (Ollama, LM Studio, llama.cpp, vLLM). Basta uma delas, mas com mais de uma você ganha reserva. |
+| **IA** | As chaves do **Gemini** e do **Groq**, o **Claude** (pela chave da API da Anthropic ou pelo login da sua assinatura no Claude Code, que o Vagora instala sozinho) e uma **IA local**: o endereço e o modelo de qualquer servidor no formato da OpenAI que você roda ou confia (Ollama, LM Studio, llama.cpp, vLLM). Cada uma tem o campo **Modelo**: vazio usa o padrão do Vagora, e ao clicar nele aparecem os modelos que a sua conta tem (consultados com a sua chave, ou no seu servidor, na IA local). Basta uma IA, mas com mais de uma você ganha reserva. |
 | **Fluxo da IA** | Um fluxograma das etapas. Em cada etapa que usa IA (**nota da vaga** e **currículo adaptado**) você marca quais IAs entram e em que ordem: a primeira é a principal e as outras são reservas, tentadas em sequência se a anterior falhar. Exemplo: uma IA com cota grande na nota, que roda para toda vaga, e a que escreve melhor no currículo. |
 | **Contas** | O **email** que recebe os alertas (com senha de app) e a **pasta** onde os alertas de cada rede chegam, descoberta automaticamente. A conta do **LinkedIn** usada para abrir as vagas e os leitores do **Indeed** e do **Glassdoor**, cada um com a própria pasta do email. |
 | **Automação** | Ligar ou pausar a verificação do email, gerar o currículo adaptado automaticamente ou só quando você pedir (economiza cota da IA) e mostrar o navegador durante a análise (para resolver verificações do LinkedIn). Também o **intervalo entre os acessos**, com mínimo e máximo em minutos e aviso de risco quando fica abaixo do padrão. |
@@ -306,6 +306,8 @@ Todas as rotas são do perfil da instalação, sem id:
 | `GET` / `PUT` | `/profile/email/folders` · `/profile/email/folder` | pastas do email com contagem de alertas / trocar a pasta |
 | `GET` | `/profile/job-matches` | vagas analisadas |
 | `GET` / `POST` | `/profile/job-matches/{id}/curriculum` | currículo adaptado em PDF / gerar o currículo adaptado |
+| `GET` | `/profile/llm-models` | modelo padrão de cada IA |
+| `GET` | `/profile/llm-models/{provider}` | modelos disponíveis de uma IA (`GEMINI`, `GROQ`, `CLAUDE`, `LOCAL`) |
 | `PUT` | `/profile/job-matches/{id}/applied` | marcar ou desmarcar a vaga como enviada (`{"applied": true}`) |
 | `GET` / `POST` | `/profile/pending-jobs` · `/profile/pending-jobs/{id}/priority` | fila de análise / priorizar uma vaga |
 | `GET` | `/profile/status` | monitoramento (última verificação, próximo alerta, último erro) |

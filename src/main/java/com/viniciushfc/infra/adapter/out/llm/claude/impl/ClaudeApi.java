@@ -29,6 +29,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 @ApplicationScoped
 public class ClaudeApi {
@@ -51,25 +52,43 @@ public class ClaudeApi {
         this.model = model;
     }
 
-    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey) {
-        return cvMatchMapper.toDomain("Claude", call(PromptsContextsLLM.MatchAnalysisPrompt, prompt, ANALYSIS_FORMAT, apiKey, "análise"), jobs);
+    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey, String model) {
+        return cvMatchMapper.toDomain("Claude", call(PromptsContextsLLM.MatchAnalysisPrompt, prompt, ANALYSIS_FORMAT, apiKey, model, "análise"), jobs);
     }
 
-    public String adaptCurriculum(String prompt, String apiKey) {
-        String text = call(PromptsContextsLLM.AtsCurriculumPrompt, prompt, null, apiKey, "currículo");
+    public String adaptCurriculum(String prompt, String apiKey, String model) {
+        String text = call(PromptsContextsLLM.AtsCurriculumPrompt, prompt, null, apiKey, model, "currículo");
         if (text.isBlank()) {
             throw new ExternalServiceException("O Claude não devolveu o currículo adaptado. O alerta será tentado de novo.");
         }
         return text.strip();
     }
 
-    private String call(String systemPrompt, String prompt, JsonOutputFormat format, String apiKey, String task) {
+    public String defaultModel() {
+        return model;
+    }
+
+    public List<String> models(String apiKey) {
+        AnthropicClient client = AnthropicOkHttpClient.builder().apiKey(apiKey).timeout(Duration.ofSeconds(30)).build();
+        try {
+            List<String> ids = new ArrayList<>();
+            client.models().list().autoPager().forEach(found -> ids.add(found.id()));
+            return ids;
+        } catch (AnthropicServiceException | AnthropicIoException e) {
+            Log.warnf("Não foi possível listar os modelos do Claude: %s", e.getMessage());
+            return List.of();
+        } finally {
+            client.close();
+        }
+    }
+
+    private String call(String systemPrompt, String prompt, JsonOutputFormat format, String apiKey, String chosen, String task) {
         OutputConfig.Builder output = OutputConfig.builder().effort(OutputConfig.Effort.MEDIUM);
         if (format != null) {
             output.format(format);
         }
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(model)
+                .model(chosen == null ? model : chosen)
                 .maxTokens(16000L)
                 .system(systemPrompt)
                 .outputConfig(output.build())

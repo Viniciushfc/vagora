@@ -2,6 +2,7 @@ package com.viniciushfc.infra.adapter.out.database.panache.models;
 
 import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.vo.LocalLlm;
+import com.viniciushfc.domain.vo.LlmModels;
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheAttachmentEmbeddable;
 import com.viniciushfc.infra.adapter.out.database.panache.embeddable.PanacheLinkedAccountEmbeddable;
 import jakarta.persistence.*;
@@ -31,6 +32,10 @@ public class PanacheProfileEntity {
     private String localLlmModel;
     private String localLlmApiKey;
     private String claudeApiKey;
+    private String geminiModel;
+    private String groqModel;
+    private String claudeApiModel;
+    private String claudeCodeModel;
 
     @Embedded
     @AttributeOverrides({
@@ -62,7 +67,8 @@ public class PanacheProfileEntity {
                                 List<LlmProvider> analysisChain,
                                 List<LlmProvider> curriculumChain,
                                 LocalLlm localLlm,
-                                String claudeApiKey) {
+                                String claudeApiKey,
+                                LlmModels models) {
         this.id = id;
         this.name = name;
         this.geminiApiKey = geminiApiKey;
@@ -78,6 +84,9 @@ public class PanacheProfileEntity {
         setAnalysisChain(analysisChain);
         setCurriculumChain(curriculumChain);
         this.claudeApiKey = claudeApiKey;
+        if (models != null) {
+            setModels(models);
+        }
         if (localLlm != null) {
             this.localLlmUrl = localLlm.url();
             this.localLlmModel = localLlm.model();
@@ -228,5 +237,28 @@ public class PanacheProfileEntity {
 
     public void setClaudeApiKey(String claudeApiKey) {
         this.claudeApiKey = claudeApiKey;
+    }
+
+    public LlmModels getModels() {
+        return new LlmModels(geminiModel, groqModel, claudeApiModel, claudeCodeModel);
+    }
+
+    public void setModels(LlmModels models) {
+        if (models.gemini() != null) {
+            geminiModel = blankToNull(models.gemini());
+        }
+        if (models.groq() != null) {
+            groqModel = blankToNull(models.groq());
+        }
+        if (models.claudeApi() != null) {
+            claudeApiModel = blankToNull(models.claudeApi());
+        }
+        if (models.claudeCode() != null) {
+            claudeCodeModel = blankToNull(models.claudeCode());
+        }
+    }
+
+    private static String blankToNull(String text) {
+        return text.isBlank() ? null : text.strip();
     }
 }

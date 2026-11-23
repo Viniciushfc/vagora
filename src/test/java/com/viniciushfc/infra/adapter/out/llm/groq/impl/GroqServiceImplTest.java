@@ -93,7 +93,7 @@ class GroqServiceImplTest {
         reply(200, completion("""
                 {"resultados": [{"id": 1, "match": true, "score": 88, "motivos": ["a", "b"]}]}"""));
 
-        assertEquals(List.of(new CvMatchResult(true, 88, List.of("a", "b"), null)), groq.analyze("prompt", 1, "gsk"));
+        assertEquals(List.of(new CvMatchResult(true, 88, List.of("a", "b"), null)), groq.analyze("prompt", 1, "gsk", null));
 
         Received request = received.getFirst();
         assertEquals("Bearer gsk", request.authorization());
@@ -112,7 +112,7 @@ class GroqServiceImplTest {
 
         var local = GroqServiceImpl.compatible(new CvMatchMapper(objectMapper), objectMapper, "IA local", "qwen2.5:14b", endpoint);
 
-        assertEquals("cv", local.adaptCurriculum("p", null));
+        assertEquals("cv", local.adaptCurriculum("p", null, null));
         Received request = received.getFirst();
         assertNull(request.authorization());
         assertEquals("qwen2.5:14b", request.body().path("model").asText());
@@ -120,10 +120,29 @@ class GroqServiceImplTest {
     }
 
     @Test
+    void usaOModeloEscolhidoEListaOsModelosDoServidor() throws IOException {
+        server.createContext("/v1/chat/completions", this::answer);
+        server.createContext("/v1/models", exchange -> {
+            byte[] body = "{\"data\": [{\"id\": \"qwen2.5:14b\"}, {\"id\": \"llama3.1:8b\"}]}".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        URI endpoint = new LocalLlm("http://127.0.0.1:" + server.getAddress().getPort() + "/v1", "qwen2.5:14b", null).chatCompletions();
+        var local = GroqServiceImpl.compatible(new CvMatchMapper(objectMapper), objectMapper, "IA local", "qwen2.5:14b", endpoint);
+        reply(200, completion("cv"));
+
+        local.adaptCurriculum("p", null, "llama3.1:8b");
+
+        assertEquals("llama3.1:8b", received.getFirst().body().path("model").asText());
+        assertEquals(List.of("llama3.1:8b", "qwen2.5:14b"), local.models(null));
+    }
+
+    @Test
     void curriculoVaiSemEsquema() {
         reply(200, completion("  cv adaptado "));
 
-        assertEquals("cv adaptado", groq.adaptCurriculum("prompt", "gsk"));
+        assertEquals("cv adaptado", groq.adaptCurriculum("prompt", "gsk", null));
         assertTrue(received.getFirst().body().path("response_format").isMissingNode());
     }
 
@@ -132,7 +151,7 @@ class GroqServiceImplTest {
         replyLimited("0");
         reply(200, completion("cv"));
 
-        assertEquals("cv", groq.adaptCurriculum("p", "x"));
+        assertEquals("cv", groq.adaptCurriculum("p", "x", null));
         assertEquals(2, received.size());
     }
 
@@ -141,7 +160,7 @@ class GroqServiceImplTest {
         replyLimited("0");
         replyLimited("0");
 
-        assertThrows(RateLimitedException.class, () -> groq.adaptCurriculum("p", "x"));
+        assertThrows(RateLimitedException.class, () -> groq.adaptCurriculum("p", "x", null));
         assertEquals(2, received.size());
     }
 
@@ -149,7 +168,7 @@ class GroqServiceImplTest {
     void limiteLongoNaoSeguraAThread() {
         replyLimited("3600");
 
-        RateLimitedException limited = assertThrows(RateLimitedException.class, () -> groq.adaptCurriculum("p", "x"));
+        RateLimitedException limited = assertThrows(RateLimitedException.class, () -> groq.adaptCurriculum("p", "x", null));
 
         assertEquals(Duration.ofHours(1), limited.retryAfter());
         assertEquals(ErrorCode.LLM_QUOTA_EXCEEDED, limited.code());
@@ -160,12 +179,12 @@ class GroqServiceImplTest {
     void chaveRecusadaERespostaForaDoFormato() {
         reply(401, "{\"error\":{\"message\":\"Invalid API Key\"}}");
         ExternalServiceException rejected = assertThrows(ExternalServiceException.class,
-                () -> groq.adaptCurriculum("p", "x"));
+                () -> groq.adaptCurriculum("p", "x", null));
         assertEquals(ErrorCode.LLM_KEY_REJECTED, rejected.code());
 
         reply(200, completion("não é json"));
         ExternalServiceException invalid = assertThrows(ExternalServiceException.class,
-                () -> groq.analyze("p", 1, "x"));
+                () -> groq.analyze("p", 1, "x", null));
         assertEquals(ErrorCode.LLM_INVALID_RESPONSE, invalid.code());
     }
 }

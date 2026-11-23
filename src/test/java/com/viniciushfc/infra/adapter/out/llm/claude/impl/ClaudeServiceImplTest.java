@@ -32,11 +32,11 @@ class ClaudeServiceImplTest {
     void comChaveDaApiChamaAApiSemPrecisarDoClaudeCode() throws Exception {
         var objectMapper = new ObjectMapper();
         var api = mock(ClaudeApi.class);
-        when(api.adaptCurriculum("prompt", "sk-ant")).thenReturn("cv");
+        when(api.adaptCurriculum("prompt", "sk-ant", null)).thenReturn("cv");
         var service = new ClaudeServiceImpl(new CvMatchMapper(objectMapper), objectMapper, "sonnet", api);
 
-        assertEquals("cv", service.adaptCurriculum("prompt", "sk-ant"));
-        service.analyze("prompt", 1, "sk-ant");
-        verify(api).analyze("prompt", 1, "sk-ant");
+        assertEquals("cv", service.adaptCurriculum("prompt", "sk-ant", null));
+        service.analyze("prompt", 1, "sk-ant", null);
+        verify(api).analyze("prompt", 1, "sk-ant", null);
     }
 }

@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.ArrayList;
 
 @ApplicationScoped
 public class GeminiServiceImpl implements LlmService {
@@ -67,20 +68,42 @@ public class GeminiServiceImpl implements LlmService {
     }
 
     @Override
-    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey) {
-        return cvMatchMapper.toDomain("Gemini", call(analysisConfig, prompt, apiKey).text(), jobs);
+    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey, String model) {
+        return cvMatchMapper.toDomain("Gemini", call(analysisConfig, prompt, apiKey, model).text(), jobs);
     }
 
     @Override
-    public String adaptCurriculum(String prompt, String apiKey) {
-        String text = call(curriculumConfig, prompt, apiKey).text();
+    public String adaptCurriculum(String prompt, String apiKey, String model) {
+        String text = call(curriculumConfig, prompt, apiKey, model).text();
         if (text == null || text.isBlank()) {
             throw new ExternalServiceException("O Gemini não devolveu o currículo adaptado. O alerta será tentado de novo.");
         }
         return text.strip();
     }
 
-    private GenerateContentResponse call(GenerateContentConfig config, String prompt, String apiKey) {
+    @Override
+    public String defaultModel(String apiKey) {
+        return model;
+    }
+
+    @Override
+    public List<String> models(String apiKey) {
+        try (Client client = Client.builder().apiKey(apiKey).build()) {
+            List<String> names = new ArrayList<>();
+            for (Model found : client.models.list(ListModelsConfig.builder().pageSize(1000).build())) {
+                if (found.supportedActions().orElse(List.of()).contains("generateContent")) {
+                    found.name().map(name -> name.replaceFirst("^models/", "")).ifPresent(names::add);
+                }
+            }
+            return names;
+        } catch (RuntimeException e) {
+            Log.warnf("Não foi possível listar os modelos do Gemini: %s", e.getMessage());
+            return List.of();
+        }
+    }
+
+    private GenerateContentResponse call(GenerateContentConfig config, String prompt, String apiKey, String chosen) {
+        String model = chosen == null ? this.model : chosen;
         Client client = Client.builder().apiKey(apiKey).build();
         long start = System.nanoTime();
         try {

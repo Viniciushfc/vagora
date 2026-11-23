@@ -56,7 +56,7 @@ class DomainEntitiesTest {
     @Test
     void cadaEtapaSegueOFluxoConfiguradoPulandoIaSemChave() {
         var user = new Profile(null, "F", "gemini", null, new ArrayList<>(), null, null, null, LlmProvider.GEMINI, null, null, null,
-                List.of(LlmProvider.GROQ, LlmProvider.CLAUDE, LlmProvider.GEMINI), null, null, null);
+                List.of(LlmProvider.GROQ, LlmProvider.CLAUDE, LlmProvider.GEMINI), null, null, null, null);
 
         assertEquals(List.of(LlmProvider.GEMINI), user.analysisProviders());
         assertEquals(List.of(LlmProvider.GEMINI), user.curriculumProviders());
@@ -64,7 +64,7 @@ class DomainEntitiesTest {
         assertEquals(List.of(LlmProvider.GEMINI, LlmProvider.GROQ, LlmProvider.CLAUDE, LlmProvider.LOCAL), user.curriculumOrder());
 
         var semGemini = new Profile(null, "F", "gemini", null, new ArrayList<>(), null, null, "groq", LlmProvider.GEMINI, null, null, null,
-                List.of(LlmProvider.GROQ), List.of(LlmProvider.GEMINI, LlmProvider.GROQ), null, null);
+                List.of(LlmProvider.GROQ), List.of(LlmProvider.GEMINI, LlmProvider.GROQ), null, null, null);
         assertEquals(List.of(LlmProvider.GROQ), semGemini.analysisProviders());
         assertEquals(List.of(LlmProvider.GEMINI, LlmProvider.GROQ), semGemini.curriculumProviders());
     }
@@ -80,9 +80,23 @@ class DomainEntitiesTest {
     }
 
     @Test
+    void modeloDoClaudeSegueAFormaDeAcessoEVazioUsaOPadrao() {
+        var models = new LlmModels(" ", null, "claude-sonnet-5-5", "opus");
+        var comChave = new Profile(null, "F", null, null, new ArrayList<>(), null, null, null, LlmProvider.CLAUDE, null, null, null,
+                null, null, null, "sk-ant", models);
+        var semChave = new Profile(null, "F", null, null, new ArrayList<>(), null, null, null, LlmProvider.CLAUDE, null, null, null,
+                null, null, null, null, models);
+
+        assertEquals("claude-sonnet-5-5", comChave.model(LlmProvider.CLAUDE));
+        assertEquals("opus", semChave.model(LlmProvider.CLAUDE));
+        assertNull(comChave.model(LlmProvider.GEMINI));
+        assertNull(comChave.model(LlmProvider.GROQ));
+    }
+
+    @Test
     void claudeEntraComoIaSoComAChaveDaApi() {
         var user = new Profile(null, "F", null, null, new ArrayList<>(), null, null, null, LlmProvider.CLAUDE, null, null, null,
-                null, null, null, "sk-ant");
+                null, null, null, "sk-ant", null);
 
         assertEquals(List.of(LlmProvider.CLAUDE), user.llmProviders());
         assertEquals("sk-ant", user.apiKey(LlmProvider.CLAUDE));

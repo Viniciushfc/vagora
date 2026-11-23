@@ -8,6 +8,7 @@ import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.gateways.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.vo.JobDetail;
+import com.viniciushfc.domain.vo.LlmModels;
 import com.viniciushfc.domain.vo.LocalLlm;
 import com.viniciushfc.infra.adapter.out.llm.LlmService;
 import com.viniciushfc.infra.adapter.out.llm.claude.impl.ClaudeServiceImpl;
@@ -20,17 +21,18 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiFunction;
 
 @ApplicationScoped
 public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway {
     private final Map<LlmProvider, LlmService> services;
+    private final ClaudeServiceImpl claude;
     private final CvMatchMapper cvMatchMapper;
     private final ObjectMapper objectMapper;
 
     public AnalyzeJobsMatchCvGatewayImpl(GeminiServiceImpl gemini, GroqServiceImpl groq, ClaudeServiceImpl claude,
                                          CvMatchMapper cvMatchMapper, ObjectMapper objectMapper) {
         this.services = Map.of(LlmProvider.GEMINI, gemini, LlmProvider.GROQ, groq, LlmProvider.CLAUDE, claude);
+        this.claude = claude;
         this.cvMatchMapper = cvMatchMapper;
         this.objectMapper = objectMapper;
     }
@@ -41,16 +43,36 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
         for (int i = 0; i < jobs.size(); i++) {
             prompt.append(job(jobs.get(i), i + 1)).append('\n');
         }
-        return withFallback(profile, profile.analysisProviders(), (service, key) -> service.analyze(prompt.toString(), jobs.size(), key));
+        return withFallback(profile, profile.analysisProviders(), (service, key, model) -> service.analyze(prompt.toString(), jobs.size(), key, model));
     }
 
     @Override
     public String adaptCurriculum(JobDetail jobDetail, String cvUser, Profile profile) {
         String prompt = curriculum(cvUser) + job(jobDetail, 1);
-        return withFallback(profile, profile.curriculumProviders(), (service, key) -> service.adaptCurriculum(prompt, key));
+        return withFallback(profile, profile.curriculumProviders(), (service, key, model) -> service.adaptCurriculum(prompt, key, model));
     }
 
-    private <T> T withFallback(Profile profile, List<LlmProvider> providers, BiFunction<LlmService, String, T> call) {
+    @Override
+    public List<String> models(LlmProvider provider, Profile profile) {
+        if (provider == LlmProvider.LOCAL && (profile.localLlm() == null || !profile.localLlm().configured())) {
+            return List.of();
+        }
+        String key = profile.apiKey(provider);
+        boolean needsKey = provider == LlmProvider.GEMINI || provider == LlmProvider.GROQ;
+        return needsKey && (key == null || key.isBlank()) ? List.of() : service(profile, provider).models(key);
+    }
+
+    @Override
+    public LlmModels defaultModels() {
+        return new LlmModels(services.get(LlmProvider.GEMINI).defaultModel(null), services.get(LlmProvider.GROQ).defaultModel(null),
+                claude.apiDefaultModel(), claude.defaultModel(null));
+    }
+
+    private interface Call<T> {
+        T apply(LlmService service, String apiKey, String model);
+    }
+
+    private <T> T withFallback(Profile profile, List<LlmProvider> providers, Call<T> call) {
         if (providers.isEmpty()) {
             throw new BusinessException(
                     "Nenhuma IA disponível para esta etapa. Configure uma chave na aba IA ou marque outra IA em Fluxo da IA.",
@@ -59,7 +81,7 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
         RuntimeException failure = null;
         for (LlmProvider provider : providers) {
             try {
-                return call.apply(service(profile, provider), profile.apiKey(provider));
+                return call.apply(service(profile, provider), profile.apiKey(provider), profile.model(provider));
             } catch (RuntimeException e) {
                 Log.warnf("%s falhou: %s", provider.label, e.getMessage());
                 failure = e;

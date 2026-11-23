@@ -6,6 +6,7 @@ import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.LocalLlm;
+import com.viniciushfc.domain.vo.LlmModels;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountRequest;
 import com.viniciushfc.infra.adapter.in.rest.dto.LinkedAccountResponse;
 import com.viniciushfc.infra.adapter.in.rest.dto.ProfileForm;
@@ -38,7 +39,9 @@ public class ProfileRestMapper {
                 toChain(form.curriculumChain),
                 form.localLlmUrl == null && form.localLlmModel == null && form.localLlmApiKey == null
                         ? null : new LocalLlm(form.localLlmUrl, form.localLlmModel, form.localLlmApiKey),
-                form.claudeApiKey
+                form.claudeApiKey,
+                form.geminiModel == null && form.groqModel == null && form.claudeApiModel == null && form.claudeCodeModel == null
+                        ? null : new LlmModels(form.geminiModel, form.groqModel, form.claudeApiModel, form.claudeCodeModel)
         );
     }
 
@@ -65,6 +68,7 @@ public class ProfileRestMapper {
                 profile.localLlm() == null ? null : profile.localLlm().model(),
                 profile.localLlm() != null && profile.localLlm().apiKey() != null,
                 profile.llmProviders().contains(LlmProvider.LOCAL),
+                profile.models() == null ? new LlmModels(null, null, null, null) : profile.models(),
                 profile.curriculum() == null ? null : profile.curriculum().name(),
                 profile.curriculum() == null || profile.curriculum().content() == null
                         ? null : profile.curriculum().content().length,

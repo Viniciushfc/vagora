@@ -2,6 +2,7 @@ package com.viniciushfc.infra.adapter.in.rest.resource;
 
 import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
+import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.exceptions.NotFoundException;
 import com.viniciushfc.domain.usecases.impl.AnalyzePendingJobsUseCaseImpl;
 import com.viniciushfc.domain.usecases.contracts.*;
@@ -10,6 +11,7 @@ import com.viniciushfc.domain.vo.ClaudeStatus;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.domain.vo.ProcessingStatus;
 import com.viniciushfc.domain.vo.ScraperActivity;
+import com.viniciushfc.domain.vo.LlmModels;
 import com.viniciushfc.infra.adapter.in.rest.dto.*;
 import com.viniciushfc.infra.adapter.in.rest.mapper.JobMatchRestMapper;
 import com.viniciushfc.infra.adapter.in.rest.mapper.ProfileRestMapper;
@@ -44,6 +46,7 @@ public class ProfileResource {
     private final PrioritizePendingJobUseCase prioritizePendingJobUseCase;
     private final ConnectClaudeUseCase connectClaudeUseCase;
     private final MarkJobAppliedUseCase markJobAppliedUseCase;
+    private final ListLlmModelsUseCase listLlmModelsUseCase;
 
     public ProfileResource(CreateProfileUseCase createProfileUseCase,
                            GetProfileUseCase getProfileUseCase,
@@ -61,7 +64,8 @@ public class ProfileResource {
                            ListPendingJobsUseCase listPendingJobsUseCase,
                            PrioritizePendingJobUseCase prioritizePendingJobUseCase,
                            ConnectClaudeUseCase connectClaudeUseCase,
-                           MarkJobAppliedUseCase markJobAppliedUseCase) {
+                           MarkJobAppliedUseCase markJobAppliedUseCase,
+                           ListLlmModelsUseCase listLlmModelsUseCase) {
         this.createProfileUseCase = createProfileUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
@@ -79,6 +83,7 @@ public class ProfileResource {
         this.prioritizePendingJobUseCase = prioritizePendingJobUseCase;
         this.connectClaudeUseCase = connectClaudeUseCase;
         this.markJobAppliedUseCase = markJobAppliedUseCase;
+        this.listLlmModelsUseCase = listLlmModelsUseCase;
     }
 
     @GET
@@ -143,6 +148,18 @@ public class ProfileResource {
     public Response openLinkedinLogin() {
         openLinkedinLoginUseCase.execute();
         return Response.accepted().build();
+    }
+
+    @GET
+    @Path("/llm-models")
+    public LlmModels llmDefaultModels() {
+        return listLlmModelsUseCase.defaults();
+    }
+
+    @GET
+    @Path("/llm-models/{provider}")
+    public List<String> llmModels(@PathParam("provider") LlmProvider provider) {
+        return listLlmModelsUseCase.execute(provider);
     }
 
     @POST

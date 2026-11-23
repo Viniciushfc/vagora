@@ -46,28 +46,42 @@ public class ClaudeServiceImpl implements LlmService {
     }
 
     @Override
-    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey) {
+    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey, String model) {
         if (apiKey != null && !apiKey.isBlank()) {
-            return api.analyze(prompt, jobs, apiKey);
+            return api.analyze(prompt, jobs, apiKey, model);
         }
-        JsonNode json = call(PromptsContextsLLM.MatchAnalysisPrompt, prompt, analysisSchema, "análise");
+        JsonNode json = call(PromptsContextsLLM.MatchAnalysisPrompt, prompt, analysisSchema, model, "análise");
         JsonNode output = json.path("structured_output");
         return cvMatchMapper.toDomain("Claude", output.isMissingNode() ? null : output.toString(), jobs);
     }
 
     @Override
-    public String adaptCurriculum(String prompt, String apiKey) {
+    public String adaptCurriculum(String prompt, String apiKey, String model) {
         if (apiKey != null && !apiKey.isBlank()) {
-            return api.adaptCurriculum(prompt, apiKey);
+            return api.adaptCurriculum(prompt, apiKey, model);
         }
-        String text = call(PromptsContextsLLM.AtsCurriculumPrompt, prompt, null, "currículo").path("result").asText(null);
+        String text = call(PromptsContextsLLM.AtsCurriculumPrompt, prompt, null, model, "currículo").path("result").asText(null);
         if (text == null || text.isBlank()) {
             throw new ExternalServiceException("O Claude não devolveu o currículo adaptado. O alerta será tentado de novo.");
         }
         return text.strip();
     }
 
-    private JsonNode call(String systemPrompt, String prompt, String schema, String task) {
+    @Override
+    public String defaultModel(String apiKey) {
+        return apiKey != null && !apiKey.isBlank() ? api.defaultModel() : model;
+    }
+
+    public String apiDefaultModel() {
+        return api.defaultModel();
+    }
+
+    @Override
+    public List<String> models(String apiKey) {
+        return apiKey != null && !apiKey.isBlank() ? api.models(apiKey) : List.of("sonnet", "opus", "haiku");
+    }
+
+    private JsonNode call(String systemPrompt, String prompt, String schema, String chosen, String task) {
         String executable = ClaudeCli.executable();
         if (executable == null) {
             throw new ExternalServiceException("O Claude Code não está instalado neste computador. Veja em Configurações.",
@@ -75,7 +89,7 @@ public class ClaudeServiceImpl implements LlmService {
         }
         List<String> command = new ArrayList<>(List.of(executable, "-p",
                 "--output-format", "json",
-                "--model", model,
+                "--model", chosen == null ? model : chosen,
                 "--effort", "low",
                 "--system-prompt", systemPrompt,
                 "--tools", "",

@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.in.rest.dto;
 
 import com.viniciushfc.domain.enums.LlmProvider;
+import com.viniciushfc.domain.vo.LlmModels;
 
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +23,7 @@ public record ProfileResponse(UUID id,
                               String localLlmModel,
                               boolean hasLocalLlmApiKey,
                               boolean hasLocalLlm,
+                              LlmModels models,
                               String curriculumName,
                               Integer curriculumSizeBytes,
                               List<LinkedAccountResponse> linkedAccounts) {

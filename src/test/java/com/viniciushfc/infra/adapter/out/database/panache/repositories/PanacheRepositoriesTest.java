@@ -80,7 +80,7 @@ class PanacheRepositoriesTest {
         assertEquals("chave", found.geminiApiKey());
         assertEquals(profile.id(), profileRepository.require().id());
 
-        var updated = profileRepository.update(profile.id(), new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null, null));
+        var updated = profileRepository.update(profile.id(), new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("Novo", updated.name());
         assertEquals("chave", updated.geminiApiKey());
         assertEquals("Novo", profileRepository.find().name());
@@ -98,7 +98,7 @@ class PanacheRepositoriesTest {
 
     @Test
     void profileUpdateDeInexistenteRetornaNulo() {
-        assertNull(profileRepository.update(UUID.randomUUID(), new Profile(null, "x", null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+        assertNull(profileRepository.update(UUID.randomUUID(), new Profile(null, "x", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
     }
 
     @Test

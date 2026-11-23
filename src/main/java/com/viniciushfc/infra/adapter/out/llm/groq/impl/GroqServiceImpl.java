@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 @ApplicationScoped
 public class GroqServiceImpl implements LlmService {
@@ -77,24 +78,53 @@ public class GroqServiceImpl implements LlmService {
     }
 
     @Override
-    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey) {
-        String text = call(PromptsContextsLLM.MatchAnalysisPrompt, prompt, ANALYSIS_FORMAT, apiKey, "análise");
+    public List<CvMatchResult> analyze(String prompt, int jobs, String apiKey, String model) {
+        String text = call(PromptsContextsLLM.MatchAnalysisPrompt, prompt, ANALYSIS_FORMAT, apiKey, model, "análise");
         return cvMatchMapper.toDomain(name, text, jobs);
     }
 
     @Override
-    public String adaptCurriculum(String prompt, String apiKey) {
-        String text = call(PromptsContextsLLM.AtsCurriculumPrompt, prompt, null, apiKey, "currículo");
+    public String adaptCurriculum(String prompt, String apiKey, String model) {
+        String text = call(PromptsContextsLLM.AtsCurriculumPrompt, prompt, null, apiKey, model, "currículo");
         if (text == null || text.isBlank()) {
             throw new ExternalServiceException(name + " não devolveu o currículo adaptado. O alerta será tentado de novo.");
         }
         return text.strip();
     }
 
-    private String call(String systemPrompt, String prompt, Map<String, Object> format, String apiKey, String task) {
+    @Override
+    public String defaultModel(String apiKey) {
+        return model;
+    }
+
+    @Override
+    public List<String> models(String apiKey) {
+        try {
+            HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(endpoint.toString().replaceFirst("chat/completions$", "models"))).timeout(Duration.ofSeconds(30)).GET();
+            if (apiKey != null && !apiKey.isBlank()) {
+                request.header("Authorization", "Bearer " + apiKey);
+            }
+            HttpResponse<String> response = HTTP.send(request.build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                Log.warnf("%s não listou os modelos (HTTP %d)", name, response.statusCode());
+                return List.of();
+            }
+            List<String> ids = new ArrayList<>();
+            objectMapper.readTree(response.body()).path("data").forEach(found -> ids.add(found.path("id").asText()));
+            return ids.stream().filter(id -> !id.isBlank()).sorted().toList();
+        } catch (IOException | RuntimeException e) {
+            Log.warnf("Não foi possível listar os modelos de %s: %s", name, e.getMessage());
+            return List.of();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return List.of();
+        }
+    }
+
+    private String call(String systemPrompt, String prompt, Map<String, Object> format, String apiKey, String chosen, String task) {
         long start = System.nanoTime();
         try {
-            HttpRequest request = request(body(systemPrompt, prompt, format), apiKey);
+            HttpRequest request = request(body(systemPrompt, prompt, format, chosen == null ? model : chosen), apiKey);
             HttpResponse<String> response = sendWaitingShortLimit(request);
             if (response.statusCode() != 200) {
                 throw translate(name, response.statusCode(), retryAfterHeader(response), response.body());
@@ -120,7 +150,7 @@ public class GroqServiceImpl implements LlmService {
         }
     }
 
-    private String body(String systemPrompt, String prompt, Map<String, Object> format) throws JsonProcessingException {
+    private String body(String systemPrompt, String prompt, Map<String, Object> format, String model) throws JsonProcessingException {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", model);
         body.put("messages", List.of(

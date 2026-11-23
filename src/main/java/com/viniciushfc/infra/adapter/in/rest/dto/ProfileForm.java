@@ -53,4 +53,16 @@ public class ProfileForm {
 
     @RestForm
     public String claudeApiKey;
+
+    @RestForm
+    public String geminiModel;
+
+    @RestForm
+    public String groqModel;
+
+    @RestForm
+    public String claudeApiModel;
+
+    @RestForm
+    public String claudeCodeModel;
 }
