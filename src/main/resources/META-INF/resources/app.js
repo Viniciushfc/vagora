@@ -59,6 +59,8 @@ const api = {
     listMatches: () => request("GET", "/profile/job-matches"),
     generateCurriculum: (id) => request("POST", `/profile/job-matches/${id}/curriculum`),
     markApplied: (id, applied) => request("PUT", `/profile/job-matches/${id}/applied`, { applied }),
+    llmModels: (provider) => request("GET", `/profile/llm-models/${provider}`),
+    llmDefaultModels: () => request("GET", "/profile/llm-models"),
     listPending: () => request("GET", "/profile/pending-jobs"),
     prioritize: (id) => request("POST", `/profile/pending-jobs/${id}/priority`),
     status: () => request("GET", "/profile/status"),
@@ -283,6 +285,7 @@ async function boot() {
 function showApp() {
     $("#setup").hidden = true;
     $("#app").hidden = false;
+    showDefaultModels();
     loadStatus();
     state.timers.push(setInterval(loadStatus, 15_000));
     route();
@@ -1246,7 +1249,7 @@ async function renderClaudeAccount(refreshProfile = false) {
     const loggedIn = Boolean(claude && status.loggedIn);
     $("#claude-head").replaceChildren(...accountHead("spark", "Claude", state.profile.hasClaudeApiKey || loggedIn,
         [state.profile.hasClaudeApiKey ? "Chave configurada" : "Conectado", "Não conectado"]).children);
-    const head = el("h3", "account-login-title", claude ? "Conta do Claude Code" : "Ou entre com a conta do Claude Code");
+    const head = el("h3", "account-login-title", "Pela conta do Claude Code");
     const intro = el("p", "hint", "Usa a sua assinatura do Claude (Pro, Max, Team ou Enterprise), pelo Claude Code deste computador. Não precisa de chave.");
 
     if (!status.installed) {
@@ -1593,6 +1596,9 @@ function renderProfile(forms = $$(".profile-form")) {
         }
     });
     if (forms.includes($("#profile-form"))) $("#profile-name").value = profile.name ?? "";
+    forms.forEach((form) => $$("input[data-models]", form).forEach((input) => {
+        if (MODEL_FIELDS[input.name]) input.value = profile.models?.[MODEL_FIELDS[input.name]] ?? "";
+    }));
     if (forms.some((form) => form.contains($("#profile-local-url")))) {
         $("#profile-local-url").value = profile.localLlmUrl ?? "";
         $("#profile-local-model").value = profile.localLlmModel ?? "";
@@ -1675,8 +1681,36 @@ $$("[data-panel~='config'] form").forEach((form) => {
     form.addEventListener("change", () => markDirty(form));
 });
 
+const MODEL_FIELDS = { geminiModel: "gemini", groqModel: "groq", claudeApiModel: "claudeApi", claudeCodeModel: "claudeCode" };
+const CLAUDE_CODE_MODELS = ["sonnet", "opus", "haiku"];
+const CLAUDE_API_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
+
+$$("input[data-models]").forEach((input) => input.addEventListener("focus", async () => {
+    if (input.dataset.loaded) return;
+    input.dataset.loaded = "yes";
+    const claudeApiWithoutKey = input.name === "claudeApiModel" && !state.profile.hasClaudeApiKey;
+    let available = claudeApiWithoutKey ? CLAUDE_API_MODELS : CLAUDE_CODE_MODELS;
+    if (input.dataset.models !== "CLAUDE_CODE" && !claudeApiWithoutKey) {
+        try {
+            available = await api.llmModels(input.dataset.models);
+        } catch {
+            input.dataset.loaded = "";
+            return;
+        }
+    }
+    $(`#${input.getAttribute("list")}`).replaceChildren(...available.map((model) => new Option(model)));
+}));
+
+async function showDefaultModels() {
+    const defaults = await api.llmDefaultModels().catch(() => null);
+    if (!defaults) return;
+    for (const [name, model] of Object.entries(MODEL_FIELDS)) {
+        if (defaults[model]) $(`#profile-${name}`).placeholder = `Padrão: ${defaults[model]}`;
+    }
+}
+
 function keyHint(configured) {
-    return [configured ? "Para trocar, clique no campo e cole a nova chave." : "Cole aqui a chave criada no botão acima."];
+    return [configured ? "Para trocar, clique no campo e cole a nova chave." : "Crie a chave no link acima e cole aqui."];
 }
 
 function renderPollWarning() {
@@ -1716,6 +1750,10 @@ $$(".profile-form").forEach((form) => form.addEventListener("submit", async (eve
     for (const key of ["localLlmUrl", "localLlmModel"]) {
         const value = field.namedItem(key)?.value.trim();
         if (value !== undefined && value !== (state.profile[key] ?? "")) data.append(key, value);
+    }
+    for (const [key, model] of Object.entries(MODEL_FIELDS)) {
+        const value = field.namedItem(key)?.value.trim();
+        if (value !== undefined && value !== (state.profile.models?.[model] ?? "")) data.append(key, value);
     }
     const claudeKey = field.namedItem("claudeApiKey")?.value.trim();
     if (claudeKey && claudeKey !== KEY_MASK) data.append("claudeApiKey", claudeKey);

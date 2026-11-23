@@ -394,47 +394,87 @@
                         <p class="hint" id="ai-summary"></p>
                     </div>
                     <div class="setting-body wide">
-                        <div class="cards">
-                            <form class="panel account form profile-form" novalidate>
+                        <div class="cards ai-cards">
+                            <article class="panel account ai-card wide-card">
+                                <div class="account-head" id="claude-head"></div>
+                                <p class="account-status">A IA da Anthropic. Use de um dos dois jeitos abaixo; com os dois, a chave tem prioridade.</p>
+                                <div class="claude-ways">
+                                    <form class="claude-way form profile-form" novalidate>
+                                        <h3 class="account-login-title">Pela chave da API</h3>
+                                        <p class="hint">Cobrada pelo uso, na sua conta da Anthropic.</p>
+                                        <div class="field">
+                                            <div class="label-row">
+                                                <label for="profile-claude">Chave da API</label>
+                                                <a class="key-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Criar chave no Console da Anthropic<svg class="icon" aria-hidden="true"><use href="#i-external"/></svg></a>
+                                            </div>
+                                            <input id="profile-claude" name="claudeApiKey" type="password" autocomplete="off">
+                                            <p class="hint" id="profile-claude-hint"></p>
+                                        </div>
+                                        <div class="field">
+                                            <label for="profile-claudeApiModel">Modelo</label>
+                                            <input id="profile-claudeApiModel" name="claudeApiModel" list="list-claudeApiModel" data-models="CLAUDE" autocomplete="off" placeholder="Padrão">
+                                            <datalist id="list-claudeApiModel"></datalist>
+                                            <p class="hint">Em branco, usa o padrão mostrado no campo.</p>
+                                        </div>
+                                        <p class="form-error" role="alert" hidden></p>
+                                        <button class="button primary" type="submit">Salvar chave</button>
+                                    </form>
+                                    <div class="claude-way">
+                                        <div class="account-login" id="account-claude"></div>
+                                        <form class="form profile-form" novalidate>
+                                            <div class="field">
+                                                <label for="profile-claudeCodeModel">Modelo pela assinatura</label>
+                                                <input id="profile-claudeCodeModel" name="claudeCodeModel" list="list-claudeCodeModel" data-models="CLAUDE_CODE" autocomplete="off" placeholder="Padrão">
+                                                <datalist id="list-claudeCodeModel"></datalist>
+                                                <p class="hint">sonnet, opus ou haiku. Em branco, usa o padrão mostrado no campo.</p>
+                                            </div>
+                                            <p class="form-error" role="alert" hidden></p>
+                                            <button class="button quiet" type="submit">Salvar modelo</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </article>
+                            <form class="panel account ai-card form profile-form" novalidate>
                                 <div class="account-head" id="gemini-head"></div>
                                 <p class="account-status">IA do Google, com cota gratuita que costuma bastar para uso pessoal.</p>
-                                <a class="button quiet key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Criar chave no Google AI Studio</a>
                                 <div class="field">
-                                    <label for="profile-gemini">Chave da API</label>
+                                    <div class="label-row">
+                                        <label for="profile-gemini">Chave da API</label>
+                                        <a class="key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Criar chave no Google AI Studio<svg class="icon" aria-hidden="true"><use href="#i-external"/></svg></a>
+                                    </div>
                                     <input id="profile-gemini" name="geminiApiKey" type="password" autocomplete="off">
                                     <p class="hint" id="profile-gemini-hint"></p>
                                 </div>
+                                <div class="field">
+                                    <label for="profile-geminiModel">Modelo</label>
+                                    <input id="profile-geminiModel" name="geminiModel" list="list-geminiModel" data-models="GEMINI" autocomplete="off" placeholder="Padrão">
+                                    <datalist id="list-geminiModel"></datalist>
+                                    <p class="hint">Em branco, usa o padrão mostrado no campo. Clique para ver os modelos da sua conta.</p>
+                                </div>
                                 <p class="form-error" role="alert" hidden></p>
-                                <button class="button primary" type="submit">Salvar chave do Gemini</button>
+                                <button class="button primary" type="submit">Salvar Gemini</button>
                             </form>
-                            <form class="panel account form profile-form" novalidate>
+                            <form class="panel account ai-card form profile-form" novalidate>
                                 <div class="account-head" id="groq-head"></div>
                                 <p class="account-status">Rápida e com cota gratuita, mas aceita pedidos menores: analisa menos vagas por vez.</p>
-                                <a class="button quiet key-link" href="https://console.groq.com/keys" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Criar chave no console do Groq</a>
                                 <div class="field">
-                                    <label for="profile-groq">Chave da API</label>
+                                    <div class="label-row">
+                                        <label for="profile-groq">Chave da API</label>
+                                        <a class="key-link" href="https://console.groq.com/keys" target="_blank" rel="noopener">Criar chave no console do Groq<svg class="icon" aria-hidden="true"><use href="#i-external"/></svg></a>
+                                    </div>
                                     <input id="profile-groq" name="groqApiKey" type="password" autocomplete="off">
                                     <p class="hint" id="profile-groq-hint"></p>
                                 </div>
+                                <div class="field">
+                                    <label for="profile-groqModel">Modelo</label>
+                                    <input id="profile-groqModel" name="groqModel" list="list-groqModel" data-models="GROQ" autocomplete="off" placeholder="Padrão">
+                                    <datalist id="list-groqModel"></datalist>
+                                    <p class="hint">Em branco, usa o padrão mostrado no campo. Se um modelo menor der erro de tamanho, volte ao padrão.</p>
+                                </div>
                                 <p class="form-error" role="alert" hidden></p>
-                                <button class="button primary" type="submit">Salvar chave do Groq</button>
+                                <button class="button primary" type="submit">Salvar Groq</button>
                             </form>
-                            <article class="panel account">
-                                <div class="account-head" id="claude-head"></div>
-                                <p class="account-status">A IA da Anthropic. Use uma chave da API, cobrada pelo uso, ou entre com a conta do Claude Code deste computador.</p>
-                                <a class="button quiet key-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Criar chave no Console da Anthropic</a>
-                                <form class="form profile-form" novalidate>
-                                    <div class="field">
-                                        <label for="profile-claude">Chave da API</label>
-                                        <input id="profile-claude" name="claudeApiKey" type="password" autocomplete="off">
-                                        <p class="hint" id="profile-claude-hint"></p>
-                                    </div>
-                                    <p class="form-error" role="alert" hidden></p>
-                                    <button class="button primary" type="submit">Salvar chave do Claude</button>
-                                </form>
-                                <div class="account-login" id="account-claude"></div>
-                            </article>
-                            <form class="panel account form profile-form" novalidate>
+                            <form class="panel account ai-card form profile-form" novalidate>
                                 <div class="account-head" id="local-head"></div>
                                 <p class="account-status">A IA que você roda ou confia: Ollama, LM Studio, llama.cpp, vLLM ou qualquer servidor no formato da OpenAI.</p>
                                 <div class="field">
@@ -444,7 +484,8 @@
                                 </div>
                                 <div class="field">
                                     <label for="profile-local-model">Modelo</label>
-                                    <input id="profile-local-model" name="localLlmModel" autocomplete="off" placeholder="qwen2.5:14b">
+                                    <input id="profile-local-model" name="localLlmModel" list="list-localLlmModel" data-models="LOCAL" autocomplete="off" placeholder="qwen2.5:14b">
+                                    <datalist id="list-localLlmModel"></datalist>
                                 </div>
                                 <div class="field">
                                     <label for="profile-local-key">Chave da API (opcional)</label>

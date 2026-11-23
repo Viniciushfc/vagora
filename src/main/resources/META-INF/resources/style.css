@@ -386,10 +386,18 @@ code {
     color: var(--ink);
 }
 
-.account > .key-link {
-    justify-self: start;
-    gap: 0.45rem;
-    text-decoration: none;
+.key-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--step--1);
+    font-weight: 600;
+}
+
+.key-link .icon {
+    flex: none;
+    width: 0.9em;
+    height: 0.9em;
 }
 
 .button.quiet:hover {
@@ -1737,6 +1745,66 @@ label {
     grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
     gap: 1rem;
     align-items: start;
+}
+
+.ai-cards {
+    grid-template-columns: repeat(auto-fit, minmax(max(min(100%, 18rem), calc((100% - 2rem) / 3)), 1fr));
+    align-items: stretch;
+}
+
+.ai-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.ai-card > .button,
+.claude-way > .button {
+    align-self: flex-start;
+}
+
+.ai-card > [type="submit"] {
+    margin-top: auto;
+}
+
+.ai-card .label-row {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    column-gap: 1rem;
+}
+
+.wide-card {
+    grid-column: 1 / -1;
+}
+
+.claude-ways {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+    gap: 1rem;
+}
+
+.claude-way {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.1rem;
+    border-radius: 12px;
+    background: var(--surface-sunken);
+}
+
+.claude-way > .hint {
+    margin-top: -0.6rem;
+}
+
+.claude-way .account-login {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.claude-way > .form {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
 }
 
 .config-nav {
