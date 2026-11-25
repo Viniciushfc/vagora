@@ -6,6 +6,7 @@ import com.viniciushfc.domain.entities.Profile;
 import com.viniciushfc.domain.exceptions.BusinessException;
 import com.viniciushfc.domain.exceptions.ErrorCode;
 import com.viniciushfc.domain.exceptions.NotFoundException;
+import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.gateways.AnalyzeJobsMatchCvGateway;
 import com.viniciushfc.domain.gateways.PdfGateway;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
@@ -55,8 +56,30 @@ public class GenerateCurriculumUseCaseImpl implements GenerateCurriculumUseCase 
         if (jobMatch.curriculoAts() == null || jobMatch.curriculoAts().isBlank()) {
             throw new NotFoundException("Esta vaga ainda não tem currículo adaptado.");
         }
-        return new Attachment("Currículo - " + jobMatch.jobTitle() + ".pdf", "application/pdf",
-                pdfGateway.createPdf(jobMatch.curriculoAts()));
+        return attachment(jobMatch, jobMatch.curriculoAts());
+    }
+
+    @Override
+    public Attachment pdf(UUID jobMatchId, String curriculum) {
+        if (curriculum == null || curriculum.isBlank()) {
+            throw new ValidationException("O currículo está vazio.");
+        }
+        return attachment(find(profileRepository.require(), jobMatchId), curriculum.strip());
+    }
+
+    private Attachment attachment(JobMatch jobMatch, String curriculum) {
+        return new Attachment("Currículo - " + jobMatch.jobTitle() + ".pdf", "application/pdf", pdfGateway.createPdf(curriculum));
+    }
+
+    @Override
+    public JobMatch save(UUID jobMatchId, String curriculum) {
+        if (curriculum == null || curriculum.isBlank()) {
+            throw new ValidationException("O currículo está vazio.");
+        }
+        JobMatch jobMatch = find(profileRepository.require(), jobMatchId);
+        String text = curriculum.strip();
+        jobMatchRepository.updateCurriculum(jobMatch.id(), text);
+        return jobMatch.withCurriculum(text);
     }
 
     private JobMatch find(Profile profile, UUID jobMatchId) {

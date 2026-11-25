@@ -20,7 +20,7 @@ class PanacheMappersTest {
 
     private Profile user() {
         return new Profile(UUID.randomUUID(), "Fulano", "chave", cv,
-                List.of(LinkedAccount.create("f@gmail.com", "x", ExternalProvider.EMAIL, "LinkedIn")), null, null, null, null, null, null, null, null, null, null, null, null);
+                List.of(LinkedAccount.create("f@gmail.com", "x", ExternalProvider.EMAIL, "LinkedIn")), null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -44,7 +44,7 @@ class PanacheMappersTest {
 
     @Test
     void profileSemCurriculo() {
-        var user = new Profile(UUID.randomUUID(), "F", null, null, List.of(), null, null, null, null, null, null, null, null, null, null, null, null);
+        var user = new Profile(UUID.randomUUID(), "F", null, null, List.of(), null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertNull(ProfileMapper.toDomain(ProfileMapper.toPanacheProfile(user)).curriculum());
     }
@@ -53,7 +53,7 @@ class PanacheMappersTest {
     void mergeForUpdateAlteraSomenteCamposInformados() {
         PanacheProfileEntity entity = ProfileMapper.toPanacheProfile(user());
 
-        ProfileMapper.mergeForUpdate(entity, new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
+        ProfileMapper.mergeForUpdate(entity, new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
 
         assertEquals("Novo", entity.getName());
         assertEquals("chave", entity.getGeminiApiKey());
@@ -66,7 +66,7 @@ class PanacheMappersTest {
         PanacheProfileEntity entity = ProfileMapper.toPanacheProfile(user());
         var novoCv = new Attachment("novo.pdf", "application/pdf", new byte[]{9});
 
-        ProfileMapper.mergeForUpdate(entity, new Profile(null, null, "nova-chave", novoCv, null, null, null, null, null, null, null, null, null, null, null, null, null));
+        ProfileMapper.mergeForUpdate(entity, new Profile(null, null, "nova-chave", novoCv, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
 
         assertEquals("nova-chave", entity.getGeminiApiKey());
         assertEquals("novo.pdf", entity.getCurriculum().name());

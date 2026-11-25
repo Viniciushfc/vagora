@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -100,6 +101,18 @@ public class PanacheJobMatchEntity {
 
     public String getCurriculoAts() {
         return curriculoAts;
+    }
+
+    public void setMatch(boolean match) {
+        this.match = match;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    public void setMotivos(List<String> motivos) {
+        this.motivos = new ArrayList<>(motivos);
     }
 
     public void setCurriculoAts(String curriculoAts) {

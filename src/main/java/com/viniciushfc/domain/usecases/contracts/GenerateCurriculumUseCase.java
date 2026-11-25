@@ -9,4 +9,8 @@ public interface GenerateCurriculumUseCase {
     JobMatch execute(UUID jobMatchId);
 
     Attachment pdf(UUID jobMatchId);
+
+    Attachment pdf(UUID jobMatchId, String curriculum);
+
+    JobMatch save(UUID jobMatchId, String curriculum);
 }

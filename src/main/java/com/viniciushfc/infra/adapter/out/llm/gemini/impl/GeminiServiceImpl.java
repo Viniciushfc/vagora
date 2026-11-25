@@ -49,6 +49,7 @@ public class GeminiServiceImpl implements LlmService {
     private final GenerateContentConfig analysisConfig = config(PromptsContextsLLM.MatchAnalysisPrompt, "application/json")
             .toBuilder().responseJsonSchema(ANALYSIS_SCHEMA).build();
     private final GenerateContentConfig curriculumConfig = config(PromptsContextsLLM.AtsCurriculumPrompt, "text/plain");
+    private final GenerateContentConfig chatConfig = config(PromptsContextsLLM.ChatPrompt, "text/plain");
 
     private final CvMatchMapper cvMatchMapper;
 
@@ -77,6 +78,15 @@ public class GeminiServiceImpl implements LlmService {
         String text = call(curriculumConfig, prompt, apiKey, model).text();
         if (text == null || text.isBlank()) {
             throw new ExternalServiceException("O Gemini não devolveu o currículo adaptado. O alerta será tentado de novo.");
+        }
+        return text.strip();
+    }
+
+    @Override
+    public String chat(String prompt, String apiKey, String model) {
+        String text = call(chatConfig, prompt, apiKey, model).text();
+        if (text == null || text.isBlank()) {
+            throw new ExternalServiceException("O Gemini não respondeu a mensagem. Tente de novo.");
         }
         return text.strip();
     }
@@ -116,7 +126,7 @@ public class GeminiServiceImpl implements LlmService {
                     usage.flatMap(u -> u.promptTokenCount()).orElse(null),
                     usage.flatMap(u -> u.thoughtsTokenCount()).orElse(null),
                     usage.flatMap(u -> u.candidatesTokenCount()).orElse(null),
-                    config == analysisConfig ? "análise" : "currículo");
+                    config == analysisConfig ? "análise" : config == chatConfig ? "chat" : "currículo");
             return response;
         } catch (TimeoutException e) {
             Log.warnf("O Gemini não respondeu em %d s", TIMEOUT.toSeconds());

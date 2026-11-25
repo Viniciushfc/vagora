@@ -2,6 +2,7 @@ package com.viniciushfc.infra.adapter.out.database.panache.repositories;
 
 import com.viniciushfc.domain.entities.EmailReceived;
 import com.viniciushfc.domain.entities.JobMatch;
+import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.entities.LinkedAccount;
 import com.viniciushfc.domain.entities.PendingJob;
 import com.viniciushfc.domain.enums.AlertSource;
@@ -80,7 +81,7 @@ class PanacheRepositoriesTest {
         assertEquals("chave", found.geminiApiKey());
         assertEquals(profile.id(), profileRepository.require().id());
 
-        var updated = profileRepository.update(profile.id(), new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
+        var updated = profileRepository.update(profile.id(), new Profile(null, "Novo", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
         assertEquals("Novo", updated.name());
         assertEquals("chave", updated.geminiApiKey());
         assertEquals("Novo", profileRepository.find().name());
@@ -98,7 +99,7 @@ class PanacheRepositoriesTest {
 
     @Test
     void profileUpdateDeInexistenteRetornaNulo() {
-        assertNull(profileRepository.update(UUID.randomUUID(), new Profile(null, "x", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
+        assertNull(profileRepository.update(UUID.randomUUID(), new Profile(null, "x", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
     }
 
     @Test
@@ -212,5 +213,20 @@ class PanacheRepositoriesTest {
         assertTrue(jobMatchRepository.existsByProfileIdAndJobLink(userId, "https://www.linkedin.com/jobs/view/1/"));
         assertFalse(jobMatchRepository.existsByProfileIdAndJobLink(userId, "https://www.linkedin.com/jobs/view/3/"));
         assertFalse(jobMatchRepository.existsByProfileIdAndJobLink(UUID.randomUUID(), "https://www.linkedin.com/jobs/view/1/"));
+    }
+
+    @Test
+    void jobMatchRefazAnaliseTrocandoNotaEMotivos() {
+        var match = new JobMatch(UUID.randomUUID(), UUID.randomUUID(), null, null,
+                "Dev", "ACME", false, 40, List.of("falta Go", "falta Kafka"), "cv", LocalDateTime.now(), "descrição", null);
+        jobMatchRepository.saveAll(List.of(match));
+
+        jobMatchRepository.updateAnalysis(match.id(), new CvMatchResult(true, 85, List.of("tem Go"), null));
+
+        var found = jobMatchRepository.findById(match.id());
+        assertTrue(found.match());
+        assertEquals(85, found.score());
+        assertEquals(List.of("tem Go"), found.motivos());
+        assertEquals("cv", found.curriculoAts());
     }
 }

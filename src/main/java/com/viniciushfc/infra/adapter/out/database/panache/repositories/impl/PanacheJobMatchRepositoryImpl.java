@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.out.database.panache.repositories.impl;
 
 import com.viniciushfc.domain.entities.JobMatch;
+import com.viniciushfc.domain.vo.CvMatchResult;
 import com.viniciushfc.domain.repositories.JobMatchRepository;
 import com.viniciushfc.infra.adapter.out.database.panache.mapper.JobMatchMapper;
 import com.viniciushfc.infra.adapter.out.database.panache.repositories.contracts.PanacheJobMatchRepository;
@@ -55,6 +56,17 @@ public class PanacheJobMatchRepositoryImpl implements JobMatchRepository {
         var entity = panacheJobMatchRepository.findById(id);
         if (entity != null) {
             entity.setCurriculoAts(curriculoAts);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateAnalysis(UUID id, CvMatchResult result) {
+        var entity = panacheJobMatchRepository.findById(id);
+        if (entity != null) {
+            entity.setMatch(result.match());
+            entity.setScore(result.score());
+            entity.setMotivos(result.motivos());
         }
     }
 

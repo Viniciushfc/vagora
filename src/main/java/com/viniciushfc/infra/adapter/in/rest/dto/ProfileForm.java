@@ -43,6 +43,9 @@ public class ProfileForm {
     public String curriculumChain;
 
     @RestForm
+    public String chatChain;
+
+    @RestForm
     public String localLlmUrl;
 
     @RestForm

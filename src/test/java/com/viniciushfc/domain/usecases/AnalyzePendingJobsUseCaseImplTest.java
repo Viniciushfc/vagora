@@ -71,7 +71,7 @@ class AnalyzePendingJobsUseCaseImplTest {
 
     private Profile profile(String key, Boolean monitoring) {
         return new Profile(UUID.randomUUID(), "F", key, new Attachment("cv.pdf", "application/pdf", new byte[]{1}),
-                new ArrayList<>(), null, monitoring, null, null, true, null, null, null, null, null, null, null);
+                new ArrayList<>(), null, monitoring, null, null, true, null, null, null, null, null, null, null, null);
     }
 
     private PendingJob pending(String id, AlertSource source, int attempts) {
@@ -171,7 +171,7 @@ class AnalyzePendingJobsUseCaseImplTest {
     @Test
     void comCurriculoAutomaticoDesligadoSoAnalisa() {
         user = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(),
-                null, null, null, null, false, null, null, null, null, null, null, null);
+                null, null, null, null, false, null, null, null, null, null, null, null, null);
         when(profileRepository.find()).thenReturn(user);
         var compativel = pending("1", LINKEDIN, 0);
         queue(compativel);
@@ -188,7 +188,7 @@ class AnalyzePendingJobsUseCaseImplTest {
     @Test
     void comChaveDoGroqOLoteCabeNoLimiteDeTexto() {
         user = new Profile(user.id(), "F", "chave", user.curriculum(), new ArrayList<>(),
-                null, null, "gsk", LlmProvider.GROQ, null, null, null, null, null, null, null, null);
+                null, null, "gsk", LlmProvider.GROQ, null, null, null, null, null, null, null, null, null);
         when(profileRepository.find()).thenReturn(user);
         String metadeDoLimite = "x".repeat(LlmProvider.GROQ.maxJobChars / 2);
         var primeira = pendingWithDescription("1", metadeDoLimite);

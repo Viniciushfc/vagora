@@ -45,6 +45,11 @@ public record JobMatch(UUID id,
                 curriculoAts, createdAt, jobDescription, appliedAt);
     }
 
+    public JobMatch withAnalysis(CvMatchResult result) {
+        return new JobMatch(id, profileId, emailReceivedId, jobLink, jobTitle, companyName, result.match(), result.score(),
+                result.motivos(), curriculoAts, createdAt, jobDescription, appliedAt);
+    }
+
     public JobMatch withAppliedAt(LocalDateTime appliedAt) {
         return new JobMatch(id, profileId, emailReceivedId, jobLink, jobTitle, companyName, match, score, motivos,
                 curriculoAts, createdAt, jobDescription, appliedAt);

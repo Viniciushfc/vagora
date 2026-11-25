@@ -36,6 +36,7 @@ public class UpdateProfileUseCaseImpl implements UpdateProfileUseCase {
         validateLocalLlm(changes.localLlm(), current.localLlm());
         validateChain(changes.analysisChain());
         validateChain(changes.curriculumChain());
+        validateChain(changes.chatChain());
         return profileRepository.update(current.id(), changes);
     }
 

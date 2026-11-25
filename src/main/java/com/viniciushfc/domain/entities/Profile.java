@@ -28,7 +28,8 @@ public record Profile(UUID id,
                       List<LlmProvider> curriculumChain,
                       LocalLlm localLlm,
                       String claudeApiKey,
-                      LlmModels models) {
+                      LlmModels models,
+                      List<LlmProvider> chatChain) {
 
     public static final int DEFAULT_POLL_MIN_MINUTES = 15;
     public static final int DEFAULT_POLL_MAX_MINUTES = 25;
@@ -39,7 +40,7 @@ public record Profile(UUID id,
                                  LlmProvider llmProvider,
                                  Attachment curriculum) {
         return new Profile(UUID.randomUUID(), name, geminiApiKey, curriculum, new ArrayList<>(),
-                false, true, groqApiKey, llmProvider, false, null, null, null, null, null, null, null);
+                false, true, groqApiKey, llmProvider, false, null, null, null, null, null, null, null, null);
     }
 
     public boolean isBrowserVisible() {
@@ -98,12 +99,20 @@ public record Profile(UUID id,
         return curriculumChain == null ? defaultOrder() : curriculumChain;
     }
 
+    public List<LlmProvider> chatOrder() {
+        return chatChain == null ? defaultOrder() : chatChain;
+    }
+
     public List<LlmProvider> analysisProviders() {
         return available(analysisOrder());
     }
 
     public List<LlmProvider> curriculumProviders() {
         return available(curriculumOrder());
+    }
+
+    public List<LlmProvider> chatProviders() {
+        return available(chatOrder());
     }
 
     private List<LlmProvider> defaultOrder() {

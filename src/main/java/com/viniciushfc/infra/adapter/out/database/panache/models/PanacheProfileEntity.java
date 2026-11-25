@@ -26,6 +26,7 @@ public class PanacheProfileEntity {
     private Integer pollMaxMinutes;
     private String analysisLlmChain;
     private String curriculumLlmChain;
+    private String chatLlmChain;
     private Boolean showBrowser;
     private Boolean monitoringEnabled;
     private String localLlmUrl;
@@ -68,7 +69,8 @@ public class PanacheProfileEntity {
                                 List<LlmProvider> curriculumChain,
                                 LocalLlm localLlm,
                                 String claudeApiKey,
-                                LlmModels models) {
+                                LlmModels models,
+                                List<LlmProvider> chatChain) {
         this.id = id;
         this.name = name;
         this.geminiApiKey = geminiApiKey;
@@ -83,6 +85,7 @@ public class PanacheProfileEntity {
         this.pollMaxMinutes = pollMaxMinutes;
         setAnalysisChain(analysisChain);
         setCurriculumChain(curriculumChain);
+        setChatChain(chatChain);
         this.claudeApiKey = claudeApiKey;
         if (models != null) {
             setModels(models);
@@ -188,6 +191,14 @@ public class PanacheProfileEntity {
 
     public void setCurriculumChain(List<LlmProvider> chain) {
         this.curriculumLlmChain = toColumn(chain);
+    }
+
+    public List<LlmProvider> getChatChain() {
+        return fromColumn(chatLlmChain);
+    }
+
+    public void setChatChain(List<LlmProvider> chain) {
+        this.chatLlmChain = toColumn(chain);
     }
 
     private static List<LlmProvider> fromColumn(String column) {

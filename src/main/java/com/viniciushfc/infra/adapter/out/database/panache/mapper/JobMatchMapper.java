@@ -1,6 +1,7 @@
 package com.viniciushfc.infra.adapter.out.database.panache.mapper;
 
 import com.viniciushfc.domain.entities.JobMatch;
+import com.viniciushfc.domain.text.PlainText;
 import com.viniciushfc.infra.adapter.out.database.panache.models.PanacheJobMatchEntity;
 
 import java.util.List;
@@ -17,8 +18,8 @@ public class JobMatchMapper {
                 entity.getCompanyName(),
                 entity.isMatch(),
                 entity.getScore(),
-                List.copyOf(entity.getMotivos()),
-                entity.getCurriculoAts(),
+                PlainText.cleanAll(List.copyOf(entity.getMotivos())),
+                PlainText.clean(entity.getCurriculoAts()),
                 entity.getCreatedAt(),
                 entity.getJobDescription(),
                 entity.getAppliedAt()

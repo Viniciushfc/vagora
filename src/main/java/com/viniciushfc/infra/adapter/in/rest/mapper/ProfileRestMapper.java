@@ -41,7 +41,8 @@ public class ProfileRestMapper {
                         ? null : new LocalLlm(form.localLlmUrl, form.localLlmModel, form.localLlmApiKey),
                 form.claudeApiKey,
                 form.geminiModel == null && form.groqModel == null && form.claudeApiModel == null && form.claudeCodeModel == null
-                        ? null : new LlmModels(form.geminiModel, form.groqModel, form.claudeApiModel, form.claudeCodeModel)
+                        ? null : new LlmModels(form.geminiModel, form.groqModel, form.claudeApiModel, form.claudeCodeModel),
+                toChain(form.chatChain)
         );
     }
 
@@ -64,6 +65,7 @@ public class ProfileRestMapper {
                 profile.pollMax(),
                 profile.analysisOrder(),
                 profile.curriculumOrder(),
+                profile.chatOrder(),
                 profile.localLlm() == null ? null : profile.localLlm().url(),
                 profile.localLlm() == null ? null : profile.localLlm().model(),
                 profile.localLlm() != null && profile.localLlm().apiKey() != null,

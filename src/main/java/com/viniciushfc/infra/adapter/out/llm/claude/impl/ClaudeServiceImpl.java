@@ -68,6 +68,18 @@ public class ClaudeServiceImpl implements LlmService {
     }
 
     @Override
+    public String chat(String prompt, String apiKey, String model) {
+        if (apiKey != null && !apiKey.isBlank()) {
+            return api.chat(prompt, apiKey, model);
+        }
+        String text = call(PromptsContextsLLM.ChatPrompt, prompt, null, model, "chat").path("result").asText(null);
+        if (text == null || text.isBlank()) {
+            throw new ExternalServiceException("O Claude não respondeu a mensagem. Tente de novo.");
+        }
+        return text.strip();
+    }
+
+    @Override
     public String defaultModel(String apiKey) {
         return apiKey != null && !apiKey.isBlank() ? api.defaultModel() : model;
     }

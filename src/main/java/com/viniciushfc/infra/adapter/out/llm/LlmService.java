@@ -10,6 +10,8 @@ public interface LlmService {
 
     String adaptCurriculum(String prompt, String apiKey, String model);
 
+    String chat(String prompt, String apiKey, String model);
+
     String defaultModel(String apiKey);
 
     List<String> models(String apiKey);

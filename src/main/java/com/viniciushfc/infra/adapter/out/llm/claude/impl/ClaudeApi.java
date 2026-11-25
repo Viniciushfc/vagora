@@ -64,6 +64,14 @@ public class ClaudeApi {
         return text.strip();
     }
 
+    public String chat(String prompt, String apiKey, String model) {
+        String text = call(PromptsContextsLLM.ChatPrompt, prompt, null, apiKey, model, "chat");
+        if (text.isBlank()) {
+            throw new ExternalServiceException("O Claude não respondeu a mensagem. Tente de novo.");
+        }
+        return text.strip();
+    }
+
     public String defaultModel() {
         return model;
     }

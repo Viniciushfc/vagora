@@ -93,6 +93,15 @@ public class GroqServiceImpl implements LlmService {
     }
 
     @Override
+    public String chat(String prompt, String apiKey, String model) {
+        String text = call(PromptsContextsLLM.ChatPrompt, prompt, null, apiKey, model, "chat");
+        if (text == null || text.isBlank()) {
+            throw new ExternalServiceException(name + " não respondeu a mensagem. Tente de novo.");
+        }
+        return text.strip();
+    }
+
+    @Override
     public String defaultModel(String apiKey) {
         return model;
     }

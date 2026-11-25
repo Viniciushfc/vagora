@@ -33,6 +33,7 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H10l-5 4v-4H4z"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 </svg>
 
@@ -136,6 +137,7 @@
 
         <nav class="nav" aria-label="Seções">
             <a href="#vagas" data-tab="vagas"><svg class="icon"><use href="#i-jobs"/></svg><span>Vagas</span></a>
+            <a href="#chat" data-tab="chat"><svg class="icon"><use href="#i-chat"/></svg><span>Chat</span></a>
             <a href="#linkedin" data-tab="atividade"><svg class="icon"><use href="#i-clock"/></svg><span>Atividade</span></a>
             <a href="#config" data-tab="config"><svg class="icon"><use href="#i-gear"/></svg><span>Configurações</span></a>
         </nav>
@@ -168,6 +170,7 @@
                         </span>
                     </div>
                     <p id="matches-summary" class="summary"></p>
+                    <a class="button quiet" id="analyze-job-link" href="#chat">Analisar uma vaga</a>
                 </header>
                 <div id="processing-alert" class="notice warn" hidden></div>
                 <div id="setup-warning" class="notice warn" hidden></div>
@@ -230,6 +233,80 @@
                     <h2 id="filtered-empty-title">Nenhuma vaga encontrada</h2>
                     <p id="filtered-empty-text"></p>
                 </div>
+            </div>
+        </section>
+
+        <section data-panel="chat" class="chat-page" hidden>
+            <h1 class="visually-hidden">Chat com a IA</h1>
+            <div class="chat-app">
+                <aside class="chat-side" aria-label="Vagas para conversar">
+                    <button class="button primary" id="chat-new" type="button">+ Vaga nova</button>
+                    <label class="search">
+                        <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+                        <span class="visually-hidden">Buscar por vaga ou empresa</span>
+                        <input id="chat-search" type="search" placeholder="Buscar vaga ou empresa" autocomplete="off">
+                    </label>
+                    <ul class="rows chat-jobs" id="chat-jobs" aria-label="Vagas"></ul>
+                    <p class="hint chat-jobs-empty" id="chat-jobs-empty" hidden></p>
+                </aside>
+
+                <form class="chat-pane" id="external-job-form" novalidate hidden>
+                    <header class="chat-head">
+                        <div class="chat-head-text">
+                            <h2 class="chat-head-title">Analisar uma vaga nova</h2>
+                            <p class="hint">Cole uma vaga que não está no Vagora. Ela ganha a nota, os motivos e o currículo adaptado, e entra na lista ao lado.</p>
+                        </div>
+                    </header>
+                    <div class="form chat-new-body">
+                        <div class="field">
+                            <label for="external-title">Título da vaga</label>
+                            <input id="external-title" name="title" required>
+                        </div>
+                        <div class="field">
+                            <label for="external-company">Empresa</label>
+                            <input id="external-company" name="company">
+                        </div>
+                        <div class="field">
+                            <label for="external-link">Link da vaga (opcional)</label>
+                            <input id="external-link" name="link" type="url">
+                        </div>
+                        <div class="field">
+                            <label for="external-description">Descrição da vaga</label>
+                            <textarea id="external-description" name="description" rows="12" required></textarea>
+                        </div>
+                        <p class="form-error" role="alert" hidden></p>
+                        <div class="chat-new-actions">
+                            <button class="button primary" type="submit">Analisar vaga</button>
+                            <button class="button quiet" id="external-cancel" type="button">Cancelar</button>
+                        </div>
+                        <p class="progress" hidden><span class="spinner" aria-hidden="true"></span>Dando a nota e gerando o currículo. Pode levar alguns minutos.</p>
+                    </div>
+                </form>
+
+                <section class="chat-pane" id="chat-conversation" aria-labelledby="chat-title" hidden>
+                    <header class="chat-head" id="chat-head">
+                        <span class="chat-score" id="chat-score"></span>
+                        <div class="chat-head-text">
+                            <h2 class="chat-head-title" id="chat-title"></h2>
+                            <p class="hint" id="chat-company"></p>
+                        </div>
+                        <p class="verdict" id="chat-verdict"></p>
+                        <div class="chat-head-actions">
+                            <a class="button quiet" id="chat-job-link" target="_blank" rel="noopener">
+                                <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg>Abrir vaga
+                            </a>
+                            <button class="button quiet" id="chat-pdf" type="button">
+                                <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Currículo em PDF
+                            </button>
+                            <button class="button quiet" id="chat-reanalyze" type="button">Refazer análise</button>
+                        </div>
+                    </header>
+                    <ol class="chat-messages" id="chat-messages" aria-live="polite"></ol>
+                    <form class="chat-composer" id="chat-form" novalidate>
+                        <textarea id="chat-input" rows="2" aria-label="Mensagem para a IA" placeholder="Pergunte sobre a vaga ou peça um currículo melhor"></textarea>
+                        <button class="button primary" id="chat-send" type="submit">Enviar</button>
+                    </form>
+                </section>
             </div>
         </section>
 
@@ -528,6 +605,11 @@
                                     <p class="hint">Reescreve o seu currículo para as vagas compatíveis. Roda poucas vezes, então vale a IA que escreve melhor.</p>
                                     <ol class="chain" data-chain="curriculumChain" aria-labelledby="flow-curriculum"></ol>
                                 </li>
+                                <li class="flow-step flow-step-apart">
+                                    <h3 id="flow-chat">Chat</h3>
+                                    <p class="hint">Responde no chat sobre a vaga e escreve o currículo que você pedir na conversa. Roda só quando você manda uma mensagem.</p>
+                                    <ol class="chain" data-chain="chatChain" aria-labelledby="flow-chat"></ol>
+                                </li>
                             </ol>
                             <p class="form-error" role="alert" hidden></p>
                             <button class="button primary" type="submit">Salvar fluxo</button>
@@ -717,10 +799,14 @@
                 <button class="button primary mark-applied" type="button">
                     <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Marcar como enviada</span>
                 </button>
-                <button class="button quiet generate-ats" type="button" hidden>Gerar currículo</button>
-                <a class="button quiet pdf-ats" hidden download>
-                    <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Baixar currículo em PDF
+                <a class="button quiet chat-link" href="#chat" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-chat"/></svg>Conversar no chat
                 </a>
+                <button class="button quiet generate-ats" type="button" hidden>Gerar currículo</button>
+                <button class="button quiet reanalyze" type="button" hidden>Refazer análise</button>
+                <button class="button quiet pdf-ats" type="button" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Baixar currículo em PDF
+                </button>
                 <button class="button quiet copy-ats" type="button" hidden>
                     <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>Copiar currículo adaptado
                 </button>

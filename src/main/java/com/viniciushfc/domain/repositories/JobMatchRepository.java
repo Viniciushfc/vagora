@@ -1,6 +1,7 @@
 package com.viniciushfc.domain.repositories;
 
 import com.viniciushfc.domain.entities.JobMatch;
+import com.viniciushfc.domain.vo.CvMatchResult;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +18,8 @@ public interface JobMatchRepository {
     JobMatch findById(UUID id);
 
     void updateCurriculum(UUID id, String curriculoAts);
+
+    void updateAnalysis(UUID id, CvMatchResult result);
 
     void updateAppliedAt(UUID id, LocalDateTime appliedAt);
 }

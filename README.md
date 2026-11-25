@@ -58,7 +58,11 @@ O Vagora faz essa triagem por você, sozinho e no seu computador:
 4. **Separa o que importa:** a vaga é *compatível* quando a nota chega a 70 **e** os requisitos obrigatórios são
    atendidos.
 5. **Adapta o currículo** para cada vaga compatível, no formato que os sistemas de triagem (ATS) leem, sem inventar
-   nada que não esteja no original. Você copia o texto ou baixa em PDF.
+   nada que não esteja no original. Você copia o texto ou baixa em PDF. Depois de gerar, o Vagora confere se os
+   números do original continuam no texto. Se faltar algum, ele pede de novo à IA e fica com a versão mais completa.
+6. **Conversa sobre a vaga** num chat com IA: tira dúvidas, explica a nota e escreve um currículo novo com o que
+   você contar. Também analisa uma vaga que não veio do email: você cola a descrição e recebe a nota, os motivos e
+   o currículo.
 
 Você abre o Vagora e encontra a lista pronta: as melhores vagas no topo, com o motivo de cada nota e o currículo
 para enviar.
@@ -89,11 +93,14 @@ que você cria no Vagora. O desenho aceita novas plataformas (veja o [roadmap](#
 
 | Tela | O que tem |
 |---|---|
-| **Vagas › Analisadas** | Uma régua com todas as notas de 0 a 100 e o corte de 70. Ao lado, a lista de vagas e o detalhe da vaga escolhida: nota, motivos, link para a vaga e o currículo adaptado para copiar ou baixar em PDF. Depois de se candidatar, **marque a vaga como enviada**: ela ganha a data do envio e aparece no filtro **Enviadas**. Tem busca, filtros (todas, compatíveis, enviadas) e ordenação por nota ou data. |
+| **Vagas › Analisadas** | Uma régua com todas as notas de 0 a 100 e o corte de 70. Ao lado, a lista de vagas e o detalhe da vaga escolhida: nota, motivos, link para a vaga e o currículo adaptado para copiar ou baixar em PDF. **Refazer análise** dá a nota de novo e gera outro currículo com o PDF atual, útil quando você troca o currículo. **Conversar no chat** abre o Chat com a vaga já escolhida. Depois de se candidatar, **marque a vaga como enviada**: ela ganha a data do envio e aparece no filtro **Enviadas**. Tem busca, filtros (todas, compatíveis, enviadas) e ordenação por nota ou data. |
+| **Chat** | À esquerda, as vagas analisadas, com busca. À direita, a conversa com a IA sobre a vaga escolhida, com a nota e os botões **Currículo em PDF** e **Refazer análise** no topo. Quando a IA escreve um currículo, ele vem com dois botões: **Baixar em PDF**, que salva o arquivo sem mexer na vaga, e **Substituir o currículo da vaga**. O currículo novo parte sempre do seu PDF, com o que você contou na conversa. **Vaga nova** (ou **Analisar uma vaga**, em Vagas) recebe título, empresa, link e descrição de uma vaga de fora e devolve a nota, os motivos e o currículo, mesmo abaixo de 70. A conversa fica só na tela: some ao fechar o Vagora. |
 | **Vagas › Na fila** | As vagas já lidas que esperam a análise da IA, com a opção de priorizar uma delas. |
 | **Vagas › Gupy** | **Buscas** na Gupy, desligadas até você criar uma: **cargo**, **estado**, **cidade**, **modalidade** (remoto, híbrido, presencial), **tipo de vaga** (CLT, PJ, temporária, estágio, banco de talentos) e de quantas em quantas **horas** buscar (padrão 4). Cada busca traz até 30 vagas novas por vez, publicadas nos últimos 7 dias e com inscrições abertas, que entram direto na fila da IA, sem abrir navegador e sem conta. A página mostra a atividade da Gupy: o que cada busca encontrou, as vagas na fila, as que a IA está analisando e as já analisadas com a nota. |
 | **Atividade** | O leitor do LinkedIn, do Indeed e do Glassdoor em tempo real: a vaga sendo lida, a linha do tempo dos passos e, se algo der errado, a explicação, o que fazer e **uma captura da tela** que o navegador estava vendo. |
 | **Configurações** | Tudo o que dá para ajustar, separado em abas (abaixo), com a lista do que ainda falta configurar. |
+
+Para baixar um PDF, o Vagora abre a janela **Salvar como** do sistema, e você escolhe a pasta e o nome.
 
 O **monitor** no topo mostra o que o Vagora está fazendo agora (verificando o email, analisando um alerta,
 aguardando o intervalo de segurança ou pausado) e tem o botão para pausar.
@@ -106,7 +113,7 @@ Cada aba tem o próprio botão de salvar e mostra se há alterações não salva
 |---|---|
 | **Currículo** | O PDF que a IA compara com cada vaga (até 5 MB, com texto selecionável). |
 | **IA** | As chaves do **Gemini** e do **Groq**, o **Claude** (pela chave da API da Anthropic ou pelo login da sua assinatura no Claude Code, que o Vagora instala sozinho) e uma **IA local**: o endereço e o modelo de qualquer servidor no formato da OpenAI que você roda ou confia (Ollama, LM Studio, llama.cpp, vLLM). Cada uma tem o campo **Modelo**: vazio usa o padrão do Vagora, e ao clicar nele aparecem os modelos que a sua conta tem (consultados com a sua chave, ou no seu servidor, na IA local). Basta uma IA, mas com mais de uma você ganha reserva. |
-| **Fluxo da IA** | Um fluxograma das etapas. Em cada etapa que usa IA (**nota da vaga** e **currículo adaptado**) você marca quais IAs entram e em que ordem: a primeira é a principal e as outras são reservas, tentadas em sequência se a anterior falhar. Exemplo: uma IA com cota grande na nota, que roda para toda vaga, e a que escreve melhor no currículo. |
+| **Fluxo da IA** | Um fluxograma das etapas. Em cada etapa que usa IA (**nota da vaga**, **currículo adaptado** e **chat**) você marca quais IAs entram e em que ordem: a primeira é a principal e as outras são reservas, tentadas em sequência se a anterior falhar. Exemplo: uma IA com cota grande na nota, que roda para toda vaga, e a que escreve melhor no currículo. |
 | **Contas** | O **email** que recebe os alertas (com senha de app) e a **pasta** onde os alertas de cada rede chegam, descoberta automaticamente. A conta do **LinkedIn** usada para abrir as vagas e os leitores do **Indeed** e do **Glassdoor**, cada um com a própria pasta do email. |
 | **Automação** | Ligar ou pausar a verificação do email, gerar o currículo adaptado automaticamente ou só quando você pedir (economiza cota da IA) e mostrar o navegador durante a análise (para resolver verificações do LinkedIn). Também o **intervalo entre os acessos**, com mínimo e máximo em minutos e aviso de risco quando fica abaixo do padrão. |
 | **Perfil** | O seu nome e a exclusão do perfil com todos os dados. |
@@ -246,7 +253,7 @@ pode desligar de novo.
 - **A API só aceita conexões da própria máquina** (`127.0.0.1`) e não tem login, porque cada instalação é de uma
   pessoa.
 - **O que vai para fora:** o texto da vaga e do seu currículo é enviado à IA escolhida (Claude, Gemini, Groq ou o endereço da sua IA local)
-  para a análise, usando a sua chave ou a sua conta. Nada mais sai da sua máquina.
+  para a análise, e no chat também a conversa, usando a sua chave ou a sua conta. Nada mais sai da sua máquina.
 
 ## Tecnologias e arquitetura
 
@@ -305,7 +312,12 @@ Todas as rotas são do perfil da instalação, sem id:
 | `POST` | `/profile/accounts/CLAUDE/install` | instala o Claude Code neste computador |
 | `GET` / `PUT` | `/profile/email/folders` · `/profile/email/folder` | pastas do email com contagem de alertas / trocar a pasta |
 | `GET` | `/profile/job-matches` | vagas analisadas |
+| `POST` | `/profile/job-matches` | analisar uma vaga colada (`{"title", "company", "description", "link"}`): nota, motivos e currículo |
 | `GET` / `POST` | `/profile/job-matches/{id}/curriculum` | currículo adaptado em PDF / gerar o currículo adaptado |
+| `PUT` | `/profile/job-matches/{id}/curriculum` | substituir o currículo adaptado da vaga (`{"curriculum"}`) |
+| `POST` | `/profile/job-matches/{id}/curriculum/pdf` | PDF de um currículo do chat, sem mexer na vaga (`{"curriculum"}`) |
+| `POST` | `/profile/job-matches/{id}/analysis` | refazer a nota e o currículo adaptado com o PDF atual |
+| `POST` | `/profile/job-matches/{id}/chat` | conversar com a IA sobre a vaga (`{"messages": [{"role": "user", "text"}]}`) |
 | `GET` | `/profile/llm-models` | modelo padrão de cada IA |
 | `GET` | `/profile/llm-models/{provider}` | modelos disponíveis de uma IA (`GEMINI`, `GROQ`, `CLAUDE`, `LOCAL`) |
 | `PUT` | `/profile/job-matches/{id}/applied` | marcar ou desmarcar a vaga como enviada (`{"applied": true}`) |
@@ -342,6 +354,7 @@ todos na página da versão. Uma tag já enviada não pode ser reaproveitada: pa
 - [~] Glassdoor: leitura dos alertas pronta; a abertura das vagas depende de sessão logada no Glassdoor
 - [x] Gupy: buscas com filtros de cargo, local, modalidade e tipo de vaga, direto na fila da IA
 - [x] Currículo adaptado para ATS, em texto e PDF
+- [x] Chat com IA sobre cada vaga e análise de vagas coladas
 - [x] Claude, Gemini, Groq e IA local (qualquer servidor no formato da OpenAI), com fluxo e reservas configuráveis por etapa
 - [x] Intervalo entre acessos configurável
 - [x] Linux, macOS e Windows, com instalação do que falta

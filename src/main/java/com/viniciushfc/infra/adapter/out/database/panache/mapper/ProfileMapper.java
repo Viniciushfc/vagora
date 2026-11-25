@@ -33,7 +33,8 @@ public class ProfileMapper {
                 panacheProfileEntity.getCurriculumChain(),
                 panacheProfileEntity.getLocalLlm(),
                 panacheProfileEntity.getClaudeApiKey(),
-                panacheProfileEntity.getModels()
+                panacheProfileEntity.getModels(),
+                panacheProfileEntity.getChatChain()
         );
     }
 
@@ -55,7 +56,8 @@ public class ProfileMapper {
                 profile.curriculumChain(),
                 profile.localLlm(),
                 profile.claudeApiKey(),
-                profile.models()
+                profile.models(),
+                profile.chatChain()
         );
     }
 
@@ -114,6 +116,10 @@ public class ProfileMapper {
 
         if (bo.curriculumChain() != null) {
             entityPersist.setCurriculumChain(bo.curriculumChain());
+        }
+
+        if (bo.chatChain() != null) {
+            entityPersist.setChatChain(bo.chatChain());
         }
 
         if (bo.curriculum() != null) {

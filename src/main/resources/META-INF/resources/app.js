@@ -58,6 +58,10 @@ const api = {
     updateFolder: (folder, source) => request("PUT", "/profile/email/folder", { folder, source }),
     listMatches: () => request("GET", "/profile/job-matches"),
     generateCurriculum: (id) => request("POST", `/profile/job-matches/${id}/curriculum`),
+    reanalyze: (id) => request("POST", `/profile/job-matches/${id}/analysis`),
+    saveCurriculum: (id, curriculum) => request("PUT", `/profile/job-matches/${id}/curriculum`, { curriculum }),
+    analyzeJob: (job) => request("POST", "/profile/job-matches", job),
+    chat: (id, messages) => request("POST", `/profile/job-matches/${id}/chat`, { messages }),
     markApplied: (id, applied) => request("PUT", `/profile/job-matches/${id}/applied`, { applied }),
     llmModels: (provider) => request("GET", `/profile/llm-models/${provider}`),
     llmDefaultModels: () => request("GET", "/profile/llm-models"),
@@ -80,6 +84,9 @@ const state = {
     sort: "score",
     query: "",
     selected: null,
+    chatSelected: null,
+    chatQuery: "",
+    chatComposing: false,
     status: null,
     timers: [],
 };
@@ -151,7 +158,7 @@ function toast(message) {
 }
 
 function setBusy(form, busy) {
-    $$("button, input, select", form).forEach((control) => { control.disabled = busy; });
+    $$("button, input, select, textarea", form).forEach((control) => { control.disabled = busy; });
 }
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -299,7 +306,7 @@ const SUBPAGES = {
     config: [["config", "Currículo"], ["config-ia", "IA"], ["config-fluxo", "Fluxo da IA"], ["config-contas", "Contas"], ["config-automacao", "Automação"], ["config-perfil", "Perfil"]],
 };
 const PAGE_SECTION = {
-    vagas: "vagas", pendentes: "vagas", gupy: "vagas", linkedin: "atividade", indeed: "atividade", glassdoor: "atividade",
+    vagas: "vagas", pendentes: "vagas", gupy: "vagas", chat: "chat", linkedin: "atividade", indeed: "atividade", glassdoor: "atividade",
     config: "config", "config-ia": "config", "config-fluxo": "config", "config-contas": "config", "config-automacao": "config", "config-perfil": "config",
 };
 
@@ -323,6 +330,7 @@ function route() {
 
         pageTimer = setInterval(() => loadMatches(false), 60_000);
     }
+    if (tab === "chat") loadMatches(false).then(renderChatPage);
     if (tab === "pendentes") {
         loadPending();
         pageTimer = setInterval(loadPending, 30_000);
@@ -660,7 +668,11 @@ function renderMatches(animate) {
     }
 
     if (!visible.some((m) => m.id === state.selected)) state.selected = visible[0]?.id ?? null;
-    $("#matches").replaceChildren(...visible.map(matchRow));
+    $("#matches").replaceChildren(...visible.map((match) => {
+        const row = matchRow(match, match.id === state.selected, () => selectMatch(match.id));
+        row.id = `row-${match.id}`;
+        return row;
+    }));
     renderDetail(animate);
     renderSpread(all);
 }
@@ -668,18 +680,17 @@ function renderMatches(animate) {
 const wideDesk = matchMedia("(min-width: 60rem)");
 wideDesk.addEventListener("change", () => renderDetail(false));
 
-function matchRow(match) {
+function matchRow(match, pressed, onClick) {
     const row = el("li", "row");
-    row.id = `row-${match.id}`;
     row.dataset.fit = match.match ? "yes" : "no";
     const button = el("button", "row-button");
     button.type = "button";
-    button.setAttribute("aria-pressed", String(match.id === state.selected));
+    button.setAttribute("aria-pressed", String(pressed));
     const text = el("span", "row-text");
     text.append(el("span", "row-title", match.jobTitle ?? "Vaga sem título"), el("span", "row-company", match.companyName ?? ""));
     if (match.appliedAt) text.append(el("span", "row-applied", "Enviada"));
     button.append(el("span", "row-score", String(match.score)), text);
-    button.addEventListener("click", () => selectMatch(match.id));
+    button.addEventListener("click", onClick);
     row.append(button);
     return row;
 }
@@ -750,6 +761,12 @@ function focusMatch(id) {
     $(".row-button", row).focus({ preventScroll: true });
 }
 
+function verdictOf(match) {
+    return match.match
+        ? "Compatível"
+        : match.score >= MATCH_CUT ? "Falta requisito obrigatório" : `${MATCH_CUT - match.score} pontos abaixo do corte`;
+}
+
 function matchItem(match) {
     const item = cloneTemplate("match-template");
     item.dataset.fit = match.match ? "yes" : "no";
@@ -759,9 +776,7 @@ function matchItem(match) {
     $(".job-title", item).textContent = match.jobTitle ?? "Vaga sem título";
     $(".job-company", item).textContent = match.companyName ?? "";
     if (match.createdAt) $(".analysed-at", item).textContent = `Analisada em ${dateFormat.format(new Date(match.createdAt))}`;
-    $(".verdict", item).textContent = match.match
-        ? "Compatível"
-        : match.score >= MATCH_CUT ? "Falta requisito obrigatório" : `${MATCH_CUT - match.score} pontos abaixo do corte`;
+    $(".verdict", item).textContent = verdictOf(match);
 
     $(".reasons", item).replaceChildren(...(match.motivos ?? []).map((reason) => el("li", "", reason)));
 
@@ -773,12 +788,14 @@ function matchItem(match) {
     mark.classList.toggle("quiet", Boolean(match.appliedAt));
     $("span", mark).textContent = match.appliedAt ? "Desmarcar envio" : "Marcar como enviada";
     mark.addEventListener("click", () => markApplied(match, mark));
-    $(".job-link", item).href = match.jobLink;
+    const jobLink = $(".job-link", item);
+    jobLink.hidden = !match.jobLink;
+    if (match.jobLink) jobLink.href = match.jobLink;
 
     if (match.curriculoAts) {
         const pdf = $(".pdf-ats", item);
         pdf.hidden = false;
-        pdf.href = `/profile/job-matches/${match.id}/curriculum`;
+        pdf.addEventListener("click", () => downloadPdf(pdf, pdfName(match.id), () => fetchPdf("GET", `/profile/job-matches/${match.id}/curriculum`)));
         const copy = $(".copy-ats", item);
         copy.hidden = false;
         copy.addEventListener("click", async () => {
@@ -795,12 +812,267 @@ function matchItem(match) {
     } else if (match.canGenerateCurriculum) {
         const generate = $(".generate-ats", item);
         generate.hidden = false;
-        if (generating.has(match.id)) showGenerating(generate);
+        if (generating.has(match.id)) showBusy(generate, GENERATING);
         generate.addEventListener("click", () => generateCurriculum(match.id, generate));
     }
+    const again = $(".reanalyze", item);
+    again.hidden = !match.canGenerateCurriculum;
+    if (reanalyzing.has(match.id)) showBusy(again, REANALYZING);
+    again.addEventListener("click", () => reanalyze(match.id, again));
+    const chatLink = $(".chat-link", item);
+    chatLink.hidden = !match.canGenerateCurriculum;
+    chatLink.addEventListener("click", () => {
+        state.chatSelected = match.id;
+        state.chatComposing = false;
+    });
 
     return item;
 }
+
+const chats = new Map();
+const chatDrafts = new Map();
+const chatting = new Set();
+const CURRICULUM_TAG = /<curriculo_ats>([\s\S]*?)<\/curriculo_ats>/;
+
+const CHAT_INTRO = "Pergunte sobre a vaga ou a nota, ou peça um currículo melhor. O que você contar aqui e não estiver no PDF também entra no currículo.";
+
+function paintChat() {
+    const match = state.matches.find((m) => m.id === state.chatSelected);
+    if (!match) return;
+    const id = match.id;
+    const messages = chats.get(id) ?? [];
+    const list = $("#chat-messages");
+    list.replaceChildren(...messages.map((message) => chatMessage(id, message)));
+    if (messages.length === 0) {
+        list.append(el("li", "chat-intro hint", match.canGenerateCurriculum
+            ? CHAT_INTRO
+            : "Esta vaga foi analisada antes de o Vagora guardar a descrição, então não dá para conversar sobre ela."));
+    }
+    if (chatting.has(id)) {
+        const typing = el("li", "chat-message from-ai progress");
+        typing.append(el("span", "spinner"), "A IA está respondendo…");
+        list.append(typing);
+    }
+    list.scrollTop = list.scrollHeight;
+    const blocked = chatting.has(id) || !match.canGenerateCurriculum;
+    const input = $("#chat-input");
+    input.value = chatDrafts.get(id) ?? "";
+    input.disabled = blocked;
+    $("#chat-send").disabled = blocked;
+}
+
+function chatMessage(id, message) {
+    const fromUser = message.role === "user";
+    const item = el("li", `chat-message ${fromUser ? "from-user" : "from-ai"}`);
+    const found = fromUser ? null : CURRICULUM_TAG.exec(message.text);
+    const text = found ? message.text.replace(found[0], "").trim() : message.text;
+    if (text) item.append(el("p", "chat-text", text));
+    if (found) {
+        const curriculum = found[1].trim();
+        const download = el("button", "button primary", "Baixar em PDF");
+        download.type = "button";
+        download.addEventListener("click", () => downloadPdf(download, pdfName(id),
+            () => fetchPdf("POST", `/profile/job-matches/${id}/curriculum/pdf`, { curriculum })));
+        const use = el("button", "button quiet", "Substituir o currículo da vaga");
+        use.type = "button";
+        use.addEventListener("click", () => useCurriculum(id, curriculum, use));
+        const actions = el("div", "chat-actions");
+        actions.append(download, use);
+        item.append(el("pre", "ats-text", curriculum), actions);
+    }
+    return item;
+}
+
+async function sendChat(id) {
+    const text = (chatDrafts.get(id) ?? "").trim();
+    if (!text || chatting.has(id)) return;
+    const messages = [...(chats.get(id) ?? []), { role: "user", text }];
+    chats.set(id, messages);
+    chatDrafts.delete(id);
+    chatting.add(id);
+    paintChat();
+    try {
+        const { reply } = await api.chat(id, messages);
+        chats.set(id, [...messages, { role: "assistant", text: reply }]);
+    } catch (error) {
+        chats.set(id, messages.slice(0, -1));
+        chatDrafts.set(id, text);
+        toast(messageFor(error));
+    } finally {
+        chatting.delete(id);
+        paintChat();
+        if (state.chatSelected === id && $("#chat-input").offsetParent) $("#chat-input").focus();
+    }
+}
+
+function pdfName(id) {
+    return `Currículo - ${state.matches.find((m) => m.id === id)?.jobTitle ?? "vaga"}.pdf`;
+}
+
+async function fetchPdf(method, path, body) {
+    const response = await fetch(path, body === undefined
+        ? { method }
+        : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!response.ok) {
+        throw new ApiError(await response.json().catch(() => ({ message_error: `O servidor respondeu ${response.status}.` })));
+    }
+    return response.blob();
+}
+
+async function savePdf(name, loadPdf) {
+    let handle = null;
+    if (window.showSaveFilePicker) {
+        try {
+            handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: "PDF", accept: { "application/pdf": [".pdf"] } }] });
+        } catch (error) {
+            if (error.name === "AbortError") return null;
+        }
+    }
+    const pdf = await loadPdf();
+    if (!handle) {
+        const link = el("a");
+        link.href = URL.createObjectURL(pdf);
+        link.download = name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+        return "Download iniciado.";
+    }
+    const file = await handle.createWritable();
+    await file.write(pdf);
+    await file.close();
+    return `PDF salvo como ${handle.name}.`;
+}
+
+async function downloadPdf(button, name, loadPdf) {
+    button.disabled = true;
+    try {
+        const saved = await savePdf(name, loadPdf);
+        if (saved) toast(saved);
+    } catch (error) {
+        toast(error instanceof ApiError ? messageFor(error) : "Não foi possível salvar o PDF. Confira se o Vagora está rodando.");
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function useCurriculum(id, curriculum, button) {
+    button.disabled = true;
+    try {
+        const updated = await api.saveCurriculum(id, curriculum);
+        state.matches = state.matches.map((m) => (m.id === id ? updated : m));
+        toast("Currículo da vaga substituído.");
+        renderAllMatches();
+    } catch (error) {
+        toast(messageFor(error));
+        button.disabled = false;
+    }
+}
+
+function renderAllMatches() {
+    renderMatches(false);
+    renderChatPage();
+}
+
+function renderChatPage() {
+    const matches = [...state.matches].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (!matches.some((m) => m.id === state.chatSelected)) state.chatSelected = matches[0]?.id ?? null;
+    const composing = state.chatComposing || matches.length === 0;
+    const query = normalize(state.chatQuery.trim());
+    const visible = matches.filter((m) => !query || normalize(`${m.jobTitle} ${m.companyName}`).includes(query));
+
+    $("#chat-jobs").replaceChildren(...visible.map((match) => matchRow(match, !composing && match.id === state.chatSelected, () => {
+        state.chatSelected = match.id;
+        state.chatComposing = false;
+        renderChatPage();
+        $("#chat-input").focus();
+    })));
+    $("#chat-jobs [aria-pressed='true']")?.scrollIntoView({ block: "nearest" });
+    const empty = $("#chat-jobs-empty");
+    empty.hidden = visible.length > 0;
+    empty.textContent = matches.length ? `Nada corresponde a "${state.chatQuery.trim()}".` : "Nenhuma vaga analisada ainda.";
+
+    $("#external-job-form").hidden = !composing;
+    $("#external-cancel").hidden = matches.length === 0;
+    $("#chat-conversation").hidden = composing;
+    if (!composing) renderConversation(matches.find((m) => m.id === state.chatSelected));
+}
+
+function renderConversation(match) {
+    $("#chat-head").dataset.fit = match.match ? "yes" : "no";
+    $("#chat-score").textContent = match.score;
+    $("#chat-title").textContent = match.jobTitle ?? "Vaga sem título";
+    $("#chat-company").textContent = match.companyName ?? "";
+    $("#chat-verdict").textContent = verdictOf(match);
+    const link = $("#chat-job-link");
+    link.hidden = !match.jobLink;
+    if (match.jobLink) link.href = match.jobLink;
+    $("#chat-pdf").hidden = !match.curriculoAts;
+    const again = $("#chat-reanalyze");
+    again.hidden = !match.canGenerateCurriculum;
+    if (reanalyzing.has(match.id)) {
+        showBusy(again, REANALYZING);
+    } else {
+        again.disabled = false;
+        again.textContent = "Refazer análise";
+    }
+    paintChat();
+}
+
+$("#chat-reanalyze").addEventListener("click", (event) => reanalyze(state.chatSelected, event.currentTarget));
+$("#chat-pdf").addEventListener("click", (event) => {
+    const id = state.chatSelected;
+    downloadPdf(event.currentTarget, pdfName(id), () => fetchPdf("GET", `/profile/job-matches/${id}/curriculum`));
+});
+$("#chat-input").addEventListener("input", (event) => chatDrafts.set(state.chatSelected, event.target.value));
+$("#chat-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        $("#chat-form").requestSubmit();
+    }
+});
+$("#chat-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    sendChat(state.chatSelected);
+});
+$("#chat-search").addEventListener("input", (event) => {
+    state.chatQuery = event.target.value;
+    renderChatPage();
+});
+$("#chat-new").addEventListener("click", () => {
+    state.chatComposing = true;
+    renderChatPage();
+    $("#external-title").focus();
+});
+$("#external-cancel").addEventListener("click", () => {
+    state.chatComposing = false;
+    renderChatPage();
+});
+$("#analyze-job-link").addEventListener("click", () => { state.chatComposing = true; });
+
+$("#external-job-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    clearError(form);
+    const job = Object.fromEntries(new FormData(form));
+    const progress = $(".progress", form);
+    setBusy(form, true);
+    progress.hidden = false;
+    try {
+        const created = await api.analyzeJob(job);
+        state.matches = [created, ...state.matches];
+        state.chatSelected = created.id;
+        state.chatComposing = false;
+        form.reset();
+        toast(`Vaga analisada: nota ${created.score}.`);
+        renderAllMatches();
+    } catch (error) {
+        showError(error, $(".form-error", form));
+    } finally {
+        setBusy(form, false);
+        progress.hidden = true;
+    }
+});
 
 async function loadPending() {
     let queue;
@@ -889,14 +1161,34 @@ async function prioritize(id, button) {
 
 const generating = new Set();
 
-function showGenerating(button) {
+const reanalyzing = new Set();
+const GENERATING = "Gerando currículo (pode levar alguns minutos)…";
+const REANALYZING = "Refazendo a análise (pode levar alguns minutos)…";
+
+function showBusy(button, text) {
     button.disabled = true;
-    button.replaceChildren(el("span", "spinner"), "Gerando currículo (pode levar alguns minutos)…");
+    button.replaceChildren(el("span", "spinner"), text);
+}
+
+async function reanalyze(id, button) {
+    const before = state.matches.find((m) => m.id === id)?.score;
+    reanalyzing.add(id);
+    showBusy(button, REANALYZING);
+    try {
+        const updated = await api.reanalyze(id);
+        state.matches = state.matches.map((m) => (m.id === id ? updated : m));
+        toast(`Análise refeita: nota ${before} → ${updated.score}.`);
+    } catch (error) {
+        toast(messageFor(error));
+    } finally {
+        reanalyzing.delete(id);
+        renderAllMatches();
+    }
 }
 
 async function generateCurriculum(id, button) {
     generating.add(id);
-    showGenerating(button);
+    showBusy(button, GENERATING);
     try {
         const updated = await api.generateCurriculum(id);
         state.matches = state.matches.map((m) => (m.id === id ? updated : m));
@@ -905,7 +1197,7 @@ async function generateCurriculum(id, button) {
         toast(error.message);
     } finally {
         generating.delete(id);
-        renderMatches(false);
+        renderAllMatches();
     }
 }
 
@@ -915,7 +1207,7 @@ async function markApplied(match, button) {
         const updated = await api.markApplied(match.id, !match.appliedAt);
         state.matches = state.matches.map((m) => (m.id === match.id ? updated : m));
         toast(updated.appliedAt ? "Vaga marcada como enviada." : "Envio desmarcado.");
-        renderMatches(false);
+        renderAllMatches();
     } catch (error) {
         toast(messageFor(error));
         button.disabled = false;
@@ -1463,7 +1755,7 @@ function llmAvailable(provider) {
 
 function aiKeysText(profile) {
     const chain = (order) => order.filter(llmAvailable).map((provider) => LLM_NAMES[provider]).join(" → ") || "nenhuma IA disponível";
-    return `Nota: ${chain(profile.analysisChain)}. Currículo: ${chain(profile.curriculumChain)}.`;
+    return `Nota: ${chain(profile.analysisChain)}. Currículo: ${chain(profile.curriculumChain)}. Chat: ${chain(profile.chatChain)}.`;
 }
 
 function renderFlow() {

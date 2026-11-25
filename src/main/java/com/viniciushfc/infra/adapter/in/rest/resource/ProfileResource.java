@@ -1,13 +1,17 @@
 package com.viniciushfc.infra.adapter.in.rest.resource;
 
+import com.viniciushfc.domain.entities.JobMatch;
 import com.viniciushfc.domain.enums.AlertSource;
 import com.viniciushfc.domain.enums.ExternalProvider;
 import com.viniciushfc.domain.enums.LlmProvider;
 import com.viniciushfc.domain.exceptions.NotFoundException;
+import com.viniciushfc.domain.exceptions.ValidationException;
 import com.viniciushfc.domain.usecases.impl.AnalyzePendingJobsUseCaseImpl;
 import com.viniciushfc.domain.usecases.contracts.*;
 import com.viniciushfc.domain.vo.Attachment;
 import com.viniciushfc.domain.vo.ClaudeStatus;
+import com.viniciushfc.domain.vo.CompanyDetails;
+import com.viniciushfc.domain.vo.JobDetail;
 import com.viniciushfc.domain.vo.MailFolder;
 import com.viniciushfc.domain.vo.ProcessingStatus;
 import com.viniciushfc.domain.vo.ScraperActivity;
@@ -47,6 +51,9 @@ public class ProfileResource {
     private final ConnectClaudeUseCase connectClaudeUseCase;
     private final MarkJobAppliedUseCase markJobAppliedUseCase;
     private final ListLlmModelsUseCase listLlmModelsUseCase;
+    private final AnalyzeExternalJobUseCase analyzeExternalJobUseCase;
+    private final ChatJobMatchUseCase chatJobMatchUseCase;
+    private final ReanalyzeJobMatchUseCase reanalyzeJobMatchUseCase;
 
     public ProfileResource(CreateProfileUseCase createProfileUseCase,
                            GetProfileUseCase getProfileUseCase,
@@ -65,7 +72,10 @@ public class ProfileResource {
                            PrioritizePendingJobUseCase prioritizePendingJobUseCase,
                            ConnectClaudeUseCase connectClaudeUseCase,
                            MarkJobAppliedUseCase markJobAppliedUseCase,
-                           ListLlmModelsUseCase listLlmModelsUseCase) {
+                           ListLlmModelsUseCase listLlmModelsUseCase,
+                           AnalyzeExternalJobUseCase analyzeExternalJobUseCase,
+                           ChatJobMatchUseCase chatJobMatchUseCase,
+                           ReanalyzeJobMatchUseCase reanalyzeJobMatchUseCase) {
         this.createProfileUseCase = createProfileUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
@@ -84,6 +94,9 @@ public class ProfileResource {
         this.connectClaudeUseCase = connectClaudeUseCase;
         this.markJobAppliedUseCase = markJobAppliedUseCase;
         this.listLlmModelsUseCase = listLlmModelsUseCase;
+        this.analyzeExternalJobUseCase = analyzeExternalJobUseCase;
+        this.chatJobMatchUseCase = chatJobMatchUseCase;
+        this.reanalyzeJobMatchUseCase = reanalyzeJobMatchUseCase;
     }
 
     @GET
@@ -209,6 +222,48 @@ public class ProfileResource {
         return listJobMatchesUseCase.execute().stream()
                 .map(JobMatchRestMapper::toResponse)
                 .toList();
+    }
+
+    @POST
+    @Path("/job-matches")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response analyzeExternalJob(ExternalJobRequest request) {
+        if (request == null) {
+            throw new ValidationException("Informe o título e a descrição da vaga.");
+        }
+        JobMatch created = analyzeExternalJobUseCase.execute(new JobDetail(request.link(), request.title(), request.description(),
+                new CompanyDetails(request.company(), null)));
+        return Response.status(Response.Status.CREATED)
+                .entity(JobMatchRestMapper.toResponse(created))
+                .build();
+    }
+
+    @POST
+    @Path("/job-matches/{id}/analysis")
+    public JobMatchResponse reanalyze(@PathParam("id") UUID id) {
+        return JobMatchRestMapper.toResponse(reanalyzeJobMatchUseCase.execute(id));
+    }
+
+    @POST
+    @Path("/job-matches/{id}/chat")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public ChatResponse chat(@PathParam("id") UUID id, ChatRequest request) {
+        return new ChatResponse(chatJobMatchUseCase.execute(id, request == null ? null : request.messages()));
+    }
+
+    @POST
+    @Path("/job-matches/{id}/curriculum/pdf")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces("application/pdf")
+    public Response curriculumDraftPdf(@PathParam("id") UUID id, CurriculumRequest request) {
+        return inline(generateCurriculumUseCase.pdf(id, request == null ? null : request.curriculum()));
+    }
+
+    @PUT
+    @Path("/job-matches/{id}/curriculum")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public JobMatchResponse saveCurriculum(@PathParam("id") UUID id, CurriculumRequest request) {
+        return JobMatchRestMapper.toResponse(generateCurriculumUseCase.save(id, request == null ? null : request.curriculum()));
     }
 
     @PUT
