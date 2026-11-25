@@ -49,4 +49,18 @@ class PlainTextTest {
         assertEquals(List.of("3"), PlainText.missingNumbers(original, gerado));
         assertEquals(List.of(), PlainText.missingNumbers(original, gerado + ", 3 correções"));
     }
+
+    @Test
+    void numerosDeDadosPessoaisNaoContamComoFaltando() {
+        String original = """
+                João Silva | joao@email.com | (11) 98765-4321
+                CPF: 123.456.789-00
+                Data de nascimento: 15/03/1995
+                Endereço: Rua das Flores, 120
+                RG 12345678
+                Reduzi 40% do tempo em 2019-2021.
+                """;
+
+        assertEquals(List.of("40"), PlainText.missingNumbers(original, "Reduzi o tempo de 2019 a 2021."));
+    }
 }

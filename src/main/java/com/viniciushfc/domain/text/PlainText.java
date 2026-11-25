@@ -17,6 +17,9 @@ public final class PlainText {
     private static final Pattern ODD_HYPHEN = Pattern.compile("[\u2010\u2011\u2012\u2212]");
     private static final Pattern ODD_SPACE = Pattern.compile("[\u00A0\u2007\u202F]");
     private static final Pattern NUMBER = Pattern.compile("\\d+(?:[.,]\\d+)*");
+    private static final Pattern PERSONAL_LINE = Pattern.compile(
+            "\\b(cpf|rg|cnh|nascimento|nascido|nascida|idade|telefone|celular|whatsapp|cep|endereço|rua|avenida|bairro)\\b|@|https?://|www\\.",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.UNICODE_CHARACTER_CLASS);
 
     private PlainText() {
     }
@@ -38,7 +41,13 @@ public final class PlainText {
 
     public static List<String> missingNumbers(String original, String generated) {
         Set<String> found = numbers(generated).collect(Collectors.toSet());
-        return numbers(original).filter(number -> !found.contains(number)).distinct().toList();
+        return (original == null ? "" : original).lines()
+                .filter(line -> !PERSONAL_LINE.matcher(line).find())
+                .flatMap(PlainText::numbers)
+                .filter(number -> number.replaceAll("\\D", "").length() < 8)
+                .filter(number -> !found.contains(number))
+                .distinct()
+                .toList();
     }
 
     private static Stream<String> numbers(String text) {

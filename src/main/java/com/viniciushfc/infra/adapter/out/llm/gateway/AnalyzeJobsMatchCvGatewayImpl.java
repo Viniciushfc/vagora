@@ -109,7 +109,7 @@ public class AnalyzeJobsMatchCvGatewayImpl implements AnalyzeJobsMatchCvGateway 
                 + "Revisão: o currículo acima, que você gerou, deixou de fora estes números do <curriculo>: "
                 + String.join(", ", missing) + ". Reescreva o currículo completo incluindo os fatos a que esses números "
                 + "pertencem, quando fizerem parte de uma experiência, formação, projeto, curso ou certificação. "
-                + "Ignore os que pertencem a dados que as regras mandam omitir.\n";
+                + "Ignore os que pertencem a dados que as regras mandam omitir ou a fatos que o candidato pediu para tirar na conversa.\n";
     }
 
     static String curriculumIn(String reply) {
