@@ -197,6 +197,17 @@
                             <option value="recent">Mais recentes</option>
                         </select>
                     </label>
+                    <label class="sort">
+                        <span class="visually-hidden">Plataforma</span>
+                        <select id="platform">
+                            <option value="">Todas as plataformas</option>
+                            <option value="LINKEDIN">LinkedIn</option>
+                            <option value="INDEED">Indeed</option>
+                            <option value="GLASSDOOR">Glassdoor</option>
+                            <option value="GUPY">Gupy</option>
+                            <option value="OTHER">Outros sites</option>
+                        </select>
+                    </label>
                     <button id="refresh-matches" class="button quiet icon-only" type="button" aria-label="Atualizar lista">
                         <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
                     </button>
@@ -777,7 +788,7 @@
             <div class="match-head">
                 <div>
                     <h2 class="job-title"></h2>
-                    <p class="job-meta"><span class="job-company"></span><span class="analysed-at"></span></p>
+                    <p class="job-meta"><span class="job-company"></span><span class="job-source"></span><span class="analysed-at"></span></p>
                 </div>
                 <p class="verdict"></p>
             </div>

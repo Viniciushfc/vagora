@@ -82,6 +82,7 @@ const state = {
     matches: [],
     filter: "all",
     sort: "score",
+    platform: "",
     query: "",
     selected: null,
     chatSelected: null,
@@ -143,6 +144,9 @@ function account(provider) {
 }
 
 const SOURCE_LABELS = { LINKEDIN: "LinkedIn", INDEED: "Indeed", GLASSDOOR: "Glassdoor", GUPY: "Gupy" };
+const platformOf = (link) =>
+    /^https?:\/\/(?:[^/?#]*\.)?(linkedin|indeed|glassdoor|gupy)\.[a-z.]+(?:[/:?#]|$)/i.exec(link ?? "")?.[1].toUpperCase() ?? "OTHER";
+const platformLabel = (link) => SOURCE_LABELS[platformOf(link)] ?? "Outro site";
 
 function folderOf(email, source) {
     return { INDEED: email.indeedFolder, GLASSDOOR: email.glassdoorFolder }[source] ?? (source === "LINKEDIN" ? email.folder : null);
@@ -637,6 +641,7 @@ function visibleMatches() {
         : (a, b) => b.score - a.score);
     return sorted.filter((m) =>
         (state.filter === "all" || (state.filter === "applied" ? m.appliedAt : m.match)) &&
+        (!state.platform || platformOf(m.jobLink) === state.platform) &&
         (!query || normalize(`${m.jobTitle} ${m.companyName}`).includes(query)));
 }
 
@@ -658,10 +663,12 @@ function renderMatches(animate) {
     if (filteredEmpty) {
         const searching = state.query.trim() !== "";
         const appliedFilter = state.filter === "applied";
-        $("#filtered-empty-title").textContent = searching ? "Nenhuma vaga encontrada"
+        $("#filtered-empty-title").textContent = searching || state.platform ? "Nenhuma vaga encontrada"
             : appliedFilter ? "Nenhuma candidatura marcada ainda" : "Nenhuma vaga passou do corte ainda";
         $("#filtered-empty-text").textContent = searching
             ? `Nada corresponde a "${state.query.trim()}". Tente o nome da empresa ou outra palavra do título.`
+            : state.platform
+                ? `Nenhuma vaga de ${state.platform === "OTHER" ? "outros sites" : SOURCE_LABELS[state.platform]} com esses filtros.`
             : appliedFilter
                 ? "Depois de se candidatar, abra a vaga e clique em Marcar como enviada para acompanhar aqui."
                 : "Uma vaga é compatível quando a nota chega a 70 e os requisitos obrigatórios são atendidos.";
@@ -687,7 +694,8 @@ function matchRow(match, pressed, onClick) {
     button.type = "button";
     button.setAttribute("aria-pressed", String(pressed));
     const text = el("span", "row-text");
-    text.append(el("span", "row-title", match.jobTitle ?? "Vaga sem título"), el("span", "row-company", match.companyName ?? ""));
+    text.append(el("span", "row-title", match.jobTitle ?? "Vaga sem título"),
+        el("span", "row-company", [match.companyName, platformLabel(match.jobLink)].filter(Boolean).join(" · ")));
     if (match.appliedAt) text.append(el("span", "row-applied", "Enviada"));
     button.append(el("span", "row-score", String(match.score)), text);
     button.addEventListener("click", onClick);
@@ -775,6 +783,7 @@ function matchItem(match) {
     $(".score-value", item).textContent = match.score;
     $(".job-title", item).textContent = match.jobTitle ?? "Vaga sem título";
     $(".job-company", item).textContent = match.companyName ?? "";
+    $(".job-source", item).textContent = platformLabel(match.jobLink);
     if (match.createdAt) $(".analysed-at", item).textContent = `Analisada em ${dateFormat.format(new Date(match.createdAt))}`;
     $(".verdict", item).textContent = verdictOf(match);
 
@@ -1229,6 +1238,11 @@ $("#search").addEventListener("input", (event) => {
 
 $("#sort").addEventListener("change", (event) => {
     state.sort = event.target.value;
+    renderMatches(false);
+});
+
+$("#platform").addEventListener("change", (event) => {
+    state.platform = event.target.value;
     renderMatches(false);
 });
 
@@ -2111,13 +2125,11 @@ async function renderGupyInvite() {
     }
 }
 
-const isGupyLink = (link) => /^https:\/\/[^/]+\.gupy\.io\//.test(link ?? "");
-
 async function loadGupyActivity() {
     try {
         const [activities, queue, matches] = await Promise.all([api.scraper(), api.listPending(), api.listMatches()]);
         renderGupyActivity(activities.GUPY, queue.jobs.filter((job) => job.source === "GUPY"),
-            matches.filter((match) => isGupyLink(match.jobLink)));
+            matches.filter((match) => platformOf(match.jobLink) === "GUPY"));
     } catch (error) {
         showError(error, $("#gupy-error"));
     }
