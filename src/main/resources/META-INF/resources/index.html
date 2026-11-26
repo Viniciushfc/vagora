@@ -185,6 +185,9 @@
                         <span class="visually-hidden">Buscar por vaga ou empresa</span>
                         <input id="search" type="search" placeholder="Buscar vaga ou empresa" autocomplete="off">
                     </label>
+                    <button id="refresh-matches" class="button quiet icon-only" type="button" aria-label="Atualizar lista">
+                        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
+                    </button>
                     <div class="segmented" role="group" aria-label="Filtrar vagas">
                         <button type="button" data-filter="all" aria-pressed="true">Todas</button>
                         <button type="button" data-filter="match" aria-pressed="false">Compatíveis</button>
@@ -208,9 +211,6 @@
                             <option value="OTHER">Outros sites</option>
                         </select>
                     </label>
-                    <button id="refresh-matches" class="button quiet icon-only" type="button" aria-label="Atualizar lista">
-                        <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
-                    </button>
                 </div>
                 <ul id="matches" class="rows" aria-label="Vagas"></ul>
             </div>
@@ -375,15 +375,17 @@
                 </details>
             </div>
 
-            <h2 class="gupy-heading">Suas buscas</h2>
-            <p class="hint" id="gupy-hint">
-                Cada busca traz até 30 vagas novas por vez, publicadas nos últimos 7 dias e ainda com inscrições abertas.
-                Filtros mais específicos gastam menos cota da IA. Sem nenhuma busca ativa, nada é procurado. Pausar o
-                monitoramento pausa a Gupy também.
-            </p>
-            <div class="gupy-list" id="gupy-searches"></div>
-            <p class="form-error" id="gupy-error" role="alert" hidden></p>
-            <button class="button primary" id="gupy-add" type="button">Nova busca</button>
+            <div class="gupy-main">
+                <h2 class="gupy-heading">Suas buscas</h2>
+                <p class="hint" id="gupy-hint">
+                    Cada busca traz até 30 vagas novas por vez, publicadas nos últimos 7 dias e ainda com inscrições abertas.
+                    Filtros mais específicos gastam menos cota da IA. Sem nenhuma busca ativa, nada é procurado. Pausar o
+                    monitoramento pausa a Gupy também.
+                </p>
+                <div class="gupy-list" id="gupy-searches"></div>
+                <p class="form-error" id="gupy-error" role="alert" hidden></p>
+                <button class="button primary" id="gupy-add" type="button">Nova busca</button>
+            </div>
         </section>
 
         <section data-panel="linkedin indeed glassdoor" hidden>

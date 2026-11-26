@@ -146,6 +146,8 @@ function account(provider) {
 const SOURCE_LABELS = { LINKEDIN: "LinkedIn", INDEED: "Indeed", GLASSDOOR: "Glassdoor", GUPY: "Gupy" };
 const platformOf = (link) =>
     /^https?:\/\/(?:[^/?#]*\.)?(linkedin|indeed|glassdoor|gupy)\.[a-z.]+(?:[/:?#]|$)/i.exec(link ?? "")?.[1].toUpperCase() ?? "OTHER";
+const titleOf = (title) => !title ? "Vaga sem título"
+    : title === title.toUpperCase() && /\p{L}{4}/u.test(title) ? title.charAt(0) + title.slice(1).toLowerCase() : title;
 const platformLabel = (link) => SOURCE_LABELS[platformOf(link)] ?? "Outro site";
 
 function folderOf(email, source) {
@@ -694,7 +696,7 @@ function matchRow(match, pressed, onClick) {
     button.type = "button";
     button.setAttribute("aria-pressed", String(pressed));
     const text = el("span", "row-text");
-    text.append(el("span", "row-title", match.jobTitle ?? "Vaga sem título"),
+    text.append(el("span", "row-title", titleOf(match.jobTitle)),
         el("span", "row-company", [match.companyName, platformLabel(match.jobLink)].filter(Boolean).join(" · ")));
     if (match.appliedAt) text.append(el("span", "row-applied", "Enviada"));
     button.append(el("span", "row-score", String(match.score)), text);
@@ -781,7 +783,7 @@ function matchItem(match) {
     item.style.setProperty("--score", Math.max(0, Math.min(100, match.score)));
 
     $(".score-value", item).textContent = match.score;
-    $(".job-title", item).textContent = match.jobTitle ?? "Vaga sem título";
+    $(".job-title", item).textContent = titleOf(match.jobTitle);
     $(".job-company", item).textContent = match.companyName ?? "";
     $(".job-source", item).textContent = platformLabel(match.jobLink);
     if (match.createdAt) $(".analysed-at", item).textContent = `Analisada em ${dateFormat.format(new Date(match.createdAt))}`;
@@ -844,6 +846,29 @@ const chatting = new Set();
 const CURRICULUM_TAG = /<curriculo_ats>([\s\S]*?)<\/curriculo_ats>/;
 
 const CHAT_INTRO = "Pergunte sobre a vaga ou a nota, ou peça um currículo melhor. O que você contar aqui e não estiver no PDF também entra no currículo.";
+const CHAT_SUGGESTIONS = ["Por que a nota ficou assim?", "O que falta no meu currículo para esta vaga?", "Monte um currículo mais forte para esta vaga"];
+
+function chatIntro(id, match) {
+    const intro = el("li", "chat-intro");
+    if (!match.canGenerateCurriculum) {
+        intro.append(el("p", "hint", "Esta vaga foi analisada antes de o Vagora guardar a descrição, então não dá para conversar sobre ela."));
+        return intro;
+    }
+    const suggestions = el("div", "chat-suggestions");
+    suggestions.append(...CHAT_SUGGESTIONS.map((text) => {
+        const ask = el("button", "button quiet", text);
+        ask.type = "button";
+        ask.addEventListener("click", () => {
+            const draft = chatDrafts.get(id);
+            chatDrafts.set(id, text);
+            sendChat(id);
+            if (draft) chatDrafts.set(id, draft);
+        });
+        return ask;
+    }));
+    intro.append(el("p", "hint", CHAT_INTRO), suggestions);
+    return intro;
+}
 
 function paintChat() {
     const match = state.matches.find((m) => m.id === state.chatSelected);
@@ -852,11 +877,7 @@ function paintChat() {
     const messages = chats.get(id) ?? [];
     const list = $("#chat-messages");
     list.replaceChildren(...messages.map((message) => chatMessage(id, message)));
-    if (messages.length === 0) {
-        list.append(el("li", "chat-intro hint", match.canGenerateCurriculum
-            ? CHAT_INTRO
-            : "Esta vaga foi analisada antes de o Vagora guardar a descrição, então não dá para conversar sobre ela."));
-    }
+    if (messages.length === 0 && !chatting.has(id)) list.append(chatIntro(id, match));
     if (chatting.has(id)) {
         const typing = el("li", "chat-message from-ai progress");
         typing.append(el("span", "spinner"), "A IA está respondendo…");
@@ -1009,7 +1030,7 @@ function renderChatPage() {
 function renderConversation(match) {
     $("#chat-head").dataset.fit = match.match ? "yes" : "no";
     $("#chat-score").textContent = match.score;
-    $("#chat-title").textContent = match.jobTitle ?? "Vaga sem título";
+    $("#chat-title").textContent = titleOf(match.jobTitle);
     $("#chat-company").textContent = match.companyName ?? "";
     $("#chat-verdict").textContent = verdictOf(match);
     const link = $("#chat-job-link");
@@ -1140,7 +1161,7 @@ function pendingItem(job, maxAttempts) {
     const stuck = job.attempts >= maxAttempts;
     item.dataset.priority = job.prioritized ? "yes" : "no";
 
-    $(".job-title", item).textContent = job.jobTitle || "Vaga sem título";
+    $(".job-title", item).textContent = titleOf(job.jobTitle);
     $(".job-company", item).textContent = job.companyName ?? "";
     $(".job-source", item).textContent = SOURCE_LABELS[job.source] ?? "";
     if (job.createdAt) $(".analysed-at", item).textContent = `Lida em ${dateFormat.format(new Date(job.createdAt))}`;
@@ -2137,7 +2158,7 @@ async function loadGupyActivity() {
 
 function gupyJobItem(title, company, link, badge, badgeState) {
     const item = el("li", "gupy-job");
-    const anchor = el("a", "gupy-job-title", title ?? "Vaga sem título");
+    const anchor = el("a", "gupy-job-title", titleOf(title));
     anchor.href = link;
     anchor.target = "_blank";
     anchor.rel = "noopener";
