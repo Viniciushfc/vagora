@@ -104,6 +104,7 @@ public class PollGupySearchesUseCaseImpl implements PollGupySearchesUseCase {
 
     private static boolean wanted(GupySearch search, GupyJob found, LocalDate since, LocalDate today) {
         return search.contracts().contains(found.contract())
+                && search.matchesLevel(found.job().title())
                 && !found.publishedAt().toLocalDate().isBefore(since)
                 && (found.deadline() == null || !found.deadline().isBefore(today));
     }

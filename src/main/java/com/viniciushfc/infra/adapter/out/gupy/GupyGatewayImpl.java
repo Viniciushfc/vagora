@@ -73,7 +73,7 @@ public class GupyGatewayImpl implements GupyGateway {
 
     static String url(GupySearch search, int offset) {
         Map<String, String> params = new LinkedHashMap<>();
-        params.put("jobName", search.jobName());
+        params.put("jobName", search.query());
         if (search.state() != null) {
             params.put("state", search.state());
         }
